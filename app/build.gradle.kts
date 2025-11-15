@@ -1,6 +1,7 @@
 plugins {
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
+    id("org.jetbrains.kotlin.android")    // You will also need to add the 'kotlin-kapt' plugin to use 'kapt'
+    id("org.jetbrains.kotlin.kapt")
 }
 
 android {
@@ -9,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.example.locationservice"
-        minSdk = 21
+        minSdk = 30
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -23,7 +24,7 @@ android {
     }
 
     buildFeatures {
-        viewBinding = true   // ADD THIS LINE
+        viewBinding = true
     }
 }
 
@@ -33,4 +34,8 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     // Google Play Services Location
     implementation("com.google.android.gms:play-services-location:21.3.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.room:room-runtime:2.6.1")
+    implementation("androidx.room:room-ktx:2.6.1")
+    kapt("androidx.room:room-compiler:2.6.1")
 }

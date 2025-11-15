@@ -14,6 +14,16 @@ import com.google.android.gms.location.*
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
+import android.provider.Settings
+import android.location.Location
+import android.content.Context
+import androidx.room.*
+import kotlinx.coroutines.*
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
 
 class LocationLoggingService : Service() {
 
@@ -27,10 +37,15 @@ class LocationLoggingService : Service() {
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
 
+    private val client = OkHttpClient()
+    private val JSON = "application/json; charset=utf-8".toMediaType()
+    private lateinit var db: LocationDatabase
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        db = LocationDatabase.getDatabase(this)
+        startLocationUpdates()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -48,8 +63,8 @@ class LocationLoggingService : Service() {
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 result.lastLocation?.let { location ->
-                    Log.d("LocationService", "Location: ${location.latitude}, ${location.longitude}")
-                    appendLocationToFile(location.latitude, location.longitude)
+                    Log.d("LocationService", "GPS: ${location.latitude}, ${location.longitude}, Alt: ${location.altitude}")
+                    queueLocation(location)
                 }
             }
         }
@@ -67,14 +82,74 @@ class LocationLoggingService : Service() {
         }
     }
 
-    private fun appendLocationToFile(lat: Double, lng: Double) {
-        val timestamp = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-            .format(Date())
-        val line = "$timestamp, $lat, $lng\n"
+    private fun queueLocation(location: Location) {
+        scope.launch {
+            val deviceId = getDeviceId()
+            val utcTime = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.ROOT).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date(location.time))
 
-        // Internal storage -> files/locations.txt
-        val file = File(filesDir, FILE_NAME)
-        file.appendText(line)
+            val json = JSONObject().apply {
+                put("device_id", deviceId)
+                put("timestamp_utc", utcTime)
+                put("latitude", location.latitude)
+                put("longitude", location.longitude)
+                put("altitude", if (location.hasAltitude()) location.altitude else null)
+            }.toString()
+
+            val payload = QueuedLocation(
+                deviceId = deviceId,
+                timestampUtc = utcTime,
+                latitude = location.latitude,
+                longitude = location.longitude,
+                altitude = if (location.hasAltitude()) location.altitude else 0.0,
+                jsonPayload = json
+            )
+
+            db.locationDao().insert(payload)
+            Log.d("LocationService", "Queued: $json")
+
+            // Try to send immediately
+            sendQueuedLocations()
+        }
+    }
+
+    private fun sendQueuedLocations() {
+        scope.launch {
+            while (true) {
+                val location = db.locationDao().getOldest() ?: break
+                val request = Request.Builder()
+                    .url("http://thiagoglaser.ddns.net:50080/PostLocationData") // PLACEHOLDER
+                    .post(location.jsonPayload.toRequestBody(JSON))
+                    .build()
+
+                try {
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            db.locationDao().delete(location)
+                            Log.d("LocationService", "Sent & deleted: ${location.id}")
+                        } else {
+                            Log.w("LocationService", "Server error: ${response.code}")
+                            break // Wait for next retry
+                        }
+                    }
+                } catch (e: IOException) {
+                    Log.e("LocationService", "Network error, will retry later", e)
+                    break // Wait for next location or retry
+                }
+            }
+        }
+    }
+
+    private fun getDeviceAndroidId(): String {
+        return try {
+            // Best: Android ID (persistent, per-device)
+            Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
+                .takeIf { it != "9774d56d682e549c" } // Filter out emulator default
+                ?: "UNKNOWN_ID"
+        } catch (e: Exception) {
+            "UNKNOWN_ID"
+        }
     }
 
     // ---------- Notification ----------
