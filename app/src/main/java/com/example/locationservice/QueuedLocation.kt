@@ -1,10 +1,14 @@
 package com.example.locationservice
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 // QueuedLocation.kt
-@Entity(tableName = "queued_locations")
+@Entity(
+    tableName = "queued_locations",
+    indices = [Index(value = ["timestampUtc"], unique = true)]   // <-- ADD THIS
+)
 data class QueuedLocation(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val deviceId: String,

@@ -21,6 +21,7 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import com.google.android.gms.location.LocationServices
+import org.json.JSONArray
 
 
 class LocationLoggingService : Service() {
@@ -28,7 +29,8 @@ class LocationLoggingService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "location_logging_channel"
-        private const val UPDATE_INTERVAL_MS = 60_000L   // 1 minute
+        private const val UPDATE_INTERVAL_MS = 15_000L   // ← CHANGED: 15 seconds
+        private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // NEW: 5 minutes
     }
 
 
@@ -54,32 +56,39 @@ class LocationLoggingService : Service() {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification()) // FIXED
+        startForeground(NOTIFICATION_ID, buildNotification())
         startLocationUpdates()
-        sendQueuedLocations()
+        // CHANGED: Start periodic sending instead of immediate one-off
+        startPeriodicSending()
 
         return START_STICKY
     }
 
+    private fun startPeriodicSending() {
+        // Cancel existing job if present
+        scope.coroutineContext.cancelChildren()
+
+        scope.launch {
+            while(isActive) {
+                // Wait for the 5-minute interval
+                delay(SEND_BATCH_INTERVAL_MS)
+                Log.d("LocationService", "5-minute interval reached, attempting to send batch.")
+                sendQueuedLocations()
+            }
+        }
+    }
+
     private fun startLocationUpdates() {
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
-            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS)  // ← INCREASED
+            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS)
             .setMaxUpdateDelayMillis(UPDATE_INTERVAL_MS * 2)
             .build()
 
         locationCallback = object : LocationCallback() {
-            private var lastSentTime = 0L
-
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
-                val now = System.currentTimeMillis()
-
-                // DEBOUNCE: Only process if 30+ seconds since last
-                if (now - lastSentTime < 30_000) return
-
                 Log.d("LocationService", "GPS: ${location.latitude}, ${location.longitude}, Alt: ${location.altitude}")
                 queueLocation(location)
-                lastSentTime = now
             }
         }
 
@@ -102,83 +111,102 @@ class LocationLoggingService : Service() {
                 timeZone = TimeZone.getTimeZone("UTC")
             }.format(Date(location.time))
 
-            // DEDUPLICATE: Check if same coords + time already queued
-            val existing = db.locationDao().getOldest()
-            if (existing != null &&
-                Math.abs(existing.latitude - location.latitude) < 0.00001 &&
-                Math.abs(existing.longitude - location.longitude) < 0.00001 &&
-                existing.timestampUtc == utcTime
-            ) {
-                Log.d("LocationService", "DUPLICATE SKIPPED: $utcTime")
-                return@launch
-            }
-
-            val json = JSONObject().apply {
-                put("device_id", deviceId)
-                put("latitude", location.latitude)
-                put("longitude", location.longitude)
-                put("altitude", if (location.hasAltitude()) location.altitude else JSONObject.NULL)
-                put("timestamp_utc", utcTime)
-            }.toString()
-
             val payload = QueuedLocation(
                 deviceId = deviceId,
                 timestampUtc = utcTime,
                 latitude = location.latitude,
                 longitude = location.longitude,
                 altitude = if (location.hasAltitude()) location.altitude else 0.0,
-                jsonPayload = json
+                jsonPayload = ""   // not used for sending any more
             )
 
-            db.locationDao().insert(payload)
-            Log.d("LocationService", "NEW LOCATION → Queued: $json")
-            sendQueuedLocations()
+            try {
+                db.locationDao().insert(payload)
+                Log.d("LocationService", "NEW LOCATION QUEUED: $utcTime | ${location.latitude}, ${location.longitude}")
+                // Try to send immediately (still respects 5-min batching)
+                sendQueuedLocations()
+            } catch (e: android.database.sqlite.SQLiteConstraintException) {
+                // Duplicate timestamp_utc → ignore silently (guaranteed no dup)
+                Log.d("LocationService", "DUPLICATE IGNORED (same timestamp): $utcTime")
+            } catch (e: Exception) {
+                Log.e("LocationService", "Failed to queue location", e)
+            }
         }
     }
     private var isSending = false // Add this flag
 
     private fun sendQueuedLocations() {
-        if (isSending) return // Prevent multiple senders
+        if (isSending) return
         isSending = true
 
+        val batchSize = 100
+
         scope.launch {
-            while (true) {
-                val location = db.locationDao().getOldest() ?: break
-
-                val url = "http://thiagoglaser.ddns.net:50080/LocationData"
-                Log.d("LocationService", "Attempting to send queued location ID: ${location.id}")
-                Log.d("LocationService", "JSON Payload: ${location.jsonPayload}")
-
-                val request = Request.Builder()
-                    .url(url)
-                    .post(location.jsonPayload.toRequestBody(JSON))
-                    .build()
-
-                try {
-                    client.newCall(request).execute().use { response ->
-                        val code = response.code
-                        val body = response.body?.string() ?: "null"
-                        Log.d("LocationService", "HTTP Response Code: $code")
-                        Log.d("LocationService", "Response Body: $body")
-
-                        if (response.isSuccessful) {
-                            db.locationDao().delete(location)
-                            Log.d("LocationService", "SUCCESS: Sent & deleted location ID: ${location.id}")
-                        } else {
-                            Log.w("LocationService", "SERVER ERROR $code: Will retry later")
-                            return@launch
-                        }
-                    }
-                } catch (e: Exception) {
-                    Log.e("LocationService", "NETWORK ERROR: Will retry later", e)
+            try {
+                // -------------------------------------------------
+                // 1. Get a batch of queued locations
+                // -------------------------------------------------
+                val locations = db.locationDao().getBatch(batchSize)
+                if (locations.isEmpty()) {
+                    Log.d("LocationService", "Queue empty. Nothing to send.")
                     return@launch
                 }
-            }
-            isSending = false // Reset when done
-        }
-    }
 
-    private fun getDeviceAndroidId(): String {
+                // -------------------------------------------------
+                // 2. Build the **new** payload format
+                // -------------------------------------------------
+                val payloadObj = JSONObject().apply {
+                    put("device_id", locations.first().deviceId)   // same for whole batch
+                    val locArray = JSONArray()
+                    for (loc in locations) {
+                        locArray.put(JSONObject().apply {
+                            put("latitude", loc.latitude)
+                            put("longitude", loc.longitude)
+                            put("altitude", if (loc.altitude != 0.0) loc.altitude else JSONObject.NULL)
+                            put("timestamp_utc", loc.timestampUtc)
+                        })
+                    }
+                    put("locations", locArray)
+                }
+                val batchPayload = payloadObj.toString()
+
+                // -------------------------------------------------
+                // 3. LOG the exact JSON that will be sent
+                // -------------------------------------------------
+                val pretty = try { JSONObject(batchPayload).toString(2) } catch (e: Exception) { batchPayload }
+                Log.d("LocationService", "Sending JSON batch (${locations.size} items):\n$pretty")
+
+                // -------------------------------------------------
+                // 4. POST to the server
+                // -------------------------------------------------
+                val url = "http://thiagoglaser.ddns.net:50080/LocationData"
+                val request = Request.Builder()
+                    .url(url)
+                    .post(batchPayload.toRequestBody(JSON))
+                    .build()
+
+                client.newCall(request).execute().use { response ->
+                    val code = response.code
+                    Log.d("LocationService", "HTTP Response Code: $code")
+
+                    if (response.isSuccessful) {
+                        // Delete the whole batch only on success
+                        locations.forEach { db.locationDao().delete(it) }
+                        Log.d("LocationService",
+                            "SUCCESS: Sent & deleted batch of ${locations.size} locations.")
+                    } else {
+                        Log.w("LocationService",
+                            "SERVER ERROR $code: Will retry on next interval.")
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("LocationService",
+                    "NETWORK/DB error – will retry later", e)
+            } finally {
+                isSending = false
+            }
+        }
+    }    private fun getDeviceAndroidId(): String {
         return try {
             // Best: Android ID (persistent, per-device)
             Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
@@ -193,9 +221,10 @@ class LocationLoggingService : Service() {
         locationCallback?.let {
             fusedLocationClient.removeLocationUpdates(it)
         }
+        // ADD: Cancel the coroutine scope when the service is destroyed
+        scope.cancel()
         super.onDestroy()
     }
-
     private fun buildNotification(): Notification {
         createNotificationChannel()
 

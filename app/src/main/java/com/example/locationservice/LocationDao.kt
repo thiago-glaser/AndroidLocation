@@ -13,6 +13,10 @@ interface LocationDao {
     @Query("SELECT * FROM queued_locations ORDER BY id ASC LIMIT 1")
     suspend fun getOldest(): QueuedLocation?
 
+    // NEW: Function to get a batch of locations
+    @Query("SELECT * FROM queued_locations ORDER BY id ASC LIMIT :limit")
+    suspend fun getBatch(limit: Int): List<QueuedLocation>
+
     @Delete
     suspend fun delete(location: QueuedLocation)
 
