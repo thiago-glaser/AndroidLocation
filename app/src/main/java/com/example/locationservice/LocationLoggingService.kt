@@ -139,7 +139,7 @@ class LocationLoggingService : Service() {
         if (isSending) return
         isSending = true
 
-        val batchSize = 100
+        val batchSize = 500
 
         scope.launch {
             try {
@@ -162,7 +162,7 @@ class LocationLoggingService : Service() {
                         locArray.put(JSONObject().apply {
                             put("latitude", loc.latitude)
                             put("longitude", loc.longitude)
-                            put("altitude", if (loc.altitude != 0.0) loc.altitude else JSONObject.NULL)
+                            put("altitude", loc.altitude)
                             put("timestamp_utc", loc.timestampUtc)
                         })
                     }
