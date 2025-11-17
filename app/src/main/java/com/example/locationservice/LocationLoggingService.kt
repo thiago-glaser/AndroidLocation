@@ -29,7 +29,7 @@ class LocationLoggingService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "location_logging_channel"
-        private const val UPDATE_INTERVAL_MS = 15_000L   // ← CHANGED: 15 seconds
+        private const val UPDATE_INTERVAL_MS = 7_500L   // ← CHANGED: 15 seconds
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // NEW: 5 minutes
     }
 
