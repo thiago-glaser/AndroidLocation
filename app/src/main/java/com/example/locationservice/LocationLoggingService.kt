@@ -123,8 +123,6 @@ class LocationLoggingService : Service() {
             try {
                 db.locationDao().insert(payload)
                 Log.d("LocationService", "NEW LOCATION QUEUED: $utcTime | ${location.latitude}, ${location.longitude}")
-                // Try to send immediately (still respects 5-min batching)
-                sendQueuedLocations()
             } catch (e: android.database.sqlite.SQLiteConstraintException) {
                 // Duplicate timestamp_utc → ignore silently (guaranteed no dup)
                 Log.d("LocationService", "DUPLICATE IGNORED (same timestamp): $utcTime")
