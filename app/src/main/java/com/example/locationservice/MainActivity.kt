@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -17,19 +18,23 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
 
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
-            val allGranted = grants.all { it.value }
-            Log.d("PERMISSION", "Permission result: $grants → All granted: $allGranted")
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val fgsLocationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            permissions[Manifest.permission.FOREGROUND_SERVICE_LOCATION] ?: false
+        } else true
 
-            if (allGranted) {
-                binding.tvStatus.text = "Permission granted. Starting service..."
-                startLocationService()
-            } else {
-                binding.tvStatus.text = "Location permission denied."
-                showPermissionDeniedDialog()
-            }
+        if (fineGranted && fgsLocationGranted) {
+            binding.tvStatus.text = "All required permissions granted → Service starting..."
+            startLocationService()
+            requestIgnoreBatteryOptimizations() // optional but recommended
+        } else {
+            binding.tvStatus.text = "Missing critical permission(s)!"
+            Toast.makeText(this, "You must grant BOTH location permissions", Toast.LENGTH_LONG).show()
         }
+    }
 
     private fun showPermissionDeniedDialog() {
         AlertDialog.Builder(this)
@@ -47,6 +52,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        requestPermissions();
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -55,7 +61,7 @@ class MainActivity : AppCompatActivity() {
             binding.tvStatus.text = "Warning: Open the app manually once after install/reboot to enable auto-start!"
             binding.tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
         }
-        binding.btnStart.setOnClickListener { checkAndRequestPermissions() }
+        binding.btnStart.setOnClickListener { requestPermissions() }
         binding.btnStop.setOnClickListener { stopLocationService() }
     }
 
@@ -63,29 +69,7 @@ class MainActivity : AppCompatActivity() {
         return (callingActivity != null || intent?.action == Intent.ACTION_MAIN)
     }
 
-    // Add this to your permissions list in MainActivity.kt
-    private fun checkAndRequestPermissions() {
-        val permissions = mutableListOf(
-            Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION   // optional but nice to have
-        )
-
-        // This is the new mandatory permission on Android 14
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            permissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-        }
-
-        val missing = permissions.filter {
-            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
-        }
-
-        if (missing.isNotEmpty()) {
-            requestPermissionLauncher.launch(missing.toTypedArray())
-        } else {
-            startLocationService()
-        }
-    }
-    private fun startLocationService() {
+        private fun startLocationService() {
         Log.d("SERVICE", "startLocationService() called")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED
@@ -146,4 +130,19 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+
+    private fun requestPermissions() {
+        val list = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        )
+
+        // THIS LINE IS THE ONE THAT FIXES IT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            list.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+        }
+
+        permissionLauncher.launch(list.toTypedArray())
+    }
+
 }
