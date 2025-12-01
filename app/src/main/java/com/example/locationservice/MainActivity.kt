@@ -63,30 +63,26 @@ class MainActivity : AppCompatActivity() {
         return (callingActivity != null || intent?.action == Intent.ACTION_MAIN)
     }
 
+    // Add this to your permissions list in MainActivity.kt
     private fun checkAndRequestPermissions() {
-        Log.d("PERMISSION", "checkAndRequestPermissions() called")
+        val permissions = mutableListOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION   // optional but nice to have
+        )
 
-        val permissions = mutableListOf<String>().apply {
-            add(Manifest.permission.ACCESS_FINE_LOCATION)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
-            }
+        // This is the new mandatory permission on Android 14
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            permissions.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
         }
 
         val missing = permissions.filter {
             ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
         }
 
-        Log.d("PERMISSION", "Missing permissions: $missing")
-
-        if (missing.isEmpty()) {
-            Log.d("PERMISSION", "All permissions granted → Starting service")
-            binding.tvStatus.text = "Permissions ready. Starting service..."
-            startLocationService()  // THIS WILL NOW RUN
-        } else {
-            Log.d("PERMISSION", "Requesting missing permissions: $missing")
-            binding.tvStatus.text = "Requesting location access..."
+        if (missing.isNotEmpty()) {
             requestPermissionLauncher.launch(missing.toTypedArray())
+        } else {
+            startLocationService()
         }
     }
     private fun startLocationService() {
@@ -107,11 +103,47 @@ class MainActivity : AppCompatActivity() {
             binding.tvStatus.text = "ERROR: Location permission missing!"
             showPermissionDeniedDialog()
         }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+
+        binding.tvStatus.text = "Service started. Logging every few seconds."
+
+        // Add this line
+        requestIgnoreBatteryOptimizations()   // ← this fixes the Pixel problem
     }
 
     private fun stopLocationService() {
         val intent = Intent(this, LocationLoggingService::class.java)
         stopService(intent)
         binding.tvStatus.text = "Service stopped"
+    }
+
+    private fun requestIgnoreBatteryOptimizations() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val powerManager = getSystemService(POWER_SERVICE) as android.os.PowerManager
+            if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
+                // Show a nice dialog first (optional but highly recommended on Pixel)
+                AlertDialog.Builder(this)
+                    .setTitle("Battery optimisation")
+                    .setMessage("For reliable auto-start after reboot on Pixel phones, please select \"Unrestricted\" or at least \"Not optimised\" in the next screen.")
+                    .setPositiveButton("Open settings") { _, _ ->
+                        try {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:$packageName")
+                            }
+                            startActivity(intent)
+                        } catch (e: Exception) {
+                            // Some Pixel devices block this intent → fall back to the full battery settings page
+                            val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                            startActivity(intent)
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        }
     }
 }

@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.net.ConnectivityManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -31,10 +30,15 @@ class BootReceiver : BroadcastReceiver() {
     }
 
     private fun hasLocationPermission(context: Context): Boolean {
-        return ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
+        val fineOk = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                PackageManager.PERMISSION_GRANTED
+
+        val fgsLocationOk = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.FOREGROUND_SERVICE_LOCATION) ==
+                    PackageManager.PERMISSION_GRANTED
+        } else true
+
+        return fineOk && fgsLocationOk
     }
 
     private fun startLocationService(context: Context) {
