@@ -51,8 +51,16 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        if (!isAppLaunchedByUser()) {
+            binding.tvStatus.text = "Warning: Open the app manually once after install/reboot to enable auto-start!"
+            binding.tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
+        }
         binding.btnStart.setOnClickListener { checkAndRequestPermissions() }
         binding.btnStop.setOnClickListener { stopLocationService() }
+    }
+
+    private fun isAppLaunchedByUser(): Boolean {
+        return (callingActivity != null || intent?.action == Intent.ACTION_MAIN)
     }
 
     private fun checkAndRequestPermissions() {
@@ -93,7 +101,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
-            binding.tvStatus.text = "Service started. Logging every 60s."
+            binding.tvStatus.text = "Service started. Logging every few seconds."
         } else {
             Log.e("SERVICE", "Permission DENIED → Cannot start")
             binding.tvStatus.text = "ERROR: Location permission missing!"

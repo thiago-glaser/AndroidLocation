@@ -7,32 +7,47 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 
 class BootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        if (Intent.ACTION_BOOT_COMPLETED == intent.action ||
-            Intent.ACTION_MY_PACKAGE_REPLACED == intent.action
+
+    override fun onReceive(context: Context, intent: Intent?) {
+        if (intent?.action == Intent.ACTION_BOOT_COMPLETED ||
+            intent?.action == Intent.ACTION_MY_PACKAGE_REPLACED
         ) {
-            // Only start if permission is already granted (e.g. user allowed before)
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                val serviceIntent = Intent(context, LocationLoggingService::class.java)
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    context.startForegroundService(serviceIntent)
-                } else {
-                    context.startService(serviceIntent)
-                }
+            // Extra safety: check if it's our package (for PACKAGE_REPLACED)
+            if (intent.action == Intent.ACTION_PACKAGE_REPLACED) {
+                val data = intent.dataString ?: return
+                if (!data.contains(context.packageName)) return
+            }
+
+            if (hasLocationPermission(context)) {
+                startLocationService(context)
+            } else {
+                Log.w("BootReceiver", "No location permission - cannot start service on boot")
             }
         }
     }
 
-    class NetworkReceiver : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent?) {
-            if (ConnectivityManager.CONNECTIVITY_ACTION == intent?.action) {
-                context.startForegroundService(Intent(context, LocationLoggingService::class.java))
+    private fun hasLocationPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun startLocationService(context: Context) {
+        val serviceIntent = Intent(context, LocationLoggingService::class.java)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                context.startForegroundService(serviceIntent)
+            } else {
+                context.startService(serviceIntent)
             }
+            Log.d("BootReceiver", "Location service started after boot")
+        } catch (e: Exception) {
+            Log.e("BootReceiver", "Failed to start service", e)
         }
     }
 }

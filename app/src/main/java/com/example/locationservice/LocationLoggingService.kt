@@ -234,7 +234,7 @@ class LocationLoggingService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location Logger Active")
-            .setContentText("Collecting GPS data every 60s")
+            .setContentText("Collecting GPS data every ~8 seconds")
             .setSmallIcon(android.R.drawable.ic_menu_mylocation) // Must be valid
             .setContentIntent(pendingIntent)
             .setOngoing(true)
