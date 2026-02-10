@@ -25,21 +25,22 @@ class MainActivity : AppCompatActivity() {
         val fgsLocationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             permissions[Manifest.permission.FOREGROUND_SERVICE_LOCATION] ?: false
         } else true
+        val bluetoothScanGranted = permissions[Manifest.permission.BLUETOOTH_SCAN] ?: false
+        val bluetoothConnectGranted = permissions[Manifest.permission.BLUETOOTH_CONNECT] ?: false
 
-        if (fineGranted && fgsLocationGranted) {
+        if (fineGranted && fgsLocationGranted && bluetoothScanGranted && bluetoothConnectGranted) {
             binding.tvStatus.text = "All required permissions granted → Service starting..."
             startLocationService()
-            requestIgnoreBatteryOptimizations() // optional but recommended
         } else {
             binding.tvStatus.text = "Missing critical permission(s)!"
-            Toast.makeText(this, "You must grant BOTH location permissions", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "You must grant location and bluetooth permissions", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun showPermissionDeniedDialog() {
         AlertDialog.Builder(this)
             .setTitle("Permission Required")
-            .setMessage("Location permission is needed to log your position. Please enable it in Settings.")
+            .setMessage("Location and Bluetooth permissions are needed. Please enable it in Settings.")
             .setPositiveButton("Open Settings") { _, _ ->
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", packageName, null)
@@ -69,7 +70,7 @@ class MainActivity : AppCompatActivity() {
         return (callingActivity != null || intent?.action == Intent.ACTION_MAIN)
     }
 
-        private fun startLocationService() {
+    private fun startLocationService() {
         Log.d("SERVICE", "startLocationService() called")
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED
@@ -82,21 +83,12 @@ class MainActivity : AppCompatActivity() {
                 startService(intent)
             }
             binding.tvStatus.text = "Service started. Logging every few seconds."
+            requestIgnoreBatteryOptimizations() // optional but recommended
         } else {
             Log.e("SERVICE", "Permission DENIED → Cannot start")
             binding.tvStatus.text = "ERROR: Location permission missing!"
             showPermissionDeniedDialog()
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(intent)
-        } else {
-            startService(intent)
-        }
-
-        binding.tvStatus.text = "Service started. Logging every few seconds."
-
-        // Add this line
-        requestIgnoreBatteryOptimizations()   // ← this fixes the Pixel problem
     }
 
     private fun stopLocationService() {
@@ -134,7 +126,9 @@ class MainActivity : AppCompatActivity() {
     private fun requestPermissions() {
         val list = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
-            Manifest.permission.ACCESS_COARSE_LOCATION
+            Manifest.permission.ACCESS_COARSE_LOCATION,
+            Manifest.permission.BLUETOOTH_SCAN,
+            Manifest.permission.BLUETOOTH_CONNECT
         )
 
         // THIS LINE IS THE ONE THAT FIXES IT
