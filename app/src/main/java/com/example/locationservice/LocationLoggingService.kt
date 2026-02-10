@@ -5,6 +5,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
@@ -31,6 +32,16 @@ class LocationLoggingService : Service() {
         private const val CHANNEL_ID = "location_logging_channel"
         private const val UPDATE_INTERVAL_MS = 7_500L   // ← CHANGED: 15 seconds
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // NEW: 5 minutes
+        fun getDeviceAndroidId(context: Context): String {
+            return try {
+                // Best: Android ID (persistent, per-device)
+                Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                    .takeIf { it != "9774d56d682e549c" } // Filter out emulator default
+                    ?: "UNKNOWN_ID"
+            } catch (e: Exception) {
+                "UNKNOWN_ID"
+            }
+        }
     }
 
 
@@ -106,7 +117,7 @@ class LocationLoggingService : Service() {
     }
     private fun queueLocation(location: Location) {
         scope.launch {
-            val deviceId = getDeviceAndroidId()
+            val deviceId = getDeviceAndroidId(this@LocationLoggingService)
             val utcTime = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
                 timeZone = TimeZone.getTimeZone("UTC")
             }.format(Date(location.time))
@@ -203,15 +214,6 @@ class LocationLoggingService : Service() {
             } finally {
                 isSending = false
             }
-        }
-    }    private fun getDeviceAndroidId(): String {
-        return try {
-            // Best: Android ID (persistent, per-device)
-            Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID)
-                .takeIf { it != "9774d56d682e549c" } // Filter out emulator default
-                ?: "UNKNOWN_ID"
-        } catch (e: Exception) {
-            "UNKNOWN_ID"
         }
     }
 

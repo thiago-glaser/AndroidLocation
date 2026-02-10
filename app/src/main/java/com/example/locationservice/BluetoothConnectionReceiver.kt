@@ -19,18 +19,19 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         val deviceName = device?.name ?: "Unknown"
 
-        if (deviceName != "Trax 2025") {
+        if (deviceName != "Google Pixel Watch 2") {
+            Log.d("BluetoothReceiver", deviceName +" connected");
             return
         }
 
         when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> {
                 Log.d("BluetoothReceiver", "Trax 2025 connected")
-                ApiManager.startSession("Trax 2025")
+                ApiManager.startSession(LocationLoggingService.getDeviceAndroidId(context))
             }
             BluetoothDevice.ACTION_ACL_DISCONNECTED -> {
                 Log.d("BluetoothReceiver", "Trax 2025 disconnected")
-                ApiManager.endSession("Trax 2025")
+                ApiManager.endSession(LocationLoggingService.getDeviceAndroidId(context))
             }
         }
     }
