@@ -20,7 +20,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         val deviceName = device?.name ?: "Unknown"
 
         if (deviceName != "Trax 2025") {
-            Log.d("BluetoothReceiver", deviceName +" connected");
+            Log.d("BluetoothReceiver", deviceName +" connected")
             return
         }
 
