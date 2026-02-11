@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [QueuedLocation::class], version = 1, exportSchema = false)
+@Database(entities = [QueuedLocation::class], version = 2, exportSchema = false)
 abstract class LocationDatabase : RoomDatabase() {
     abstract fun locationDao(): LocationDao
 
@@ -19,7 +19,7 @@ abstract class LocationDatabase : RoomDatabase() {
                     context.applicationContext,
                     LocationDatabase::class.java,
                     "location_queue.db"
-                ).build()
+                ).fallbackToDestructiveMigration().build()
                 INSTANCE = instance
                 instance
             }

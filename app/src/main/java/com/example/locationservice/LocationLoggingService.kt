@@ -23,20 +23,21 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import com.google.android.gms.location.LocationServices
 import org.json.JSONArray
-
+import java.util.concurrent.TimeUnit
 
 class LocationLoggingService : Service() {
 
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "location_logging_channel"
-        private const val UPDATE_INTERVAL_MS = 7_500L   // ← CHANGED: 15 seconds
-        private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // NEW: 5 minutes
+        private const val UPDATE_INTERVAL_MS = 7_500L
+        private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L
+        private val SENT_DATA_RETENTION_DAYS = 15L
+
         fun getDeviceAndroidId(context: Context): String {
             return try {
-                // Best: Android ID (persistent, per-device)
                 Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-                    .takeIf { it != "9774d56d682e549c" } // Filter out emulator default
+                    .takeIf { it != "9774d56d682e549c" }
                     ?: "UNKNOWN_ID"
             } catch (e: Exception) {
                 "UNKNOWN_ID"
@@ -44,10 +45,8 @@ class LocationLoggingService : Service() {
         }
     }
 
-
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
-
     private val client = OkHttpClient()
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private lateinit var db: LocationDatabase
@@ -57,34 +56,28 @@ class LocationLoggingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         db = LocationDatabase.getDatabase(this)
-        startLocationUpdates() // Now safe
+        startLocationUpdates()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("LocationService", "onStartCommand: Starting foreground")
-
         if (!::fusedLocationClient.isInitialized) {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         }
-
         startForeground(NOTIFICATION_ID, buildNotification())
         startLocationUpdates()
-        // CHANGED: Start periodic sending instead of immediate one-off
         startPeriodicSending()
-
         return START_STICKY
     }
 
     private fun startPeriodicSending() {
-        // Cancel existing job if present
         scope.coroutineContext.cancelChildren()
-
         scope.launch {
-            while(isActive) {
-                // Wait for the 5-minute interval
+            while (isActive) {
                 delay(SEND_BATCH_INTERVAL_MS)
-                Log.d("LocationService", "5-minute interval reached, attempting to send batch.")
+                Log.d("LocationService", "Interval reached, sending batch and cleaning up old data.")
                 sendQueuedLocations()
+                cleanupOldSentData()
             }
         }
     }
@@ -104,17 +97,14 @@ class LocationLoggingService : Service() {
         }
 
         try {
-            fusedLocationClient.requestLocationUpdates(
-                request,
-                locationCallback!!,
-                Looper.getMainLooper()
-            )
+            fusedLocationClient.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
             Log.d("LocationService", "Location updates requested")
         } catch (e: SecurityException) {
             Log.e("LocationService", "Permission denied", e)
             stopSelf()
         }
     }
+
     private fun queueLocation(location: Location) {
         scope.launch {
             val deviceId = getDeviceAndroidId(this@LocationLoggingService)
@@ -127,22 +117,19 @@ class LocationLoggingService : Service() {
                 timestampUtc = utcTime,
                 latitude = location.latitude,
                 longitude = location.longitude,
-                altitude = if (location.hasAltitude()) location.altitude else 0.0,
-                jsonPayload = ""   // not used for sending any more
+                altitude = if (location.hasAltitude()) location.altitude else 0.0
             )
 
             try {
                 db.locationDao().insert(payload)
                 Log.d("LocationService", "NEW LOCATION QUEUED: $utcTime | ${location.latitude}, ${location.longitude}")
-            } catch (e: android.database.sqlite.SQLiteConstraintException) {
-                // Duplicate timestamp_utc → ignore silently (guaranteed no dup)
-                Log.d("LocationService", "DUPLICATE IGNORED (same timestamp): $utcTime")
             } catch (e: Exception) {
                 Log.e("LocationService", "Failed to queue location", e)
             }
         }
     }
-    private var isSending = false // Add this flag
+
+    private var isSending = false
 
     private fun sendQueuedLocations() {
         if (isSending) return
@@ -152,20 +139,14 @@ class LocationLoggingService : Service() {
 
         scope.launch {
             try {
-                // -------------------------------------------------
-                // 1. Get a batch of queued locations
-                // -------------------------------------------------
-                val locations = db.locationDao().getBatch(batchSize)
+                val locations = db.locationDao().getUnsentBatch(batchSize)
                 if (locations.isEmpty()) {
                     Log.d("LocationService", "Queue empty. Nothing to send.")
                     return@launch
                 }
 
-                // -------------------------------------------------
-                // 2. Build the **new** payload format
-                // -------------------------------------------------
                 val payloadObj = JSONObject().apply {
-                    put("device_id", locations.first().deviceId)   // same for whole batch
+                    put("device_id", locations.first().deviceId)
                     val locArray = JSONArray()
                     for (loc in locations) {
                         locArray.put(JSONObject().apply {
@@ -179,15 +160,6 @@ class LocationLoggingService : Service() {
                 }
                 val batchPayload = payloadObj.toString()
 
-                // -------------------------------------------------
-                // 3. LOG the exact JSON that will be sent
-                // -------------------------------------------------
-                val pretty = try { JSONObject(batchPayload).toString(2) } catch (e: Exception) { batchPayload }
-                Log.d("LocationService", "Sending JSON batch (${locations.size} items):\n$pretty")
-
-                // -------------------------------------------------
-                // 4. POST to the server
-                // -------------------------------------------------
                 val url = "http://thiagoglaser.ddns.net:50080/LocationData"
                 val request = Request.Builder()
                     .url(url)
@@ -199,45 +171,44 @@ class LocationLoggingService : Service() {
                     Log.d("LocationService", "HTTP Response Code: $code")
 
                     if (response.isSuccessful) {
-                        // Delete the whole batch only on success
-                        locations.forEach { db.locationDao().delete(it) }
-                        Log.d("LocationService",
-                            "SUCCESS: Sent & deleted batch of ${locations.size} locations.")
+                        val sentIds = locations.map { it.id }
+                        db.locationDao().markAsSent(sentIds, System.currentTimeMillis())
+                        Log.d("LocationService", "SUCCESS: Sent & marked batch of ${locations.size} locations.")
                     } else {
-                        Log.w("LocationService",
-                            "SERVER ERROR $code: Will retry on next interval.")
+                        Log.w("LocationService", "SERVER ERROR $code: Will retry on next interval.")
                     }
                 }
             } catch (e: Exception) {
-                Log.e("LocationService",
-                    "NETWORK/DB error – will retry later", e)
+                Log.e("LocationService", "NETWORK/DB error – will retry later", e)
             } finally {
                 isSending = false
             }
         }
     }
 
-    override fun onDestroy() {
-        locationCallback?.let {
-            fusedLocationClient.removeLocationUpdates(it)
+    private fun cleanupOldSentData() {
+        scope.launch {
+            val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(SENT_DATA_RETENTION_DAYS)
+            db.locationDao().deleteSentBefore(cutoff)
+            Log.d("LocationService", "Cleaned up sent records older than 15 days.")
         }
-        // ADD: Cancel the coroutine scope when the service is destroyed
+    }
+
+    override fun onDestroy() {
+        locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
         scope.cancel()
         super.onDestroy()
     }
+
     private fun buildNotification(): Notification {
         createNotificationChannel()
-
         val intent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Location Logger Active")
             .setContentText("Collecting GPS data every ~8 seconds")
-            .setSmallIcon(android.R.drawable.ic_menu_mylocation) // Must be valid
+            .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -246,16 +217,11 @@ class LocationLoggingService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "Location Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
+            val channel = NotificationChannel(CHANNEL_ID, "Location Service", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Persistent location logging"
                 setShowBadge(false)
             }
-            getSystemService(NotificationManager::class.java)
-                .createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
     }
 

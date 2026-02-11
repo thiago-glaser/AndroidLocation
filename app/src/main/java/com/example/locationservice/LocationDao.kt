@@ -10,15 +10,14 @@ interface LocationDao {
     @Insert
     suspend fun insert(location: QueuedLocation)
 
-    @Query("SELECT * FROM queued_locations ORDER BY id ASC LIMIT 1")
-    suspend fun getOldest(): QueuedLocation?
+    @Query("SELECT * FROM queued_locations WHERE wasSent = 0 ORDER BY id ASC LIMIT :limit")
+    suspend fun getUnsentBatch(limit: Int): List<QueuedLocation>
 
-    // NEW: Function to get a batch of locations
-    @Query("SELECT * FROM queued_locations ORDER BY id ASC LIMIT :limit")
-    suspend fun getBatch(limit: Int): List<QueuedLocation>
+    @Query("UPDATE queued_locations SET wasSent = 1, sentTimestamp = :sentTimestamp WHERE id IN (:ids)")
+    suspend fun markAsSent(ids: List<Long>, sentTimestamp: Long)
 
-    @Delete
-    suspend fun delete(location: QueuedLocation)
+    @Query("DELETE FROM queued_locations WHERE wasSent = 1 AND sentTimestamp < :timestamp")
+    suspend fun deleteSentBefore(timestamp: Long)
 
     @Query("SELECT COUNT(*) FROM queued_locations")
     suspend fun getCount(): Int

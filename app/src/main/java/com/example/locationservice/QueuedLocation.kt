@@ -4,10 +4,12 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-// QueuedLocation.kt
 @Entity(
     tableName = "queued_locations",
-    indices = [Index(value = ["timestampUtc"], unique = true)]   // <-- ADD THIS
+    indices = [
+        Index(value = ["timestampUtc"], unique = true),
+        Index(value = ["sentTimestamp"])
+    ]
 )
 data class QueuedLocation(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -16,5 +18,6 @@ data class QueuedLocation(
     val latitude: Double,
     val longitude: Double,
     val altitude: Double,
-    val jsonPayload: String
+    val wasSent: Boolean = false,
+    val sentTimestamp: Long? = null
 )
