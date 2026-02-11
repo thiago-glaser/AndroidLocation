@@ -19,7 +19,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
         val deviceName = device?.name ?: "Unknown"
 
-        if (deviceName != "Google Pixel Watch 2") {
+        if (deviceName != "Trax 2025") {
             Log.d("BluetoothReceiver", deviceName +" connected");
             return
         }
