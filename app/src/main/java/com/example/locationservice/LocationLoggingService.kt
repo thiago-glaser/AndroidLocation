@@ -123,6 +123,8 @@ class LocationLoggingService : Service() {
             try {
                 db.locationDao().insert(payload)
                 Log.d("LocationService", "NEW LOCATION QUEUED: $utcTime | ${location.latitude}, ${location.longitude}")
+            } catch (e: android.database.sqlite.SQLiteConstraintException) {
+                Log.d("LocationService", "DUPLICATE IGNORED (same timestamp): $utcTime")
             } catch (e: Exception) {
                 Log.e("LocationService", "Failed to queue location", e)
             }
