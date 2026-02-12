@@ -77,7 +77,9 @@ class LocationLoggingService : Service() {
                 delay(SEND_BATCH_INTERVAL_MS)
                 Log.d("LocationService", "Interval reached, sending batch and cleaning up old data.")
                 sendQueuedLocations()
+                sendQueuedSessionEvents()
                 cleanupOldSentData()
+                cleanupOldSessionEvents()
             }
         }
     }
@@ -188,11 +190,54 @@ class LocationLoggingService : Service() {
         }
     }
 
+    private fun sendQueuedSessionEvents() {
+        scope.launch {
+            val events = db.sessionEventDao().getUnsentBatch(100)
+            if (events.isEmpty()) {
+                return@launch
+            }
+
+            for (event in events) {
+                val endpoint = if (event.eventType == "start") "start-session" else "end-session"
+                val json = "{\"device_id\":\"${event.deviceId}\",\"timestamp_utc\":\"${event.timestampUtc}\"}"
+                val body = json.toRequestBody(JSON)
+                val request = Request.Builder()
+                    .url("http://thiagoglaser.ddns.net:50080/Session/$endpoint")
+                    .post(body)
+                    .build()
+
+                try {
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
+                        } else {
+                            Log.w("LocationService", "SERVER ERROR ${response.code} for session event: Will retry on next interval.")
+                            // Stop processing the batch on failure to maintain order
+                            return@launch
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("LocationService", "NETWORK/DB error for session event – will retry later", e)
+                    // Stop processing the batch on failure to maintain order
+                    return@launch
+                }
+            }
+        }
+    }
+
     private fun cleanupOldSentData() {
         scope.launch {
             val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(SENT_DATA_RETENTION_DAYS)
             db.locationDao().deleteSentBefore(cutoff)
             Log.d("LocationService", "Cleaned up sent records older than 15 days.")
+        }
+    }
+
+    private fun cleanupOldSessionEvents() {
+        scope.launch {
+            val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(SENT_DATA_RETENTION_DAYS)
+            db.sessionEventDao().deleteSentBefore(cutoff)
+            Log.d("LocationService", "Cleaned up sent session events older than 15 days.")
         }
     }
 

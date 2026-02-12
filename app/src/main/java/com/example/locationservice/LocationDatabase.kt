@@ -5,9 +5,10 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [QueuedLocation::class], version = 2, exportSchema = false)
+@Database(entities = [QueuedLocation::class, SessionEvent::class], version = 3, exportSchema = false)
 abstract class LocationDatabase : RoomDatabase() {
     abstract fun locationDao(): LocationDao
+    abstract fun sessionEventDao(): SessionEventDao
 
     companion object {
         @Volatile
