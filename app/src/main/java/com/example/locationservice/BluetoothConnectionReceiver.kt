@@ -17,11 +17,13 @@ import java.util.Locale
 class BluetoothConnectionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        val pendingResult = goAsync()
         if (ActivityCompat.checkSelfPermission(
                 context,
                 Manifest.permission.BLUETOOTH_CONNECT
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            pendingResult.finish()
             return
         }
 
@@ -31,14 +33,17 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         val actionMessage = when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> "connected"
             BluetoothDevice.ACTION_ACL_DISCONNECTED -> "disconnected"
-            else -> return
+            else -> {
+                pendingResult.finish()
+                return
+            }
         }
 
         val logMessage = "Device $actionMessage: $deviceName"
         Log.d("BluetoothReceiver", logMessage)
 
-        // Specific logic for Trax 2025
-        if (deviceName == "Trax 2025") {
+        // Specific logic for myChevrolet
+        if (deviceName == "myChevrolet") {
             val eventType = if (actionMessage == "connected") "start" else "end"
             val sessionEvent = SessionEvent(
                 deviceId = LocationLoggingService.getDeviceAndroidId(context),
@@ -47,10 +52,20 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                     timeZone = java.util.TimeZone.getTimeZone("UTC")
                 }.format(Date())
             )
+            Log.d("BluetoothReceiver", "Queuing '${sessionEvent.eventType}' session event for device '${sessionEvent.deviceId}'")
             GlobalScope.launch {
-                val db = LocationDatabase.getDatabase(context)
-                db.sessionEventDao().insert(sessionEvent)
+                try {
+                    val db = LocationDatabase.getDatabase(context)
+                    db.sessionEventDao().insert(sessionEvent)
+                    Log.d("BluetoothReceiver", "Successfully queued session event.")
+                } catch(e: Exception) {
+                    Log.e("BluetoothReceiver", "Failed to queue session event", e)
+                } finally {
+                    pendingResult.finish()
+                }
             }
+        } else {
+            pendingResult.finish()
         }
     }
 }

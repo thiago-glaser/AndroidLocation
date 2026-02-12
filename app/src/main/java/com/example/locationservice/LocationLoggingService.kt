@@ -30,6 +30,7 @@ class LocationLoggingService : Service() {
     companion object {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "location_logging_channel"
+        private const val SESSION_EVENT_CHANNEL_ID = "session_event_channel"
         private const val UPDATE_INTERVAL_MS = 7_500L
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L
         private val SENT_DATA_RETENTION_DAYS = 15L
@@ -57,6 +58,7 @@ class LocationLoggingService : Service() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         db = LocationDatabase.getDatabase(this)
         startLocationUpdates()
+        createSessionEventNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -210,6 +212,16 @@ class LocationLoggingService : Service() {
                     client.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
+                            Log.d("LocationService", "Session event '${event.eventType}' sent for device ${event.deviceId}")
+                            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                            val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
+                                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                                .setContentTitle("Session Event: ${event.eventType}")
+                                .setContentText("Device: ${event.deviceId}")
+                                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                                .setAutoCancel(true)
+                                .build()
+                            notificationManager.notify(event.id.toInt(), notification)
                         } else {
                             Log.w("LocationService", "SERVER ERROR ${response.code} for session event: Will retry on next interval.")
                             // Stop processing the batch on failure to maintain order
@@ -269,6 +281,20 @@ class LocationLoggingService : Service() {
                 setShowBadge(false)
             }
             getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        }
+    }
+
+    private fun createSessionEventNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Session Events"
+            val descriptionText = "Notifications for session start and end events."
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(SESSION_EVENT_CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
         }
     }
 
