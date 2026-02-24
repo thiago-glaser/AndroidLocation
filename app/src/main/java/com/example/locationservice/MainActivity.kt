@@ -7,16 +7,20 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityMainBinding
+import kotlinx.coroutines.launch
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private lateinit var db: LocationDatabase
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -57,6 +61,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        db = LocationDatabase.getDatabase(this)
 
         if (!isAppLaunchedByUser()) {
             binding.tvStatus.text = "Warning: Open the app manually once after install/reboot to enable auto-start!"
@@ -64,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnStart.setOnClickListener { requestPermissions() }
         binding.btnStop.setOnClickListener { stopLocationService() }
+        binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
     }
 
     private fun isAppLaunchedByUser(): Boolean {
@@ -139,4 +145,24 @@ class MainActivity : AppCompatActivity() {
         permissionLauncher.launch(list.toTypedArray())
     }
 
+    private fun showUpdateApiKeyDialog() {
+        val editText = EditText(this)
+        lifecycleScope.launch {
+            val apiKey = db.settingDao().getSetting("api_key")?.value ?: ""
+            editText.setText(apiKey)
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Update API Key")
+            .setView(editText)
+            .setPositiveButton("Save") { _, _ ->
+                val newApiKey = editText.text.toString()
+                lifecycleScope.launch {
+                    db.settingDao().insert(Setting("api_key", newApiKey))
+                    Toast.makeText(this@MainActivity, "API Key updated", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
 }

@@ -19,6 +19,13 @@
         android:layout_marginTop="16dp"
         android:text="Stop Logging" />
 
+    <Button
+        android:id="@+id/btnUpdateApiKey"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:text="Update API Key" />
+
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"

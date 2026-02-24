@@ -34,6 +34,8 @@ class LocationLoggingService : Service() {
         private const val UPDATE_INTERVAL_MS = 7_500L
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L
         private val SENT_DATA_RETENTION_DAYS = 15L
+        private const val API_BASE_URL = "https://thiagoglaser.ddns.net/api"
+        private const val API_KEY_SETTING = "api_key"
 
         fun getDeviceAndroidId(context: Context): String {
             return try {
@@ -145,6 +147,12 @@ class LocationLoggingService : Service() {
 
         scope.launch {
             try {
+                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+                if (apiKey.isNullOrEmpty()) {
+                    Log.w("LocationService", "API key is not set. Cannot send location data.")
+                    return@launch
+                }
+
                 val locations = db.locationDao().getUnsentBatch(batchSize)
                 if (locations.isEmpty()) {
                     Log.d("LocationService", "Queue empty. Nothing to send.")
@@ -166,11 +174,14 @@ class LocationLoggingService : Service() {
                 }
                 val batchPayload = payloadObj.toString()
 
-                val url = "http://thiagoglaser.ddns.net:50080/LocationData"
+                val url = "$API_BASE_URL/LocationData"
                 val request = Request.Builder()
                     .url(url)
+                    .header("X-API-Key", apiKey)
                     .post(batchPayload.toRequestBody(JSON))
                     .build()
+                
+                Log.d("LocationService", "Sending location data to $url. Method: ${request.method}. Payload: $batchPayload")
 
                 client.newCall(request).execute().use { response ->
                     val code = response.code
@@ -181,7 +192,8 @@ class LocationLoggingService : Service() {
                         db.locationDao().markAsSent(sentIds, System.currentTimeMillis())
                         Log.d("LocationService", "SUCCESS: Sent & marked batch of ${locations.size} locations.")
                     } else {
-                        Log.w("LocationService", "SERVER ERROR $code: Will retry on next interval.")
+                        val errorBody = response.body?.string()
+                        Log.w("LocationService", "SERVER ERROR $code: Will retry on next interval. Body: $errorBody")
                     }
                 }
             } catch (e: Exception) {
@@ -194,6 +206,12 @@ class LocationLoggingService : Service() {
 
     private fun sendQueuedSessionEvents() {
         scope.launch {
+            val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+            if (apiKey.isNullOrEmpty()) {
+                Log.w("LocationService", "API key is not set. Cannot send session events.")
+                return@launch
+            }
+
             val events = db.sessionEventDao().getUnsentBatch(100)
             if (events.isEmpty()) {
                 return@launch
@@ -204,9 +222,12 @@ class LocationLoggingService : Service() {
                 val json = "{\"device_id\":\"${event.deviceId}\",\"timestamp_utc\":\"${event.timestampUtc}\"}"
                 val body = json.toRequestBody(JSON)
                 val request = Request.Builder()
-                    .url("http://thiagoglaser.ddns.net:50080/Session/$endpoint")
+                    .url("$API_BASE_URL/Session/$endpoint")
+                    .header("X-API-Key", apiKey)
                     .post(body)
                     .build()
+
+                Log.d("LocationService", "Sending session event to ${request.url}. Method: ${request.method}. Payload: $json")
 
                 try {
                     client.newCall(request).execute().use { response ->
@@ -223,7 +244,8 @@ class LocationLoggingService : Service() {
                                 .build()
                             notificationManager.notify(event.id.toInt(), notification)
                         } else {
-                            Log.w("LocationService", "SERVER ERROR ${response.code} for session event: Will retry on next interval.")
+                            val errorBody = response.body?.string()
+                            Log.w("LocationService", "SERVER ERROR ${response.code} for session event: Will retry on next interval. Body: $errorBody")
                             // Stop processing the batch on failure to maintain order
                             return@launch
                         }
