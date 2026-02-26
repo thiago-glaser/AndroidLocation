@@ -24,6 +24,7 @@ import org.json.JSONObject
 import com.google.android.gms.location.LocationServices
 import org.json.JSONArray
 import java.util.concurrent.TimeUnit
+import org.json.JSONException
 
 class LocationLoggingService : Service() {
 
@@ -59,8 +60,59 @@ class LocationLoggingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         db = LocationDatabase.getDatabase(this)
+        scope.launch {
+            fetchBluetoothDevices()
+        }
         startLocationUpdates()
         createSessionEventNotificationChannel()
+    }
+
+    private suspend fun fetchBluetoothDevices() {
+        val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+        if (apiKey.isNullOrEmpty()) {
+            Log.w("LocationService", "API key is not set. Cannot fetch bluetooth devices.")
+            return
+        }
+
+        val request = Request.Builder()
+            .url("$API_BASE_URL/user/bluetooth")
+            .header("X-API-Key", apiKey)
+            .build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val responseBody = response.body?.string()
+                    if (responseBody != null) {
+                        try {
+                            val jsonArray = JSONArray(responseBody)
+                            val devices = mutableListOf<com.example.locationservice.BluetoothDevice>()
+                            for (i in 0 until jsonArray.length()) {
+                                val jsonObject = jsonArray.getJSONObject(i)
+                                val device = com.example.locationservice.BluetoothDevice(
+                                    id = jsonObject.getInt("id"),
+                                    name = jsonObject.getString("name"),
+                                    description = jsonObject.getString("description"),
+                                    address = jsonObject.getString("address"),
+                                    carId = jsonObject.getString("carId")
+                                )
+                                devices.add(device)
+                            }
+                            db.bluetoothDeviceDao().deleteAll()
+                            db.bluetoothDeviceDao().insertAll(devices)
+                            Log.d("LocationService", "Successfully fetched and saved ${devices.size} bluetooth devices.")
+                        } catch (e: JSONException) {
+                            Log.e("LocationService", "Failed to parse bluetooth devices response", e)
+                        }
+                    }
+                } else {
+                    val errorBody = response.body?.string()
+                    Log.w("LocationService", "Failed to fetch bluetooth devices: ${response.code} at ${request.url}. Body: $errorBody")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("LocationService", "Failed to fetch bluetooth devices", e)
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,6 +134,7 @@ class LocationLoggingService : Service() {
                 Log.d("LocationService", "Interval reached, sending batch and cleaning up old data.")
                 sendQueuedLocations()
                 sendQueuedSessionEvents()
+                sendQueuedBluetoothDevices()
                 cleanupOldSentData()
                 cleanupOldSessionEvents()
             }
@@ -146,6 +199,7 @@ class LocationLoggingService : Service() {
         val batchSize = 500
 
         scope.launch {
+            var url = ""
             try {
                 val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
                 if (apiKey.isNullOrEmpty()) {
@@ -174,7 +228,7 @@ class LocationLoggingService : Service() {
                 }
                 val batchPayload = payloadObj.toString()
 
-                val url = "$API_BASE_URL/LocationData"
+                url = "$API_BASE_URL/LocationData"
                 val request = Request.Builder()
                     .url(url)
                     .header("X-API-Key", apiKey)
@@ -193,11 +247,11 @@ class LocationLoggingService : Service() {
                         Log.d("LocationService", "SUCCESS: Sent & marked batch of ${locations.size} locations.")
                     } else {
                         val errorBody = response.body?.string()
-                        Log.w("LocationService", "SERVER ERROR $code: Will retry on next interval. Body: $errorBody")
+                        Log.w("LocationService", "SERVER ERROR $code at $url: Will retry on next interval. Body: $errorBody")
                     }
                 }
             } catch (e: Exception) {
-                Log.e("LocationService", "NETWORK/DB error – will retry later", e)
+                Log.e("LocationService", "NETWORK/DB error at $url – will retry later", e)
             } finally {
                 isSending = false
             }
@@ -206,30 +260,32 @@ class LocationLoggingService : Service() {
 
     private fun sendQueuedSessionEvents() {
         scope.launch {
-            val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
-            if (apiKey.isNullOrEmpty()) {
-                Log.w("LocationService", "API key is not set. Cannot send session events.")
-                return@launch
-            }
+            var url = ""
+            try {
+                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+                if (apiKey.isNullOrEmpty()) {
+                    Log.w("LocationService", "API key is not set. Cannot send session events.")
+                    return@launch
+                }
 
-            val events = db.sessionEventDao().getUnsentBatch(100)
-            if (events.isEmpty()) {
-                return@launch
-            }
+                val events = db.sessionEventDao().getUnsentBatch(100)
+                if (events.isEmpty()) {
+                    return@launch
+                }
 
-            for (event in events) {
-                val endpoint = if (event.eventType == "start") "start-session" else "end-session"
-                val json = "{\"device_id\":\"${event.deviceId}\",\"timestamp_utc\":\"${event.timestampUtc}\"}"
-                val body = json.toRequestBody(JSON)
-                val request = Request.Builder()
-                    .url("$API_BASE_URL/Session/$endpoint")
-                    .header("X-API-Key", apiKey)
-                    .post(body)
-                    .build()
+                for (event in events) {
+                    val endpoint = if (event.eventType == "start") "start-session" else "end-session"
+                    val json = "{\"device_id\":\"${event.deviceId}\",\"timestamp_utc\":\"${event.timestampUtc}\"}"
+                    val body = json.toRequestBody(JSON)
+                    url = "$API_BASE_URL/Session/$endpoint"
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("X-API-Key", apiKey)
+                        .post(body)
+                        .build()
 
-                Log.d("LocationService", "Sending session event to ${request.url}. Method: ${request.method}. Payload: $json")
+                    Log.d("LocationService", "Sending session event to ${request.url}. Method: ${request.method}. Payload: $json")
 
-                try {
                     client.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
@@ -245,16 +301,75 @@ class LocationLoggingService : Service() {
                             notificationManager.notify(event.id.toInt(), notification)
                         } else {
                             val errorBody = response.body?.string()
-                            Log.w("LocationService", "SERVER ERROR ${response.code} for session event: Will retry on next interval. Body: $errorBody")
+                            Log.w("LocationService", "SERVER ERROR ${response.code} for session event at $url: Will retry on next interval. Body: $errorBody")
                             // Stop processing the batch on failure to maintain order
                             return@launch
                         }
                     }
-                } catch (e: Exception) {
-                    Log.e("LocationService", "NETWORK/DB error for session event – will retry later", e)
-                    // Stop processing the batch on failure to maintain order
+                }
+            } catch (e: Exception) {
+                Log.e("LocationService", "NETWORK/DB error for session event at $url – will retry later", e)
+                // Stop processing the batch on failure to maintain order
+                return@launch
+            }
+        }
+    }
+
+    private fun sendQueuedBluetoothDevices() {
+        scope.launch {
+            var url = ""
+            try {
+                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+                if (apiKey.isNullOrEmpty()) {
+                    Log.w("LocationService", "API key is not set. Cannot send new bluetooth devices.")
                     return@launch
                 }
+
+                val devices = db.queuedBluetoothDeviceDao().getUnsent()
+                if (devices.isEmpty()) {
+                    return@launch
+                }
+
+                for (device in devices) {
+                    val json = JSONObject()
+                        .put("name", device.name)
+                        .put("address", device.address)
+                        .put("description", device.description)
+                        .put("carId", device.carId)
+                        .toString()
+
+                    val body = json.toRequestBody(JSON)
+                    url = "$API_BASE_URL/user/bluetooth"
+                    val request = Request.Builder()
+                        .url(url)
+                        .header("X-API-Key", apiKey)
+                        .post(body)
+                        .build()
+
+                    val curlLog = "curl -X POST '$url' -H 'X-API-Key: $apiKey' -H 'Content-Type: $JSON' -d '$json'"
+                    Log.d("LocationService", "Queued Bluetooth Device Curl: $curlLog")
+
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) {
+                            db.queuedBluetoothDeviceDao().markAsSent(listOf(device.id), System.currentTimeMillis())
+                            val newBluetoothDevice = com.example.locationservice.BluetoothDevice(
+                                name = device.name,
+                                address = device.address,
+                                description = device.description,
+                                carId = device.carId
+                            )
+                            db.bluetoothDeviceDao().insert(newBluetoothDevice)
+                            Log.d("LocationService", "Successfully sent and saved new bluetooth device: ${device.name}")
+                        } else {
+                            val errorBody = response.body?.string()
+                            Log.w("LocationService", "SERVER ERROR ${response.code} for new bluetooth device at $url: Will retry on next interval. Body: $errorBody")
+                            return@launch
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("LocationService", "NETWORK/DB error for new bluetooth device at $url – will retry later", e)
+                return@launch
             }
         }
     }
