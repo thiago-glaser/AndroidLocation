@@ -35,7 +35,7 @@ class LocationLoggingService : Service() {
         private const val UPDATE_INTERVAL_MS = 7_500L
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L
         private val SENT_DATA_RETENTION_DAYS = 15L
-        private const val API_BASE_URL = "https://thiagoglaser.ddns.net/api"
+        private const val API_BASE_URL = "https://travel-access.ddns.net/api"
         private const val API_KEY_SETTING = "api_key"
 
         fun getDeviceAndroidId(context: Context): String {
