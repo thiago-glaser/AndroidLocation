@@ -17,4 +17,7 @@ interface SessionEventDao {
 
     @Query("DELETE FROM session_events WHERE wasSent = 1 AND sentTimestamp < :timestamp")
     suspend fun deleteSentBefore(timestamp: Long)
+
+    @Query("SELECT * FROM session_events ORDER BY id DESC LIMIT 1")
+    suspend fun getLatestEvent(): SessionEvent?
 }
