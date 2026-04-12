@@ -34,6 +34,7 @@ class LocationLoggingService : Service() {
         private const val SESSION_EVENT_CHANNEL_ID = "session_event_channel"
         private const val UPDATE_INTERVAL_MS = 7_500L
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L
+        private const val BLUETOOTH_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L // 12 hours
         private val SENT_DATA_RETENTION_DAYS = 15L
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
         private const val API_KEY_SETTING = "api_key"
@@ -56,13 +57,13 @@ class LocationLoggingService : Service() {
     private lateinit var db: LocationDatabase
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
+    private var periodicJob: Job? = null
+    private var lastBluetoothFetchTime = 0L
+
     override fun onCreate() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         db = LocationDatabase.getDatabase(this)
-        scope.launch {
-            fetchBluetoothDevices()
-        }
         startLocationUpdates()
         createSessionEventNotificationChannel()
     }
@@ -83,23 +84,25 @@ class LocationLoggingService : Service() {
             client.newCall(request).execute().use { response ->
                 if (response.isSuccessful) {
                     val responseBody = response.body?.string()
+                    Log.d("LocationService", "Bluetooth API Response: $responseBody")
                     if (responseBody != null) {
                         try {
-                            val jsonArray = JSONArray(responseBody)
+                            val root = JSONObject(responseBody)
+                            val jsonArray = root.getJSONArray("bluetooth")
                             val devices = mutableListOf<com.example.locationservice.BluetoothDevice>()
                             for (i in 0 until jsonArray.length()) {
                                 val jsonObject = jsonArray.getJSONObject(i)
                                 val device = com.example.locationservice.BluetoothDevice(
-                                    id = jsonObject.getInt("id"),
-                                    name = jsonObject.getString("name"),
-                                    description = jsonObject.getString("description"),
-                                    address = jsonObject.getString("address"),
-                                    carId = jsonObject.getString("carId")
+                                    name = jsonObject.optString("NAME", "Unknown Device"),
+                                    description = jsonObject.optString("DESCRIPTION", ""),
+                                    address = jsonObject.optString("ADDRESS", ""),
+                                    carId = jsonObject.optString("CAR_ID", "")
                                 )
                                 devices.add(device)
                             }
                             db.bluetoothDeviceDao().deleteAll()
                             db.bluetoothDeviceDao().insertAll(devices)
+                            lastBluetoothFetchTime = System.currentTimeMillis()
                             Log.d("LocationService", "Successfully fetched and saved ${devices.size} bluetooth devices.")
                         } catch (e: JSONException) {
                             Log.e("LocationService", "Failed to parse bluetooth devices response", e)
@@ -127,11 +130,20 @@ class LocationLoggingService : Service() {
     }
 
     private fun startPeriodicSending() {
-        scope.coroutineContext.cancelChildren()
-        scope.launch {
+        periodicJob?.cancel()
+        periodicJob = scope.launch {
+            // Initial fetch
+            fetchBluetoothDevices()
+            
             while (isActive) {
                 delay(SEND_BATCH_INTERVAL_MS)
                 Log.d("LocationService", "Interval reached, sending batch and cleaning up old data.")
+                
+                // Refresh bluetooth devices if interval exceeded
+                if (System.currentTimeMillis() - lastBluetoothFetchTime > BLUETOOTH_REFRESH_INTERVAL_MS) {
+                    fetchBluetoothDevices()
+                }
+
                 sendQueuedLocations()
                 sendQueuedSessionEvents()
                 sendQueuedBluetoothDevices()
@@ -275,7 +287,11 @@ class LocationLoggingService : Service() {
 
                 for (event in events) {
                     val endpoint = if (event.eventType == "start") "start-session" else "end-session"
-                    val json = "{\"device_id\":\"${event.deviceId}\",\"timestamp_utc\":\"${event.timestampUtc}\"}"
+                    val json = JSONObject().apply {
+                        put("device_id", event.deviceId)
+                        put("carId", event.carId)
+                        put("timestamp_utc", event.timestampUtc)
+                    }.toString()
                     val body = json.toRequestBody(JSON)
                     url = "$API_BASE_URL/Session/$endpoint"
                     val request = Request.Builder()
