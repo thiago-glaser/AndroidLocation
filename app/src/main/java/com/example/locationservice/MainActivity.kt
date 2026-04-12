@@ -14,6 +14,8 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import android.webkit.WebViewClient
+import android.view.View
 import com.example.locationservice.databinding.ActivityMainBinding
 import kotlinx.coroutines.launch
 
@@ -70,6 +72,23 @@ class MainActivity : AppCompatActivity() {
         binding.btnStart.setOnClickListener { requestPermissions() }
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
+
+        binding.webView.apply {
+            settings.javaScriptEnabled = true
+            settings.domStorageEnabled = true
+            webViewClient = WebViewClient()
+            loadUrl("https://travel-access.ddns.net")
+        }
+
+        binding.btnToggleSettings.setOnClickListener {
+            binding.settingsLayout.visibility = View.VISIBLE
+            binding.btnToggleSettings.visibility = View.GONE
+        }
+
+        binding.btnHideSettings.setOnClickListener {
+            binding.settingsLayout.visibility = View.GONE
+            binding.btnToggleSettings.visibility = View.VISIBLE
+        }
     }
 
     private fun isAppLaunchedByUser(): Boolean {
