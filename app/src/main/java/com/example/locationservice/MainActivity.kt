@@ -76,6 +76,8 @@ class MainActivity : AppCompatActivity() {
         binding.webView.apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
+            // Remove the 'wv' identifier to prevent Google OAuth from blocking the WebView
+            settings.userAgentString = settings.userAgentString.replace("; wv", "")
             webViewClient = WebViewClient()
             loadUrl("https://travel-access.ddns.net")
         }
