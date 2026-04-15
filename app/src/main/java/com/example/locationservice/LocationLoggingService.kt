@@ -302,7 +302,7 @@ class LocationLoggingService : Service() {
                     val endpoint = if (event.eventType == "start") "start-session" else "end-session"
                     val json = JSONObject().apply {
                         put("device_id", event.deviceId)
-                        put("carId", event.carId)
+                        put("bluetooth_address", event.bluetoothAddress)
                         put("timestamp_utc", event.timestampUtc)
                     }.toString()
                     val body = json.toRequestBody(JSON)
@@ -313,17 +313,17 @@ class LocationLoggingService : Service() {
                         .post(body)
                         .build()
 
-                    Log.d("LocationService", "Sending session event to ${request.url}. Method: ${request.method}. Payload: $json")
+                    Log.d("LocationService", "Sending bluetooth event to ${request.url}. Payload: $json")
 
                     client.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
                             db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
-                            Log.d("LocationService", "Session event '${event.eventType}' sent for device ${event.deviceId}")
+                            Log.d("LocationService", "Bluetooth event sent for address ${event.bluetoothAddress}")
                             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                             val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
                                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                                .setContentTitle("Session Event: ${event.eventType}")
-                                .setContentText("Device: ${event.deviceId}")
+                                .setContentTitle("Bluetooth Event Queued")
+                                .setContentText("Address: ${event.bluetoothAddress}")
                                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                                 .setAutoCancel(true)
                                 .build()

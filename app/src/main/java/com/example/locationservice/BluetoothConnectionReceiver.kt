@@ -46,30 +46,22 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         GlobalScope.launch {
             try {
                 val db = LocationDatabase.getDatabase(context)
+
+                val sessionEvent = SessionEvent(
+                    deviceId = LocationLoggingService.getDeviceAndroidId(context),
+                    bluetoothAddress = deviceAddress,
+                    eventType = if (actionMessage == "connected") "start" else "end",
+                    timestampUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
+                        timeZone = java.util.TimeZone.getTimeZone("UTC")
+                    }.format(Date())
+                )
+                Log.d("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage)")
+                db.sessionEventDao().insert(sessionEvent)
+                Log.d("BluetoothReceiver", "Successfully queued session event.")
+
+                // Logic for discovery of new unknown devices (Optional, kept for backward compatibility if needed)
                 val bluetoothDevices = db.bluetoothDeviceDao().getAll()
-
-                Log.d("BluetoothReceiver", "Connecting device address: $deviceAddress")
-                Log.d("BluetoothReceiver", "All database records: ${bluetoothDevices.joinToString { "Device(name=${it.name}, address=${it.address}, carId=${it.carId})" }}")
-
                 val matchingDevice = bluetoothDevices.find { it.address == deviceAddress }
-
-                // If device is in our table and has a CarId, create a session
-                if (matchingDevice != null && matchingDevice.carId.isNotEmpty() && matchingDevice.carId != "0") {
-                    val eventType = if (actionMessage == "connected") "start" else "end"
-                    val sessionEvent = SessionEvent(
-                        deviceId = LocationLoggingService.getDeviceAndroidId(context),
-                        carId = matchingDevice.carId,
-                        eventType = eventType,
-                        timestampUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
-                            timeZone = java.util.TimeZone.getTimeZone("UTC")
-                        }.format(Date())
-                    )
-                    Log.d("BluetoothReceiver", "Queuing '${sessionEvent.eventType}' session event for device '${sessionEvent.deviceId}' (Matched car: ${matchingDevice.carId})")
-                    db.sessionEventDao().insert(sessionEvent)
-                    Log.d("BluetoothReceiver", "Successfully queued session event.")
-                }
-
-                // Logic for discovery of new unknown devices
                 val queuedDevice = db.queuedBluetoothDeviceDao().findByAddress(deviceAddress)
                 if (matchingDevice == null && queuedDevice == null && actionMessage == "connected") {
                     val newDevice = QueuedBluetoothDevice(
