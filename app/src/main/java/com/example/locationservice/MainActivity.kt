@@ -128,6 +128,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ReportsActivity::class.java))
         }
 
+        binding.fabAddSession.setOnClickListener {
+            showAddSessionDialog()
+        }
+
         setupFilters()
         fetchCarsAndSessions()
     }
@@ -135,13 +139,13 @@ class MainActivity : AppCompatActivity() {
     private var isSpinnerSetup = false
     private fun setupFilters() {
         val years = arrayOf("Any Year", "2024", "2025", "2026")
-        binding.spinnerYear.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, years)
+        binding.spinnerYear.adapter = ArrayAdapter(this, R.layout.spinner_item, years)
         
         val months = arrayOf("Any Month", "Jan (1)", "Feb (2)", "Mar (3)", "Apr (4)", "May (5)", "Jun (6)", "Jul (7)", "Aug (8)", "Sep (9)", "Oct (10)", "Nov (11)", "Dec (12)")
-        binding.spinnerMonth.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, months)
+        binding.spinnerMonth.adapter = ArrayAdapter(this, R.layout.spinner_item, months)
 
         val limits = arrayOf("20 per page", "50 per page", "100 per page", "All")
-        binding.spinnerLimit.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, limits)
+        binding.spinnerLimit.adapter = ArrayAdapter(this, R.layout.spinner_item, limits)
 
         val itemSelectedListener = object : AdapterView.OnItemSelectedListener {
             override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
@@ -287,6 +291,100 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun showAddSessionDialog() {
+        val layout = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(50, 40, 50, 10)
+        }
+
+        val deviceIdInput = EditText(this).apply {
+            hint = "Device ID"
+            setText(Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID))
+        }
+
+        val carSpinner = android.widget.Spinner(this).apply {
+            val names = carList.map { it.description ?: it.licensePlate ?: "Car #${it.id}" }
+            adapter = ArrayAdapter(this@MainActivity, R.layout.spinner_item, names)
+        }
+
+        val typeSpinner = android.widget.Spinner(this).apply {
+            adapter = ArrayAdapter(this@MainActivity, R.layout.spinner_item, arrayOf("Personal", "Business"))
+        }
+
+        val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
+
+        val startInput = EditText(this).apply {
+            hint = "Start Time (UTC ISO)"
+            setText(utcNow)
+        }
+
+        val endInput = EditText(this).apply {
+            hint = "End Time (UTC ISO) - Optional"
+        }
+
+        layout.addView(android.widget.TextView(this).apply { text = "Device ID"; setPadding(0,20,0,0) })
+        layout.addView(deviceIdInput)
+        layout.addView(android.widget.TextView(this).apply { text = "Car"; setPadding(0,20,0,0) })
+        layout.addView(carSpinner)
+        layout.addView(android.widget.TextView(this).apply { text = "Session Type"; setPadding(0,20,0,0) })
+        layout.addView(typeSpinner)
+        layout.addView(android.widget.TextView(this).apply { text = "Start Time (UTC)"; setPadding(0,20,0,0) })
+        layout.addView(startInput)
+        layout.addView(android.widget.TextView(this).apply { text = "End Time (UTC)"; setPadding(0,20,0,0) })
+        layout.addView(endInput)
+
+        AlertDialog.Builder(this)
+            .setTitle("Add Session")
+            .setView(layout)
+            .setPositiveButton("Add") { _, _ ->
+                val deviceId = deviceIdInput.text.toString().trim()
+                if (deviceId.isEmpty()) return@setPositiveButton
+                
+                val carIdx = carSpinner.selectedItemPosition
+                if (carIdx < 0 || carIdx >= carList.size) return@setPositiveButton
+                val selectedCarId = carList[carIdx].id
+                
+                val type = if (typeSpinner.selectedItemPosition == 0) "P" else "B"
+                val start = startInput.text.toString().trim()
+                val end = endInput.text.toString().trim()
+
+                val payload = JSONObject().apply {
+                    put("deviceId", deviceId)
+                    put("carId", selectedCarId)
+                    put("startUtc", start)
+                    put("sessionType", type)
+                    if (end.isNotEmpty()) {
+                        put("endUtc", end)
+                    }
+                }.toString()
+
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val apiKey = db.settingDao().getSetting("api_key")?.value ?: return@launch
+                    val request = Request.Builder()
+                        .url("https://travel-access.ddns.net/api/sessions")
+                        .header("X-API-Key", apiKey)
+                        .post(payload.toRequestBody(JSON))
+                        .build()
+
+                    try {
+                        client.newCall(request).execute().use { response ->
+                            if (response.isSuccessful) {
+                                withContext(Dispatchers.Main) { fetchSessions() }
+                            } else {
+                                withContext(Dispatchers.Main) { Toast.makeText(this@MainActivity, "Failed to add", Toast.LENGTH_SHORT).show() }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun fetchCarsAndSessions() {
         lifecycleScope.launch(Dispatchers.IO) {
             val apiKey = db.settingDao().getSetting("api_key")?.value ?: ""
@@ -315,7 +413,7 @@ class MainActivity : AppCompatActivity() {
                                 carList.forEach { car ->
                                     carNames.add(car.description ?: car.licensePlate ?: "Car #${car.id}")
                                 }
-                                val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, carNames)
+                                val adapter = ArrayAdapter(this@MainActivity, R.layout.spinner_item, carNames)
                                 isSpinnerSetup = false
                                 binding.spinnerCar.adapter = adapter
                                 isSpinnerSetup = true

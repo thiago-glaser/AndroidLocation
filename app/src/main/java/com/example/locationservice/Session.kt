@@ -45,7 +45,7 @@ data class CarResponse(
 
 data class Car(
     @SerializedName("ID")
-    val id: Int,
+    val id: String,
     @SerializedName("DESCRIPTION")
     val description: String?,
     @SerializedName("LICENSE_PLATE")
