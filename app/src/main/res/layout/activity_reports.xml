@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F9FAFB"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Reports Dashboard"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        android:textColor="#111827"
+        android:layout_marginBottom="16dp" />
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="2"
+        android:rowCount="2"
+        android:layout_marginBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_margin="4dp"
+            android:elevation="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TOTAL DISTANCE" android:textSize="10sp" android:textColor="#9CA3AF"/>
+            <TextView android:id="@+id/tvTotalDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 KM" android:textSize="20sp" android:textStyle="bold" android:textColor="#2563EB"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_margin="4dp"
+            android:elevation="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="TOTAL COST" android:textSize="10sp" android:textColor="#9CA3AF"/>
+            <TextView android:id="@+id/tvTotalCost" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="$0.00" android:textSize="20sp" android:textStyle="bold" android:textColor="#059669"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_margin="4dp"
+            android:elevation="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="PERSONAL DIST." android:textSize="10sp" android:textColor="#9CA3AF"/>
+            <TextView android:id="@+id/tvPersonalDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 KM" android:textSize="18sp" android:textStyle="bold" android:textColor="#3B82F6"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_columnWeight="1"
+            android:orientation="vertical"
+            android:background="@android:color/white"
+            android:padding="16dp"
+            android:layout_margin="4dp"
+            android:elevation="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="BUSINESS DIST." android:textSize="10sp" android:textColor="#9CA3AF"/>
+            <TextView android:id="@+id/tvBusinessDistance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="0.00 KM" android:textSize="18sp" android:textStyle="bold" android:textColor="#EAB308"/>
+        </LinearLayout>
+
+    </GridLayout>
+
+    <ProgressBar
+        android:id="@+id/progressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:visibility="gone" />
+
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvReports"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+</LinearLayout>

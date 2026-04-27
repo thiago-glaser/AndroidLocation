@@ -12,4 +12,7 @@ interface SettingDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(setting: Setting)
+
+    @androidx.room.Delete
+    suspend fun delete(setting: Setting)
 }

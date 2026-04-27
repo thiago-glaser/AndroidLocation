@@ -1,4 +1,5 @@
 package com.example.locationservice
+
 import android.util.Log
 import android.provider.Settings
 import android.net.Uri
@@ -14,15 +15,31 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
-import android.webkit.WebViewClient
 import android.view.View
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.locationservice.databinding.ActivityMainBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.IOException
+import com.google.gson.Gson
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var db: LocationDatabase
+    private lateinit var sessionAdapter: SessionAdapter
+    private val client = OkHttpClient()
+    private val gson = Gson()
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -59,7 +76,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        requestPermissions();
+        requestPermissions()
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -71,25 +88,183 @@ class MainActivity : AppCompatActivity() {
         }
         binding.btnStart.setOnClickListener { requestPermissions() }
         binding.btnStop.setOnClickListener { stopLocationService() }
-        binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
+        binding.btnUpdateApiKey.text = "Logout"
+        binding.btnUpdateApiKey.setOnClickListener { logout() }
 
-        binding.webView.apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            // Remove the 'wv' identifier to prevent Google OAuth from blocking the WebView
-            settings.userAgentString = settings.userAgentString.replace("; wv", "")
-            webViewClient = WebViewClient()
-            loadUrl("https://travel-access.ddns.net")
+        setupRecyclerView()
+
+        binding.swipeRefresh.setOnRefreshListener {
+            fetchSessions()
         }
 
         binding.btnToggleSettings.setOnClickListener {
             binding.settingsLayout.visibility = View.VISIBLE
             binding.btnToggleSettings.visibility = View.GONE
+            binding.btnReports.visibility = View.GONE
         }
 
         binding.btnHideSettings.setOnClickListener {
             binding.settingsLayout.visibility = View.GONE
             binding.btnToggleSettings.visibility = View.VISIBLE
+            binding.btnReports.visibility = View.VISIBLE
+        }
+
+        binding.btnReports.setOnClickListener {
+            startActivity(Intent(this, ReportsActivity::class.java))
+        }
+
+        // Initial fetch
+        fetchSessions()
+    }
+
+    private fun setupRecyclerView() {
+        sessionAdapter = SessionAdapter { session ->
+            showSessionActionsDialog(session)
+        }
+        binding.rvSessions.apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+            adapter = sessionAdapter
+        }
+    }
+
+    private fun showSessionActionsDialog(session: Session) {
+        val options = mutableListOf("View Map", "Toggle Personal/Business", "Delete Session")
+        val isActive = session.endTime.isNullOrEmpty()
+        if (isActive) {
+            options.add("End Active Session")
+        }
+
+        AlertDialog.Builder(this)
+            .setTitle("Session Options")
+            .setItems(options.toTypedArray()) { _, which ->
+                when (options[which]) {
+                    "View Map" -> {
+                        val intent = Intent(this, MapActivity::class.java).apply {
+                            putExtra("DEVICE_ID", session.deviceId)
+                            putExtra("START_TIME", session.startTime)
+                            putExtra("END_TIME", session.endTime)
+                        }
+                        startActivity(intent)
+                    }
+                    "Toggle Personal/Business" -> toggleSessionType(session)
+                    "Delete Session" -> deleteSession(session)
+                    "End Active Session" -> endSession(session)
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private val JSON = "application/json; charset=utf-8".toMediaType()
+
+    private fun toggleSessionType(session: Session) {
+        val newType = if (session.type == "B") "P" else "B"
+        val payload = JSONObject().apply {
+            put("id", session.id)
+            put("type", newType)
+        }.toString()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val apiKey = db.settingDao().getSetting("api_key")?.value ?: return@launch
+            val request = Request.Builder()
+                .url("https://travel-access.ddns.net/api/sessions")
+                .header("X-API-Key", apiKey)
+                .patch(payload.toRequestBody(JSON))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) fetchSessions()
+            }
+        }
+    }
+
+    private fun deleteSession(session: Session) {
+        AlertDialog.Builder(this)
+            .setTitle("Confirm Delete")
+            .setMessage("Are you sure you want to delete this session?")
+            .setPositiveButton("Delete") { _, _ ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    val apiKey = db.settingDao().getSetting("api_key")?.value ?: return@launch
+                    val request = Request.Builder()
+                        .url("https://travel-access.ddns.net/api/sessions?id=${session.id}")
+                        .header("X-API-Key", apiKey)
+                        .delete()
+                        .build()
+
+                    client.newCall(request).execute().use { response ->
+                        if (response.isSuccessful) fetchSessions()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun endSession(session: Session) {
+        val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
+
+        val payload = JSONObject().apply {
+            put("device_id", session.deviceId)
+            put("timestamp_utc", utcNow)
+            put("id", session.id)
+        }.toString()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val apiKey = db.settingDao().getSetting("api_key")?.value ?: return@launch
+            val request = Request.Builder()
+                .url("https://travel-access.ddns.net/api/Session/end-session")
+                .header("X-API-Key", apiKey)
+                .post(payload.toRequestBody(JSON))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) fetchSessions()
+            }
+        }
+    }
+
+    private fun fetchSessions() {
+        binding.swipeRefresh.isRefreshing = true
+        lifecycleScope.launch(Dispatchers.IO) {
+            val apiKey = db.settingDao().getSetting("api_key")?.value ?: ""
+            if (apiKey.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    binding.swipeRefresh.isRefreshing = false
+                    startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+                    finish()
+                }
+                return@launch
+            }
+
+            val request = Request.Builder()
+                .url("https://travel-access.ddns.net/api/sessions?page=1&limit=20")
+                .header("X-API-Key", apiKey)
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val bodyStr = response.body?.string()
+                        val sessionResponse = gson.fromJson(bodyStr, SessionResponse::class.java)
+                        withContext(Dispatchers.Main) {
+                            sessionAdapter.submitList(sessionResponse.data ?: emptyList())
+                            binding.swipeRefresh.isRefreshing = false
+                        }
+                    } else {
+                        withContext(Dispatchers.Main) {
+                            binding.swipeRefresh.isRefreshing = false
+                            Toast.makeText(this@MainActivity, "Error: ${response.code}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.swipeRefresh.isRefreshing = false
+                    Toast.makeText(this@MainActivity, "Network error: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
     }
 
@@ -110,7 +285,7 @@ class MainActivity : AppCompatActivity() {
                 startService(intent)
             }
             binding.tvStatus.text = "Service started. Logging every few seconds."
-            requestIgnoreBatteryOptimizations() // optional but recommended
+            requestIgnoreBatteryOptimizations()
         } else {
             Log.e("SERVICE", "Permission DENIED → Cannot start")
             binding.tvStatus.text = "ERROR: Location permission missing!"
@@ -128,7 +303,6 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val powerManager = getSystemService(POWER_SERVICE) as android.os.PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
-                // Show a nice dialog first (optional but highly recommended on Pixel)
                 AlertDialog.Builder(this)
                     .setTitle("Battery optimisation")
                     .setMessage("For reliable auto-start after reboot on Pixel phones, please select \"Unrestricted\" or at least \"Not optimised\" in the next screen.")
@@ -139,7 +313,6 @@ class MainActivity : AppCompatActivity() {
                             }
                             startActivity(intent)
                         } catch (e: Exception) {
-                            // Some Pixel devices block this intent → fall back to the full battery settings page
                             val intent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                             startActivity(intent)
                         }
@@ -158,12 +331,26 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.BLUETOOTH_CONNECT
         )
 
-        // THIS LINE IS THE ONE THAT FIXES IT
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             list.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
         }
 
         permissionLauncher.launch(list.toTypedArray())
+    }
+
+    private fun logout() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val setting = db.settingDao().getSetting("api_key")
+            if (setting != null) {
+                db.settingDao().delete(setting)
+            }
+            withContext(Dispatchers.Main) {
+                android.webkit.CookieManager.getInstance().removeAllCookies(null)
+                android.webkit.CookieManager.getInstance().flush()
+                startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+                finish()
+            }
+        }
     }
 
     private fun showUpdateApiKeyDialog() {
@@ -181,6 +368,7 @@ class MainActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     db.settingDao().insert(Setting("api_key", newApiKey))
                     Toast.makeText(this@MainActivity, "API Key updated", Toast.LENGTH_SHORT).show()
+                    fetchSessions()
                 }
             }
             .setNegativeButton("Cancel", null)
