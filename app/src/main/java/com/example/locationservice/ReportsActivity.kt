@@ -43,9 +43,12 @@ class ReportsActivity : AppCompatActivity() {
         
         db = LocationDatabase.getDatabase(this)
 
-        sessionAdapter = SessionAdapter { _ ->
-            // In reports view, clicking does nothing for now to keep it read-only
-        }
+        sessionAdapter = SessionAdapter(
+            onMapClick = { _ -> },
+            onTypeToggle = { _ -> },
+            onDelete = { _ -> },
+            onEnd = { _ -> }
+        )
         rvReports.layoutManager = LinearLayoutManager(this)
         rvReports.adapter = sessionAdapter
 

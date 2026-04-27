@@ -30,5 +30,24 @@ data class Session(
     val distance: Double?,
     val cost: Double?,
     val timeTraveled: Double?,
-    val description: String?
+    val description: String?,
+    @SerializedName("location_start", alternate = ["locationStart"])
+    val locationStart: String?,
+    @SerializedName("location_end", alternate = ["locationEnd"])
+    val locationEnd: String?
+)
+
+data class CarResponse(
+    val success: Boolean,
+    @SerializedName("cars", alternate = ["data"])
+    val data: List<Car>?
+)
+
+data class Car(
+    @SerializedName("ID")
+    val id: Int,
+    @SerializedName("DESCRIPTION")
+    val description: String?,
+    @SerializedName("LICENSE_PLATE")
+    val licensePlate: String?
 )

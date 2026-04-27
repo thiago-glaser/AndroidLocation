@@ -16,6 +16,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import android.view.View
+import android.widget.AdapterView
+import android.widget.ArrayAdapter
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.example.locationservice.databinding.ActivityMainBinding
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +42,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var sessionAdapter: SessionAdapter
     private val client = OkHttpClient()
     private val gson = Gson()
+    private var currentPage = 1
+    private var totalPages = 1
+    private var carList = listOf<Car>()
 
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -101,58 +106,109 @@ class MainActivity : AppCompatActivity() {
             binding.settingsLayout.visibility = View.VISIBLE
             binding.btnToggleSettings.visibility = View.GONE
             binding.btnReports.visibility = View.GONE
+            binding.btnToggleFilters.visibility = View.GONE
         }
 
         binding.btnHideSettings.setOnClickListener {
             binding.settingsLayout.visibility = View.GONE
             binding.btnToggleSettings.visibility = View.VISIBLE
             binding.btnReports.visibility = View.VISIBLE
+            binding.btnToggleFilters.visibility = View.VISIBLE
+        }
+
+        binding.btnToggleFilters.setOnClickListener {
+            if (binding.layoutFilters.visibility == View.VISIBLE) {
+                binding.layoutFilters.visibility = View.GONE
+            } else {
+                binding.layoutFilters.visibility = View.VISIBLE
+            }
         }
 
         binding.btnReports.setOnClickListener {
             startActivity(Intent(this, ReportsActivity::class.java))
         }
 
-        // Initial fetch
-        fetchSessions()
+        setupFilters()
+        fetchCarsAndSessions()
+    }
+
+    private var isSpinnerSetup = false
+    private fun setupFilters() {
+        val years = arrayOf("Any Year", "2024", "2025", "2026")
+        binding.spinnerYear.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, years)
+        
+        val months = arrayOf("Any Month", "Jan (1)", "Feb (2)", "Mar (3)", "Apr (4)", "May (5)", "Jun (6)", "Jul (7)", "Aug (8)", "Sep (9)", "Oct (10)", "Nov (11)", "Dec (12)")
+        binding.spinnerMonth.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, months)
+
+        val limits = arrayOf("20 per page", "50 per page", "100 per page", "All")
+        binding.spinnerLimit.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, limits)
+
+        val itemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
+                if (isSpinnerSetup) {
+                    currentPage = 1
+                    fetchSessions()
+                }
+            }
+            override fun onNothingSelected(parent: AdapterView<*>?) {}
+        }
+
+        binding.spinnerCar.onItemSelectedListener = itemSelectedListener
+        binding.spinnerYear.onItemSelectedListener = itemSelectedListener
+        binding.spinnerMonth.onItemSelectedListener = itemSelectedListener
+        binding.spinnerLimit.onItemSelectedListener = itemSelectedListener
+
+        binding.btnClearFilters.setOnClickListener {
+            isSpinnerSetup = false
+            binding.spinnerCar.setSelection(0)
+            binding.spinnerYear.setSelection(0)
+            binding.spinnerMonth.setSelection(0)
+            binding.spinnerLimit.setSelection(0)
+            isSpinnerSetup = true
+            currentPage = 1
+            fetchSessions()
+        }
+
+        binding.btnPrevPage.setOnClickListener {
+            if (currentPage > 1) {
+                currentPage--
+                fetchSessions()
+            }
+        }
+
+        binding.btnNextPage.setOnClickListener {
+            if (currentPage < totalPages) {
+                currentPage++
+                fetchSessions()
+            }
+        }
+
+        isSpinnerSetup = true
     }
 
     private fun setupRecyclerView() {
-        sessionAdapter = SessionAdapter { session ->
-            showSessionActionsDialog(session)
-        }
+        sessionAdapter = SessionAdapter(
+            onMapClick = { session ->
+                val intent = Intent(this, MapActivity::class.java).apply {
+                    putExtra("DEVICE_ID", session.deviceId)
+                    putExtra("START_TIME", session.startTime)
+                    putExtra("END_TIME", session.endTime)
+                }
+                startActivity(intent)
+            },
+            onTypeToggle = { session -> toggleSessionType(session) },
+            onDelete = { session -> deleteSession(session) },
+            onEnd = { session ->
+                val isActive = session.endTime.isNullOrEmpty()
+                if (isActive) {
+                    endSession(session)
+                }
+            }
+        )
         binding.rvSessions.apply {
             layoutManager = LinearLayoutManager(this@MainActivity)
             adapter = sessionAdapter
         }
-    }
-
-    private fun showSessionActionsDialog(session: Session) {
-        val options = mutableListOf("View Map", "Toggle Personal/Business", "Delete Session")
-        val isActive = session.endTime.isNullOrEmpty()
-        if (isActive) {
-            options.add("End Active Session")
-        }
-
-        AlertDialog.Builder(this)
-            .setTitle("Session Options")
-            .setItems(options.toTypedArray()) { _, which ->
-                when (options[which]) {
-                    "View Map" -> {
-                        val intent = Intent(this, MapActivity::class.java).apply {
-                            putExtra("DEVICE_ID", session.deviceId)
-                            putExtra("START_TIME", session.startTime)
-                            putExtra("END_TIME", session.endTime)
-                        }
-                        startActivity(intent)
-                    }
-                    "Toggle Personal/Business" -> toggleSessionType(session)
-                    "Delete Session" -> deleteSession(session)
-                    "End Active Session" -> endSession(session)
-                }
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -173,7 +229,9 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) fetchSessions()
+                if (response.isSuccessful) {
+                    withContext(Dispatchers.Main) { fetchSessions() }
+                }
             }
         }
     }
@@ -192,7 +250,9 @@ class MainActivity : AppCompatActivity() {
                         .build()
 
                     client.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) fetchSessions()
+                        if (response.isSuccessful) {
+                            withContext(Dispatchers.Main) { fetchSessions() }
+                        }
                     }
                 }
             }
@@ -220,13 +280,86 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             client.newCall(request).execute().use { response ->
-                if (response.isSuccessful) fetchSessions()
+                if (response.isSuccessful) {
+                    withContext(Dispatchers.Main) { fetchSessions() }
+                }
+            }
+        }
+    }
+
+    private fun fetchCarsAndSessions() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val apiKey = db.settingDao().getSetting("api_key")?.value ?: ""
+            if (apiKey.isEmpty()) {
+                withContext(Dispatchers.Main) {
+                    startActivity(Intent(this@MainActivity, LoginActivity::class.java))
+                    finish()
+                }
+                return@launch
+            }
+
+            val request = Request.Builder()
+                .url("https://travel-access.ddns.net/api/user/cars")
+                .header("X-API-Key", apiKey)
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        val bodyStr = response.body?.string()
+                        val carResponse = gson.fromJson(bodyStr, CarResponse::class.java)
+                        if (carResponse.success) {
+                            carList = carResponse.data ?: emptyList()
+                            withContext(Dispatchers.Main) {
+                                val carNames = mutableListOf("All Cars")
+                                carList.forEach { car ->
+                                    carNames.add(car.description ?: car.licensePlate ?: "Car #${car.id}")
+                                }
+                                val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, carNames)
+                                isSpinnerSetup = false
+                                binding.spinnerCar.adapter = adapter
+                                isSpinnerSetup = true
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Ignore errors for cars and continue
+            }
+
+            // After trying to fetch cars, fetch sessions
+            withContext(Dispatchers.Main) {
+                fetchSessions()
             }
         }
     }
 
     private fun fetchSessions() {
         binding.swipeRefresh.isRefreshing = true
+
+        val selectedCarIdx = binding.spinnerCar.selectedItemPosition
+        val selectedYearIdx = binding.spinnerYear.selectedItemPosition
+        val selectedMonthIdx = binding.spinnerMonth.selectedItemPosition
+        val selectedLimitIdx = binding.spinnerLimit.selectedItemPosition
+
+        val limitMap = arrayOf(20, 50, 100, 1000000)
+        val limit = if (selectedLimitIdx >= 0 && selectedLimitIdx < limitMap.size) limitMap[selectedLimitIdx] else 20
+        
+        var url = "https://travel-access.ddns.net/api/sessions?page=$currentPage&limit=$limit"
+        
+        if (selectedCarIdx > 0 && selectedCarIdx <= carList.size) {
+            val carId = carList[selectedCarIdx - 1].id
+            url += "&carId=$carId"
+        }
+        
+        val years = arrayOf("Any Year", "2024", "2025", "2026")
+        if (selectedYearIdx > 0 && selectedYearIdx < years.size) {
+            url += "&year=${years[selectedYearIdx]}"
+        }
+        if (selectedMonthIdx > 0) {
+            url += "&month=$selectedMonthIdx"
+        }
+
         lifecycleScope.launch(Dispatchers.IO) {
             val apiKey = db.settingDao().getSetting("api_key")?.value ?: ""
             if (apiKey.isEmpty()) {
@@ -239,7 +372,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             val request = Request.Builder()
-                .url("https://travel-access.ddns.net/api/sessions?page=1&limit=20")
+                .url(url)
                 .header("X-API-Key", apiKey)
                 .build()
 
@@ -251,6 +384,19 @@ class MainActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) {
                             sessionAdapter.submitList(sessionResponse.data ?: emptyList())
                             binding.swipeRefresh.isRefreshing = false
+                            
+                            val pag = sessionResponse.pagination
+                            if (pag != null) {
+                                currentPage = pag.page
+                                totalPages = pag.totalPages
+                                binding.tvPageInfo.text = "Page $currentPage / $totalPages"
+                                binding.btnPrevPage.isEnabled = currentPage > 1
+                                binding.btnNextPage.isEnabled = currentPage < totalPages
+                            } else {
+                                binding.tvPageInfo.text = "Page 1 / 1"
+                                binding.btnPrevPage.isEnabled = false
+                                binding.btnNextPage.isEnabled = false
+                            }
                         }
                     } else {
                         withContext(Dispatchers.Main) {
