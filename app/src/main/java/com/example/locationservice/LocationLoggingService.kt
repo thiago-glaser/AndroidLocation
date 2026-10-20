@@ -299,7 +299,11 @@ class LocationLoggingService : Service() {
                 }
 
                 for (event in events) {
-                    val endpoint = if (event.eventType == "start") "start-session" else "end-session"
+                    val endpoint = when (event.eventType) {
+                        "start" -> "start-session"
+                        "end" -> "end-session"
+                        else -> "start-session" // Fallback to avoid /event
+                    }
                     val json = JSONObject().apply {
                         put("device_id", event.deviceId)
                         put("bluetooth_address", event.bluetoothAddress)

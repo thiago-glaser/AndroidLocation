@@ -5,8 +5,8 @@
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
-            <!-- Bundle your server certificate in res/raw/travel_access_cert -->
-            <certificates src="@raw/travel_access_cert" />
+            <!-- Bundle your server certificate in res/raw/travel_access_certificate -->
+            <certificates src="@raw/travel_access_certificate" />
         </trust-anchors>
     </domain-config>
     <base-config cleartextTrafficPermitted="true">
