@@ -39,9 +39,4 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.4")
     kapt("androidx.room:room-compiler:2.8.4")
     
-    // UI & Map Native migration
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
-    implementation("org.osmdroid:osmdroid-android:6.1.18")
-    implementation("com.google.code.gson:gson:2.11.0")
 }

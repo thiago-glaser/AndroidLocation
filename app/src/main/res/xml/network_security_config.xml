@@ -5,7 +5,7 @@
         <trust-anchors>
             <certificates src="system" />
             <certificates src="user" />
-            <!-- Bundle your server certificate in res/raw/travel_access_certificate -->
+            <!-- Bundle server certificate in res/raw/travel_access_certificate -->
             <certificates src="@raw/travel_access_certificate" />
         </trust-anchors>
     </domain-config>
