@@ -5,51 +5,138 @@
     android:fitsSystemWindows="true"
     android:background="#F8FAFC">
 
-    <!-- Main Page: Simple screen with a button to Settings -->
-    <LinearLayout
+    <!-- Main Page: Dashboard with native feature navigation and settings -->
+    <ScrollView
         android:id="@+id/layoutMain"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical"
-        android:gravity="center"
-        android:padding="32dp">
+        android:layout_height="match_parent">
 
-        <ImageView
-            android:layout_width="72dp"
-            android:layout_height="72dp"
-            android:src="@android:drawable/ic_menu_mylocation"
-            android:contentDescription="Location Icon"
-            android:layout_marginBottom="16dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Location Services"
-            android:textSize="26sp"
-            android:textStyle="bold"
-            android:textColor="#0F172A" />
-
-        <TextView
-            android:id="@+id/tvMainSubtitle"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Background tracker is active"
-            android:textSize="14sp"
-            android:textColor="#64748B"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="36dp" />
-
-        <Button
-            android:id="@+id/btnToggleSettings"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="56dp"
-            android:maxWidth="320dp"
-            android:text="Settings"
-            android:textSize="16sp"
-            android:textAllCaps="false"
-            android:backgroundTint="#4F46E5"
-            android:textColor="#FFFFFF" />
-    </LinearLayout>
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center_horizontal"
+            android:padding="24dp">
+
+            <ImageView
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:src="@android:drawable/ic_menu_mylocation"
+                android:contentDescription="Location Icon"
+                android:layout_marginTop="16dp"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Location Services"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:textColor="#0F172A" />
+
+            <TextView
+                android:id="@+id/tvMainSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Background tracker is active"
+                android:textSize="14sp"
+                android:textColor="#64748B"
+                android:layout_marginTop="6dp"
+                android:layout_marginBottom="28dp" />
+
+            <!-- Feature Navigation Grid / Buttons -->
+            <Button
+                android:id="@+id/btnNavSessions"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:maxWidth="340dp"
+                android:text="🚗  Trips &amp; Sessions"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#4F46E5"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnNavCars"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:maxWidth="340dp"
+                android:text="🚘  Manage Cars"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#3B82F6"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnNavBluetooth"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:maxWidth="340dp"
+                android:text="📶  Bluetooth Devices"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#0284C7"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnNavFuel"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:maxWidth="340dp"
+                android:text="⛽  Fuel &amp; Expenses"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#059669"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnNavReports"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:maxWidth="340dp"
+                android:text="📊  Reports &amp; Analytics"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#D97706"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Settings Button -->
+            <Button
+                android:id="@+id/btnToggleSettings"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:maxWidth="340dp"
+                android:text="⚙  Settings"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#334155"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="16dp" />
+        </LinearLayout>
+    </ScrollView>
 
     <!-- Settings Screen: Keep service controls and configuration working -->
     <ScrollView

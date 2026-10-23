@@ -60,12 +60,33 @@ class MainActivity : AppCompatActivity() {
             binding.tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
         }
 
-        setupNavigation()
+        setupFeatureNavigation()
         setupSettingsControls()
         refreshApiKeyStatus()
     }
 
-    private fun setupNavigation() {
+    private fun setupFeatureNavigation() {
+        // Native feature screen launches
+        binding.btnNavSessions.setOnClickListener {
+            startActivity(Intent(this, SessionsActivity::class.java))
+        }
+
+        binding.btnNavCars.setOnClickListener {
+            startActivity(Intent(this, CarsActivity::class.java))
+        }
+
+        binding.btnNavBluetooth.setOnClickListener {
+            startActivity(Intent(this, BluetoothActivity::class.java))
+        }
+
+        binding.btnNavFuel.setOnClickListener {
+            startActivity(Intent(this, FuelActivity::class.java))
+        }
+
+        binding.btnNavReports.setOnClickListener {
+            startActivity(Intent(this, ReportsActivity::class.java))
+        }
+
         // Main page button to open Settings
         binding.btnToggleSettings.setOnClickListener {
             binding.layoutMain.visibility = View.GONE
@@ -203,7 +224,6 @@ class MainActivity : AppCompatActivity() {
                 startActivity(intent)
             }
             .setNegativeButton("Cancel", null)
-            .setCancelable(false)
             .show()
     }
 
