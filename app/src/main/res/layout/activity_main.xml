@@ -95,13 +95,28 @@
                 android:layout_width="match_parent"
                 android:layout_height="54dp"
                 android:maxWidth="340dp"
-                android:text="⛽  Fuel &amp; Expenses"
+                android:text="⛽  Fuel Logs"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
                 android:backgroundTint="#059669"
+                android:textColor="#FFFFFF"
+                android:layout_marginBottom="12dp" />
+
+            <Button
+                android:id="@+id/btnNavExpenses"
+                android:layout_width="match_parent"
+                android:layout_height="54dp"
+                android:maxWidth="340dp"
+                android:text="💳  Vehicle Expenses"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                android:backgroundTint="#0D9488"
                 android:textColor="#FFFFFF"
                 android:layout_marginBottom="12dp" />
 

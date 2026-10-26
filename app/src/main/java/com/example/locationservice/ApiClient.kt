@@ -5,6 +5,7 @@ import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -200,24 +201,88 @@ class ApiClient(private val context: Context) {
     }
 
     suspend fun addFuel(carId: String, timestampUtc: String, totalValue: Double, liters: Double): Result<Boolean> {
-        val payload = JSONObject().apply {
-            put("carId", carId)
-            put("timestamp", timestampUtc)
-            put("totalValue", totalValue)
-            put("liters", liters)
-        }.toString()
-        val req = Request.Builder().url("$baseUrl/user/fuel").post(payload.toRequestBody(jsonMediaType))
+        val formBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("carId", carId)
+            .addFormDataPart("timestampIso", timestampUtc)
+            .addFormDataPart("totalValue", totalValue.toString())
+            .addFormDataPart("liters", liters.toString())
+            .build()
+        val req = Request.Builder().url("$baseUrl/user/fuel").post(formBody)
         return executeRequest(req) { body ->
             gson.fromJson(body, ApiResponse::class.java).success
         }
     }
 
     suspend fun deleteFuel(id: String): Result<Boolean> {
-        val req = Request.Builder().url("$baseUrl/user/fuel/$id").delete()
+        val req = Request.Builder().url("$baseUrl/user/fuel?id=$id").delete()
         return executeRequest(req) { body ->
             gson.fromJson(body, ApiResponse::class.java).success
         }
     }
+
+    // --- OTHER EXPENSES ---
+    suspend fun getExpenses(): Result<List<ExpenseItem>> {
+        val req = Request.Builder().url("$baseUrl/user/other-expenses").get()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ExpensesResponse::class.java).expenses ?: emptyList()
+        }
+    }
+
+    suspend fun addExpense(
+        carId: String,
+        expenseTypeId: String,
+        expenseDateIso: String,
+        amount: Double,
+        description: String
+    ): Result<Boolean> {
+        val formBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("carId", carId)
+            .addFormDataPart("expenseTypeId", expenseTypeId)
+            .addFormDataPart("expenseDateIso", expenseDateIso)
+            .addFormDataPart("amount", amount.toString())
+            .addFormDataPart("description", description)
+            .build()
+        val req = Request.Builder().url("$baseUrl/user/other-expenses").post(formBody)
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
+    suspend fun deleteExpense(id: String): Result<Boolean> {
+        val req = Request.Builder().url("$baseUrl/user/other-expenses?id=$id").delete()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
+    // --- EXPENSE TYPES ---
+    suspend fun getExpenseTypes(): Result<List<ExpenseTypeItem>> {
+        val req = Request.Builder().url("$baseUrl/user/expense-types").get()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ExpenseTypesResponse::class.java).types ?: emptyList()
+        }
+    }
+
+    suspend fun addExpenseType(name: String, description: String = ""): Result<Boolean> {
+        val payload = JSONObject().apply {
+            put("name", name)
+            put("description", description)
+        }.toString()
+        val req = Request.Builder().url("$baseUrl/user/expense-types").post(payload.toRequestBody(jsonMediaType))
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
+    suspend fun deleteExpenseType(id: String): Result<Boolean> {
+        val req = Request.Builder().url("$baseUrl/user/expense-types?id=$id").delete()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
 
     // --- REPORTS ---
     suspend fun getReports(carId: String? = null, year: String? = null): Result<ReportsSummary> {

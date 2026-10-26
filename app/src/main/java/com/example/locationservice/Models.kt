@@ -87,3 +87,37 @@ data class ApiResponse(
     val message: String?,
     val error: String?
 )
+
+// Other Expenses models
+data class ExpenseItem(
+    val id: String,
+    val carId: String?,
+    val expenseTypeId: String?,
+    val expenseDate: String?,
+    val amount: Double?,
+    val description: String?,
+    val carLicensePlate: String?,
+    val carDescription: String?,
+    val expenseTypeName: String?,
+    val hasReceipt: Boolean?
+)
+
+data class ExpensesResponse(
+    val success: Boolean,
+    val expenses: List<ExpenseItem>?,
+    val error: String?
+)
+
+// Expense Types models
+data class ExpenseTypeItem(
+    val id: String,
+    val name: String,
+    val description: String?
+)
+
+data class ExpenseTypesResponse(
+    val success: Boolean,
+    val types: List<ExpenseTypeItem>?,
+    val error: String?
+)
+

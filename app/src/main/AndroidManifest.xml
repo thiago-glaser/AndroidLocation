@@ -54,6 +54,9 @@
             android:name=".FuelActivity"
             android:exported="false" />
         <activity
+            android:name=".ExpensesActivity"
+            android:exported="false" />
+        <activity
             android:name=".ReportsActivity"
             android:exported="false" />
 

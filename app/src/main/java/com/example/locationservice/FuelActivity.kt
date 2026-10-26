@@ -1,5 +1,6 @@
 package com.example.locationservice
 
+import android.app.DatePickerDialog
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -17,6 +18,7 @@ import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityFuelBinding
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
@@ -179,15 +181,36 @@ class FuelActivity : AppCompatActivity() {
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
 
+        val calendar = Calendar.getInstance()
+        val dateDisplayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val dateInput = EditText(this).apply {
+            setText(dateDisplayFmt.format(calendar.time))
+            isFocusable = false
+            setOnClickListener {
+                DatePickerDialog(
+                    this@FuelActivity,
+                    { _, year, month, dayOfMonth ->
+                        calendar.set(year, month, dayOfMonth)
+                        setText(dateDisplayFmt.format(calendar.time))
+                    },
+                    calendar.get(Calendar.YEAR),
+                    calendar.get(Calendar.MONTH),
+                    calendar.get(Calendar.DAY_OF_MONTH)
+                ).show()
+            }
+        }
+
         layout.addView(TextView(this).apply { text = "Vehicle:"; setTextColor(Color.parseColor("#334155")) })
         layout.addView(carSpinner)
         layout.addView(TextView(this).apply { text = "Total Cost ($):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
         layout.addView(totalCostInput)
         layout.addView(TextView(this).apply { text = "Liters (L):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
         layout.addView(litersInput)
+        layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(dateInput)
 
         AlertDialog.Builder(this)
-            .setTitle("Log Fuel Entry")
+            .setTitle("Log Fuel Fill-Up")
             .setView(layout)
             .setPositiveButton("Save") { _, _ ->
                 val cost = totalCostInput.text.toString().toDoubleOrNull() ?: 0.0
@@ -199,14 +222,14 @@ class FuelActivity : AppCompatActivity() {
                 }
 
                 val selectedCar = carsList[carSpinner.selectedItemPosition]
-                val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                val utcDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
                     timeZone = TimeZone.getTimeZone("UTC")
-                }.format(Date())
+                }.format(calendar.time)
 
                 lifecycleScope.launch {
                     val res = apiClient.addFuel(
                         carId = selectedCar.id,
-                        timestampUtc = utcNow,
+                        timestampUtc = utcDate,
                         totalValue = cost,
                         liters = liters
                     )

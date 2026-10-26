@@ -83,6 +83,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, FuelActivity::class.java))
         }
 
+        binding.btnNavExpenses.setOnClickListener {
+            startActivity(Intent(this, ExpensesActivity::class.java))
+        }
+
         binding.btnNavReports.setOnClickListener {
             startActivity(Intent(this, ReportsActivity::class.java))
         }
