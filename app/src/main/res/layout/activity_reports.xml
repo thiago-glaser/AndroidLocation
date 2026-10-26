@@ -6,7 +6,7 @@
     android:background="#F8FAFC"
     android:fitsSystemWindows="true">
 
-    <!-- Top Header -->
+    <!-- Top Header Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -24,193 +24,879 @@
             android:src="@android:drawable/ic_menu_revert"
             android:contentDescription="Back" />
 
-        <TextView
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="12dp"
-            android:text="Reports &amp; Analytics"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:textColor="#0F172A" />
+            android:orientation="vertical"
+            android:layout_marginStart="8dp">
 
-        <Button
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Reports &amp; Analytics"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#0F172A" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Mileage, efficiency &amp; costs"
+                android:textSize="12sp"
+                android:textColor="#64748B" />
+        </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btnShare"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_share"
+            android:contentDescription="Share Summary"
+            android:tint="#475569" />
+
+        <ImageButton
             android:id="@+id/btnRefresh"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="Refresh"
-            android:textSize="13sp"
-            android:textAllCaps="false"
-            android:backgroundTint="#4F46E5"
-            android:textColor="#FFFFFF" />
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_popup_sync"
+            android:contentDescription="Refresh"
+            android:tint="#2563EB" />
     </LinearLayout>
 
-    <!-- Filters Bar -->
+    <!-- Tab Selector Bar (Pills) -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="10dp"
+        android:background="#FFFFFF">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tabTrips"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🚗 Trips &amp; Summary"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:background="@drawable/bg_pill_active"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tabMonthly"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📅 Monthly Summary"
+                android:textSize="13sp"
+                android:textColor="#475569"
+                android:background="@drawable/bg_pill_inactive"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp"
+                android:layout_marginEnd="8dp" />
+
+            <TextView
+                android:id="@+id/tabFuel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⛽ Fuel Economy"
+                android:textSize="13sp"
+                android:textColor="#475569"
+                android:background="@drawable/bg_pill_inactive"
+                android:paddingHorizontal="16dp"
+                android:paddingVertical="8dp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Filter Card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:padding="12dp"
         android:background="#F1F5F9">
 
-        <Spinner
-            android:id="@+id/spinnerCarFilter"
-            android:layout_width="0dp"
-            android:layout_height="40dp"
-            android:layout_weight="1"
-            android:layout_marginEnd="6dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
 
-        <Spinner
-            android:id="@+id/spinnerYearFilter"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginEnd="6dp" />
+            <!-- Car Filter -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1.2"
+                android:orientation="vertical"
+                android:layout_marginEnd="6dp">
 
-        <Button
-            android:id="@+id/btnApplyFilters"
-            android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:text="Filter"
-            android:textSize="12sp"
-            android:textAllCaps="false"
-            android:backgroundTint="#334155"
-            android:textColor="#FFFFFF" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="VEHICLE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#64748B"
+                    android:layout_marginBottom="2dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerCarFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_card" />
+            </LinearLayout>
+
+            <!-- Year Filter -->
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.8"
+                android:orientation="vertical"
+                android:layout_marginEnd="6dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="YEAR"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#64748B"
+                    android:layout_marginBottom="2dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerYearFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_card" />
+            </LinearLayout>
+
+            <!-- Month Filter (Visible in Trips mode) -->
+            <LinearLayout
+                android:id="@+id/layoutMonthFilter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="0.9"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MONTH"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#64748B"
+                    android:layout_marginBottom="2dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerMonthFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_card" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Second Filter Row (Type & Action buttons) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <!-- Type Filter -->
+            <LinearLayout
+                android:id="@+id/layoutTypeFilter"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical"
+                android:layout_marginEnd="8dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TYPE"
+                    android:textSize="10sp"
+                    android:textStyle="bold"
+                    android:textColor="#64748B"
+                    android:layout_marginBottom="2dp" />
+
+                <Spinner
+                    android:id="@+id/spinnerTypeFilter"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:background="@drawable/bg_card" />
+            </LinearLayout>
+
+            <!-- Buttons -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="12dp">
+
+                <Button
+                    android:id="@+id/btnResetFilters"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="Reset"
+                    android:textSize="12sp"
+                    android:textAllCaps="false"
+                    android:textColor="#64748B"
+                    android:background="?attr/selectableItemBackground"
+                    android:layout_marginEnd="4dp" />
+
+                <Button
+                    android:id="@+id/btnApplyFilters"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:text="Generate"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
+                    android:textColor="#FFFFFF"
+                    android:backgroundTint="#2563EB" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
+    <!-- Progress Indicator -->
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginTop="32dp"
+        android:layout_marginTop="24dp"
         android:visibility="gone" />
 
+    <!-- Main Scrollable Content -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:padding="16dp">
+        android:padding="12dp"
+        android:fillViewport="true">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Card: Overall Total -->
+            <!-- Hero Summary Cards (Visible in Trips & Monthly) -->
             <LinearLayout
+                android:id="@+id/layoutSummaryCards"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp"
-                android:background="@drawable/bg_card"
-                android:elevation="2dp"
-                android:layout_marginBottom="16dp">
+                android:layout_marginBottom="12dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Total Distance"
-                    android:textSize="14sp"
-                    android:textColor="#64748B"
-                    android:textStyle="bold" />
+                    android:orientation="horizontal">
 
-                <TextView
-                    android:id="@+id/tvTotalDistance"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="0.00 KM"
-                    android:textSize="28sp"
-                    android:textStyle="bold"
-                    android:textColor="#0F172A"
-                    android:layout_marginTop="4dp" />
+                    <!-- Distance Card -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginEnd="6dp"
+                        android:layout_marginBottom="8dp">
 
-                <TextView
-                    android:id="@+id/tvTotalCost"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Estimated Cost: $0.00"
-                    android:textSize="15sp"
-                    android:textStyle="bold"
-                    android:textColor="#059669"
-                    android:layout_marginTop="4dp" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL DISTANCE"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
 
-                <TextView
-                    android:id="@+id/tvTotalTrips"
-                    android:layout_width="wrap_content"
+                        <TextView
+                            android:id="@+id/tvTotalDistance"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0.00 KM"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#2563EB"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <!-- Duration Card -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginStart="6dp"
+                        android:layout_marginBottom="8dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL DURATION"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/tvTotalDuration"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0h 0m"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#16A34A"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Total Trips: 0"
-                    android:textSize="13sp"
-                    android:textColor="#64748B"
-                    android:layout_marginTop="4dp" />
+                    android:orientation="horizontal">
+
+                    <!-- Sessions / Trips Card -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginEnd="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL SESSIONS"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/tvTotalTrips"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#9333EA"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <!-- Cost Card -->
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginStart="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL COST"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#059669" />
+
+                        <TextView
+                            android:id="@+id/tvTotalCost"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="$0.00"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#059669"
+                            android:layout_marginTop="2dp" />
+
+                        <TextView
+                            android:id="@+id/tvEstimatedWarning"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⚠ Estimated (fuel logs)"
+                            android:textSize="9sp"
+                            android:textStyle="bold"
+                            android:textColor="#D97706"
+                            android:layout_marginTop="2dp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+                </LinearLayout>
             </LinearLayout>
 
-            <!-- Card: Breakdown -->
+            <!-- Breakdown Card (Personal vs. Business) -->
             <LinearLayout
+                android:id="@+id/cardBreakdown"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="20dp"
+                android:padding="16dp"
                 android:background="@drawable/bg_card"
-                android:elevation="2dp"
-                android:layout_marginBottom="16dp">
+                android:elevation="1dp"
+                android:layout_marginBottom="14dp">
 
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Category Breakdown"
-                    android:textSize="14sp"
-                    android:textColor="#64748B"
+                    android:text="TYPE BREAKDOWN (PERSONAL VS. BUSINESS)"
+                    android:textSize="11sp"
                     android:textStyle="bold"
+                    android:textColor="#64748B"
                     android:layout_marginBottom="12dp" />
 
+                <!-- Distance Distribution -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical"
-                    android:layout_marginBottom="8dp">
+                    android:orientation="vertical"
+                    android:layout_marginBottom="12dp">
 
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="💼 Business Distance:"
-                        android:textSize="15sp"
-                        android:textColor="#334155" />
-
-                    <TextView
-                        android:id="@+id/tvBusinessDistance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0.00 KM"
-                        android:textSize="15sp"
+                        android:text="Distance Distribution"
+                        android:textSize="12sp"
+                        android:textColor="#334155"
                         android:textStyle="bold"
-                        android:textColor="#B45309" />
+                        android:layout_marginBottom="4dp" />
+
+                    <!-- Two-tone bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:orientation="horizontal"
+                        android:background="#E2E8F0">
+
+                        <View
+                            android:id="@+id/barDistPersonal"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="#3B82F6" />
+
+                        <View
+                            android:id="@+id/barDistBusiness"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="#EAB308" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <TextView
+                            android:id="@+id/tvPersonalDistLegend"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🏠 Personal: 0.00 km (0%)"
+                            android:textSize="11sp"
+                            android:textColor="#1D4ED8" />
+
+                        <TextView
+                            android:id="@+id/tvBusinessDistLegend"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="💼 Business: 0.00 km (0%)"
+                            android:textSize="11sp"
+                            android:textColor="#B45309" />
+                    </LinearLayout>
                 </LinearLayout>
 
+                <!-- Time Distribution -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical"
+                    android:layout_marginBottom="12dp">
 
                     <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="🏠 Personal Distance:"
-                        android:textSize="15sp"
-                        android:textColor="#334155" />
-
-                    <TextView
-                        android:id="@+id/tvPersonalDistance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0.00 KM"
-                        android:textSize="15sp"
+                        android:text="Time Traveled"
+                        android:textSize="12sp"
+                        android:textColor="#334155"
                         android:textStyle="bold"
-                        android:textColor="#1D4ED8" />
+                        android:layout_marginBottom="4dp" />
+
+                    <!-- Two-tone bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:orientation="horizontal"
+                        android:background="#E2E8F0">
+
+                        <View
+                            android:id="@+id/barTimePersonal"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="#60A5FA" />
+
+                        <View
+                            android:id="@+id/barTimeBusiness"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="#FACC15" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <TextView
+                            android:id="@+id/tvPersonalTimeLegend"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🏠 Personal: 0h 0m (0%)"
+                            android:textSize="11sp"
+                            android:textColor="#1D4ED8" />
+
+                        <TextView
+                            android:id="@+id/tvBusinessTimeLegend"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="💼 Business: 0h 0m (0%)"
+                            android:textSize="11sp"
+                            android:textColor="#B45309" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Cost Distribution -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Estimated Cost Distribution"
+                        android:textSize="12sp"
+                        android:textColor="#334155"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp" />
+
+                    <!-- Two-tone bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="10dp"
+                        android:orientation="horizontal"
+                        android:background="#E2E8F0">
+
+                        <View
+                            android:id="@+id/barCostPersonal"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="#10B981" />
+
+                        <View
+                            android:id="@+id/barCostBusiness"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:background="#F97316" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="4dp">
+
+                        <TextView
+                            android:id="@+id/tvPersonalCostLegend"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="🏠 Personal: $0.00"
+                            android:textSize="11sp"
+                            android:textColor="#047857" />
+
+                        <TextView
+                            android:id="@+id/tvBusinessCostLegend"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="💼 Business: $0.00"
+                            android:textSize="11sp"
+                            android:textColor="#C2410C" />
+                    </LinearLayout>
                 </LinearLayout>
             </LinearLayout>
+
+            <!-- SECTION 1: Trips & Sessions List View -->
+            <LinearLayout
+                android:id="@+id/layoutTripsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvTripsHeader"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="TRIP SESSIONS"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#475569"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvEmptyTrips"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No trips found for the selected filters."
+                    android:textSize="14sp"
+                    android:textColor="#94A3B8"
+                    android:gravity="center"
+                    android:paddingVertical="32dp"
+                    android:visibility="gone" />
+
+                <!-- Dynamic container for trip cards -->
+                <LinearLayout
+                    android:id="@+id/layoutTripsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- SECTION 2: Monthly Summaries View -->
+            <LinearLayout
+                android:id="@+id/layoutMonthlyContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="MONTHLY BREAKDOWN"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#475569"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvEmptyMonthly"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No monthly summary data found."
+                    android:textSize="14sp"
+                    android:textColor="#94A3B8"
+                    android:gravity="center"
+                    android:paddingVertical="32dp"
+                    android:visibility="gone" />
+
+                <!-- Dynamic container for monthly cards -->
+                <LinearLayout
+                    android:id="@+id/layoutMonthlyList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- SECTION 3: Fuel Economy View -->
+            <LinearLayout
+                android:id="@+id/layoutFuelContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <!-- Fuel Hero Cards (2x2) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="8dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginEnd="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL FUEL COST"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/tvFuelTotalCost"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="$0.00"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#059669"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginStart="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="TOTAL VOLUME"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/tvFuelTotalLiters"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0.0 L"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#2563EB"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginBottom="12dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginEnd="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="AVG ECONOMY"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/tvFuelAvgEconomy"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="0.00 km/L"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#D97706"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:padding="14dp"
+                        android:background="@drawable/bg_card"
+                        android:elevation="1dp"
+                        android:layout_marginStart="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="AVG PRICE / L"
+                            android:textSize="10sp"
+                            android:textStyle="bold"
+                            android:textColor="#64748B" />
+
+                        <TextView
+                            android:id="@+id/tvFuelAvgPrice"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="$0.00/L"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="#475569"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="REFUEL LOGS"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#475569"
+                    android:layout_marginBottom="8dp" />
+
+                <TextView
+                    android:id="@+id/tvEmptyFuel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="No refuel logs found."
+                    android:textSize="14sp"
+                    android:textColor="#94A3B8"
+                    android:gravity="center"
+                    android:paddingVertical="32dp"
+                    android:visibility="gone" />
+
+                <!-- Dynamic container for fuel logs -->
+                <LinearLayout
+                    android:id="@+id/layoutFuelList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
+            <!-- Bottom spacing -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="32dp" />
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

@@ -43,7 +43,10 @@ data class SessionItem(
     val cost: Double?,
     val description: String?,
     @SerializedName("location_start", alternate = ["locationStart"]) val locationStart: String?,
-    @SerializedName("location_end", alternate = ["locationEnd"]) val locationEnd: String?
+    @SerializedName("location_end", alternate = ["locationEnd"]) val locationEnd: String?,
+    @SerializedName("time_traveled", alternate = ["timeTraveled"]) val timeTraveled: Double? = null,
+    @SerializedName("value_confirmed", alternate = ["valueConfirmed"]) val valueConfirmed: String? = null,
+    @SerializedName("ai_description", alternate = ["aiDescription"]) val aiDescription: String? = null
 )
 
 data class PaginationInfo(
