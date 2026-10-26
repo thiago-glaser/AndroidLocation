@@ -36,7 +36,7 @@ class LocationLoggingService : Service() {
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L
         private const val SEND_BATCH_INTERVAL_ACTIVE_MS = 30 * 1000L
         private const val BLUETOOTH_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L // 12 hours
-        private val SENT_DATA_RETENTION_DAYS = 15L
+        private val SENT_DATA_RETENTION_DAYS = 60L
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
         private const val API_KEY_SETTING = "api_key"
 
@@ -411,7 +411,7 @@ class LocationLoggingService : Service() {
         scope.launch {
             val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(SENT_DATA_RETENTION_DAYS)
             db.locationDao().deleteSentBefore(cutoff)
-            Log.d("LocationService", "Cleaned up sent records older than 15 days.")
+            Log.d("LocationService", "Cleaned up sent records older than $SENT_DATA_RETENTION_DAYS days.")
         }
     }
 
@@ -419,7 +419,7 @@ class LocationLoggingService : Service() {
         scope.launch {
             val cutoff = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(SENT_DATA_RETENTION_DAYS)
             db.sessionEventDao().deleteSentBefore(cutoff)
-            Log.d("LocationService", "Cleaned up sent session events older than 15 days.")
+            Log.d("LocationService", "Cleaned up sent session events older than $SENT_DATA_RETENTION_DAYS days.")
         }
     }
 

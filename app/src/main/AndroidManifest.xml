@@ -59,6 +59,9 @@
         <activity
             android:name=".ReportsActivity"
             android:exported="false" />
+        <activity
+            android:name=".SessionMapActivity"
+            android:exported="false" />
 
         <!-- Declare the foreground service -->
         <service

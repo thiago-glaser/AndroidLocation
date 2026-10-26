@@ -321,4 +321,17 @@ class ApiClient(private val context: Context) {
             )
         }
     }
+
+    // --- GPS DATA ---
+    suspend fun getGpsData(startDate: String, endDate: String, deviceId: String? = null): Result<List<GpsLocationPoint>> {
+        var url = "$baseUrl/gps-data?startDate=$startDate&endDate=$endDate"
+        if (!deviceId.isNullOrEmpty()) {
+            url += "&deviceId=$deviceId"
+        }
+        val req = Request.Builder().url(url).get()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, GpsDataResponse::class.java).data ?: emptyList()
+        }
+    }
 }
+

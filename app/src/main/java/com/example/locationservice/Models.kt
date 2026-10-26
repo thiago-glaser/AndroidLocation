@@ -121,3 +121,19 @@ data class ExpenseTypesResponse(
     val error: String?
 )
 
+// GPS Location models for Route Maps
+data class GpsLocationPoint(
+    val deviceId: String?,
+    val lat: Double,
+    val lng: Double,
+    val altitude: Double?,
+    val date: String?
+)
+
+data class GpsDataResponse(
+    val success: Boolean,
+    val data: List<GpsLocationPoint>?,
+    val error: String?
+)
+
+

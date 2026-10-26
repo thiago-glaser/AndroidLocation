@@ -21,4 +21,7 @@ interface LocationDao {
 
     @Query("SELECT COUNT(*) FROM queued_locations")
     suspend fun getCount(): Int
+
+    @Query("SELECT * FROM queued_locations WHERE timestampUtc >= :startDate AND timestampUtc <= :endDate ORDER BY timestampUtc ASC")
+    suspend fun getLocationsBetween(startDate: String, endDate: String): List<QueuedLocation>
 }

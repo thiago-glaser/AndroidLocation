@@ -1,5 +1,6 @@
 package com.example.locationservice
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -161,6 +162,11 @@ class SessionsActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.bg_card)
             elevation = 2f
             setPadding(24, 20, 24, 20)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                openSessionMap(session)
+            }
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -251,11 +257,34 @@ class SessionsActivity : AppCompatActivity() {
         }
         statsRow.addView(btnDelete)
 
+        // Map route hint
+        val tvMapHint = TextView(this).apply {
+            text = "🗺️ Tap card to view route on OpenStreetMap"
+            textSize = 11f
+            setTextColor(Color.parseColor("#3B82F6"))
+            setPadding(0, 4, 0, 0)
+        }
+
         card.addView(topRow)
         card.addView(tvTimes)
         card.addView(statsRow)
+        card.addView(tvMapHint)
 
         binding.containerSessions.addView(card)
+    }
+
+    private fun openSessionMap(session: SessionItem) {
+        val carTitle = session.description ?: carsList.find { it.id == session.carId }?.description ?: "Car #${session.carId ?: ""}"
+        val intent = Intent(this, SessionMapActivity::class.java).apply {
+            putExtra("SESSION_ID", session.id)
+            putExtra("DEVICE_ID", session.deviceId)
+            putExtra("START_TIME", session.startTime)
+            putExtra("END_TIME", session.endTime)
+            putExtra("CAR_TITLE", carTitle)
+            putExtra("DISTANCE", session.distance ?: 0.0)
+            putExtra("COST", session.cost ?: 0.0)
+        }
+        startActivity(intent)
     }
 
     private fun toggleType(session: SessionItem) {

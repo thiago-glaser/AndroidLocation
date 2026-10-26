@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#F8FAFC"
+    android:fitsSystemWindows="true">
+
+    <!-- Top Header Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:padding="16dp"
+        android:background="#FFFFFF"
+        android:elevation="2dp">
+
+        <ImageButton
+            android:id="@+id/btnBack"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_revert"
+            android:contentDescription="Back" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="12dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvMapTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Trip Route"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:textColor="#0F172A" />
+
+            <TextView
+                android:id="@+id/tvMapSubtitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OpenStreetMap"
+                android:textSize="12sp"
+                android:textColor="#64748B" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Trip Quick Stats Chips Row -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="10dp"
+        android:paddingBottom="10dp"
+        android:background="#F1F5F9">
+
+        <TextView
+            android:id="@+id/chipDistance"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🛣️ 0.0 km"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#1E293B"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/chipPoints"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="📍 0 pts"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#1E293B"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/chipDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⏱️ 0 min"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:textColor="#1E293B"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="10dp"
+            android:paddingEnd="10dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp"
+            android:layout_marginEnd="8dp" />
+
+        <TextView
+            android:id="@+id/chipSource"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Local"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:textColor="#059669"
+            android:background="@drawable/bg_badge"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="5dp"
+            android:paddingBottom="5dp" />
+    </LinearLayout>
+
+    <!-- Map & State Container -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <WebView
+            android:id="@+id/webViewMap"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="visible" />
+
+        <TextView
+            android:id="@+id/tvEmptyState"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:gravity="center"
+            android:text="No GPS points found for this trip."
+            android:textColor="#64748B"
+            android:textSize="15sp"
+            android:padding="32dp"
+            android:visibility="gone" />
+    </FrameLayout>
+</LinearLayout>
