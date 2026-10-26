@@ -70,6 +70,7 @@ class SessionMapActivity : AppCompatActivity() {
             useWideViewPort = true
             builtInZoomControls = true
             displayZoomControls = false
+            userAgentString = "LocationServicesApp/1.0 (Android; TravelAccess)"
         }
     }
 
@@ -289,11 +290,24 @@ class SessionMapActivity : AppCompatActivity() {
             attributionControl: true
         });
 
-        // OpenStreetMap Tile Layer
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // OpenStreetMap Layer (OpenStreetMap France - free, open access, no API key, no 418)
+        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            subdomains: 'abc',
+            attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
+
+        // Esri World Street Map (from project commit 7d44de1 - open access, no API key)
+        var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, TomTom'
+        });
+
+        var baseMaps = {
+            "OpenStreetMap": osmLayer,
+            "Esri Streets": esriLayer
+        };
+        L.control.layers(baseMaps).addTo(map);
 
         var points = $jsonArray;
 
