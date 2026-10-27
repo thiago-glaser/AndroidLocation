@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface LocationDao {
@@ -24,4 +25,10 @@ interface LocationDao {
 
     @Query("SELECT * FROM queued_locations WHERE timestampUtc >= :startDate AND timestampUtc <= :endDate ORDER BY timestampUtc ASC")
     suspend fun getLocationsBetween(startDate: String, endDate: String): List<QueuedLocation>
+
+    @Query("SELECT * FROM queued_locations WHERE timestampUtc >= :startDate ORDER BY timestampUtc ASC")
+    fun observeLocationsSince(startDate: String): Flow<List<QueuedLocation>>
+
+    @Query("SELECT * FROM queued_locations WHERE timestampUtc >= :startDate AND timestampUtc <= :endDate ORDER BY timestampUtc ASC")
+    fun observeLocationsBetween(startDate: String, endDate: String): Flow<List<QueuedLocation>>
 }

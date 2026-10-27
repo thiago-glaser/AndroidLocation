@@ -3,6 +3,7 @@ package com.example.locationservice
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SessionEventDao {
@@ -20,4 +21,10 @@ interface SessionEventDao {
 
     @Query("SELECT * FROM session_events ORDER BY id DESC LIMIT 1")
     suspend fun getLatestEvent(): SessionEvent?
+
+    @Query("SELECT * FROM session_events ORDER BY id DESC LIMIT 1")
+    fun observeLatestEvent(): Flow<SessionEvent?>
+
+    @Query("SELECT * FROM session_events WHERE eventType = 'start' ORDER BY id DESC LIMIT 1")
+    suspend fun getLatestStartEvent(): SessionEvent?
 }
