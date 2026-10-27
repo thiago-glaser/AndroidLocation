@@ -19,7 +19,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
-import java.util.TimeZone
+import kotlin.math.floor
+import kotlin.math.roundToInt
 
 class ReportsActivity : AppCompatActivity() {
 
@@ -111,12 +112,11 @@ class ReportsActivity : AppCompatActivity() {
     private fun setupFilters() {
         val currentYear = Calendar.getInstance().get(Calendar.YEAR)
         val years = mutableListOf("Any Year")
-        for (y in 2024..2030) {
+        for (y in 2024..2040) {
             years.add(y.toString())
         }
         val yearAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, years)
         binding.spinnerYearFilter.adapter = yearAdapter
-        // Set current year default if present
         val currentYearIdx = years.indexOf(currentYear.toString())
         if (currentYearIdx >= 0) {
             binding.spinnerYearFilter.setSelection(currentYearIdx)
@@ -198,6 +198,8 @@ class ReportsActivity : AppCompatActivity() {
 
     private fun loadReports() {
         binding.progressBar.visibility = View.VISIBLE
+        binding.btnApplyFilters.isEnabled = false
+        binding.btnApplyFilters.text = "Processing..."
 
         val selectedCarId = getSelectedCarId()
         val selectedYear = getSelectedYear()
@@ -209,9 +211,19 @@ class ReportsActivity : AppCompatActivity() {
                 carId = selectedCarId,
                 year = selectedYear,
                 month = selectedMonth,
-                type = selectedType
+                type = selectedType,
+                onProgress = { current, total ->
+                    runOnUiThread {
+                        if (total > 0) {
+                            val pct = ((current.toDouble() / total) * 100).roundToInt()
+                            binding.btnApplyFilters.text = "$current/$total ($pct%)"
+                        }
+                    }
+                }
             )
             binding.progressBar.visibility = View.GONE
+            binding.btnApplyFilters.isEnabled = true
+            binding.btnApplyFilters.text = "Generate"
 
             result.onSuccess { summary ->
                 currentReportsSummary = summary
@@ -221,7 +233,7 @@ class ReportsActivity : AppCompatActivity() {
                 if (currentTab == 0) {
                     displayTripsList(summary.sessions)
                 } else if (currentTab == 1) {
-                    displayMonthlyList(summary.sessions)
+                    displayMonthlyList(summary)
                 }
             }.onFailure { err ->
                 Toast.makeText(this@ReportsActivity, "Error: ${err.message}", Toast.LENGTH_LONG).show()
@@ -250,8 +262,8 @@ class ReportsActivity : AppCompatActivity() {
         val pDist = summary.personalDistanceKm
         val bDist = summary.businessDistanceKm
 
-        val pDistPct = if (totalDist > 0) ((pDist / totalDist) * 100).toInt() else 0
-        val bDistPct = if (totalDist > 0) (100 - pDistPct) else 0
+        val pDistPct = if (totalDist > 0) ((pDist / totalDist) * 100.0).roundToInt() else 0
+        val bDistPct = if (totalDist > 0) ((bDist / totalDist) * 100.0).roundToInt() else 0
 
         // Proportional Bar for Distance
         val distPersonalParams = binding.barDistPersonal.layoutParams as LinearLayout.LayoutParams
@@ -269,8 +281,8 @@ class ReportsActivity : AppCompatActivity() {
         val pDur = summary.personalDurationHours
         val bDur = summary.businessDurationHours
 
-        val pDurPct = if (totalDur > 0) ((pDur / totalDur) * 100).toInt() else 0
-        val bDurPct = if (totalDur > 0) (100 - pDurPct) else 0
+        val pDurPct = if (totalDur > 0) ((pDur / totalDur) * 100.0).roundToInt() else 0
+        val bDurPct = if (totalDur > 0) ((bDur / totalDur) * 100.0).roundToInt() else 0
 
         val timePersonalParams = binding.barTimePersonal.layoutParams as LinearLayout.LayoutParams
         val timeBusinessParams = binding.barTimeBusiness.layoutParams as LinearLayout.LayoutParams
@@ -356,8 +368,8 @@ class ReportsActivity : AppCompatActivity() {
             card.addView(topRow)
 
             // Date / Time Row
-            val startDate = parseIsoDate(session.startTime)
-            val endDate = parseIsoDate(session.endTime)
+            val startDate = apiClient.parseUtcDate(session.startTime)
+            val endDate = apiClient.parseUtcDate(session.endTime)
             val dateText = if (startDate != null) {
                 if (endDate != null) {
                     val startStr = displayFormat.format(startDate)
@@ -443,9 +455,9 @@ class ReportsActivity : AppCompatActivity() {
 
             val costVal = session.cost ?: 0.0
             val tvCost = TextView(this).apply {
-                text = String.format(Locale.US, "  •  $%.2f%s", costVal, if (session.valueConfirmed == "N") "*" else "")
+                text = String.format(Locale.US, "  •  $%.2f%s", costVal, if (session.valueConfirmed == "N") " (~Est)" else "")
                 textSize = 12f
-                setTextColor(Color.parseColor("#059669"))
+                setTextColor(if (session.valueConfirmed == "N") Color.parseColor("#D97706") else Color.parseColor("#059669"))
                 paint.isFakeBoldText = true
             }
             statsRow.addView(tvCost)
@@ -477,7 +489,8 @@ class ReportsActivity : AppCompatActivity() {
         }
     }
 
-    private fun displayMonthlyList(sessions: List<SessionItem>) {
+    private fun displayMonthlyList(summary: ReportsSummary) {
+        val sessions = summary.sessions
         binding.layoutMonthlyList.removeAllViews()
 
         if (sessions.isEmpty()) {
@@ -486,16 +499,77 @@ class ReportsActivity : AppCompatActivity() {
         }
         binding.tvEmptyMonthly.visibility = View.GONE
 
-        // Group sessions by Month (YYYY-MM)
-        val monthKeyFormat = SimpleDateFormat("yyyy-MM", Locale.US).apply {
-            timeZone = TimeZone.getTimeZone("UTC")
+        // Display Proportional Other Expenses allocations (matching web reports/monthly/page.js)
+        if (summary.otherExpenses.isNotEmpty()) {
+            val totalDist = summary.totalDistanceKm
+            val pPct = if (totalDist > 0) ((summary.personalDistanceKm / totalDist) * 100.0).roundToInt() else 0
+            val bPct = if (totalDist > 0) ((summary.businessDistanceKm / totalDist) * 100.0).roundToInt() else 0
+
+            summary.otherExpenses.forEach { exp ->
+                val expCard = LinearLayout(this).apply {
+                    orientation = LinearLayout.VERTICAL
+                    setPadding(dpToPx(16), dpToPx(12), dpToPx(16), dpToPx(12))
+                    background = ContextCompat.getDrawable(this@ReportsActivity, R.drawable.bg_card)
+                    elevation = dpToPx(1).toFloat()
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        setMargins(0, 0, 0, dpToPx(12))
+                    }
+                }
+
+                val tvExpHeader = TextView(this).apply {
+                    text = String.format(Locale.US, "EXPENSE ALLOCATION: %s (Total: $%.2f)", exp.expenseTypeName.uppercase(Locale.getDefault()), exp.total)
+                    textSize = 11f
+                    setTextColor(Color.parseColor("#64748B"))
+                    paint.isFakeBoldText = true
+                }
+                expCard.addView(tvExpHeader)
+
+                val expRow = LinearLayout(this).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT
+                    ).apply {
+                        setMargins(0, dpToPx(6), 0, 0)
+                    }
+                }
+
+                val tvPersonalExp = TextView(this).apply {
+                    text = String.format(Locale.US, "🏠 Prop. Personal: $%.2f (%d%%)", exp.personal, pPct)
+                    textSize = 13f
+                    setTextColor(Color.parseColor("#4F46E5"))
+                    paint.isFakeBoldText = true
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+
+                val tvBusinessExp = TextView(this).apply {
+                    text = String.format(Locale.US, "💼 Prop. Business: $%.2f (%d%%)", exp.business, bPct)
+                    textSize = 13f
+                    setTextColor(Color.parseColor("#DB2777"))
+                    paint.isFakeBoldText = true
+                    gravity = Gravity.END
+                    layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+                }
+
+                expRow.addView(tvPersonalExp)
+                expRow.addView(tvBusinessExp)
+                expCard.addView(expRow)
+
+                binding.layoutMonthlyList.addView(expCard)
+            }
         }
+
+        // Group sessions by Month (YYYY-MM) in local timezone (matching web reports/monthly/page.js)
+        val monthKeyFormat = SimpleDateFormat("yyyy-MM", Locale.US)
         val monthDisplayFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
 
         val grouped = sessions.groupBy { session ->
-            val start = parseIsoDate(session.startTime)
+            val start = apiClient.parseUtcDate(session.startTime)
             if (start != null) monthKeyFormat.format(start) else "Unknown"
-        }.toSortedMap(compareByDescending { it })
+        }.toSortedMap()
 
         grouped.forEach { (yearMonth, monthSessions) ->
             var monthDist = 0.0
@@ -582,7 +656,7 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvDist = TextView(this).apply {
-                text = String.format(Locale.US, "%.1f KM", monthDist)
+                text = String.format(Locale.US, "%.2f KM", monthDist)
                 textSize = 14f
                 setTextColor(Color.parseColor("#2563EB"))
                 paint.isFakeBoldText = true
@@ -598,9 +672,9 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvCost = TextView(this).apply {
-                text = String.format(Locale.US, "$%.2f%s", monthCost, if (hasProjected) "*" else "")
+                text = String.format(Locale.US, "$%.2f%s", monthCost, if (hasProjected) " (~Est)" else "")
                 textSize = 14f
-                setTextColor(Color.parseColor("#059669"))
+                setTextColor(if (hasProjected) Color.parseColor("#D97706") else Color.parseColor("#059669"))
                 paint.isFakeBoldText = true
                 gravity = Gravity.END
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -617,7 +691,7 @@ class ReportsActivity : AppCompatActivity() {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpToPx(6)).apply {
                     setMargins(0, dpToPx(4), 0, dpToPx(6))
                 }
-                background = Color.parseColor("#E2E8F0").let { ContextCompat.getDrawable(this@ReportsActivity, R.drawable.bg_badge) }
+                background = ContextCompat.getDrawable(this@ReportsActivity, R.drawable.bg_badge)
             }
 
             val barP = View(this).apply {
@@ -639,14 +713,14 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvPLegend = TextView(this).apply {
-                text = String.format(Locale.US, "🏠 Personal: %.1f km ($%.2f)", pDist, pCost)
+                text = String.format(Locale.US, "🏠 Personal: %.2f km ($%.2f)", pDist, pCost)
                 textSize = 11f
                 setTextColor(Color.parseColor("#1D4ED8"))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
             val tvBLegend = TextView(this).apply {
-                text = String.format(Locale.US, "💼 Business: %.1f km ($%.2f)", bDist, bCost)
+                text = String.format(Locale.US, "💼 Business: %.2f km ($%.2f)", bDist, bCost)
                 textSize = 11f
                 setTextColor(Color.parseColor("#B45309"))
                 gravity = Gravity.END
@@ -682,9 +756,9 @@ class ReportsActivity : AppCompatActivity() {
 
     private fun displayFuelSummary(summary: FuelSummary) {
         binding.tvFuelTotalCost.text = String.format(Locale.US, "$%.2f", summary.totalCost)
-        binding.tvFuelTotalLiters.text = String.format(Locale.US, "%.1f L", summary.totalLiters)
+        binding.tvFuelTotalLiters.text = String.format(Locale.US, "%.2f L", summary.totalLiters)
         binding.tvFuelAvgEconomy.text = String.format(Locale.US, "%.2f km/L", summary.avgKmPerLiter)
-        binding.tvFuelAvgPrice.text = String.format(Locale.US, "$%.2f/L", summary.avgPricePerLiter)
+        binding.tvFuelAvgPrice.text = String.format(Locale.US, "$%.2f/L ($%.3f/km)", summary.avgPricePerLiter, summary.avgPricePerKm)
 
         binding.layoutFuelList.removeAllViews()
 
@@ -737,7 +811,7 @@ class ReportsActivity : AppCompatActivity() {
             card.addView(topRow)
 
             // Date
-            val d = parseIsoDate(log.timestampUtc)
+            val d = apiClient.parseUtcDate(log.timestampUtc)
             val dateStr = if (d != null) displayFormat.format(d) else log.timestampUtc ?: ""
             val tvDate = TextView(this).apply {
                 text = dateStr
@@ -756,18 +830,10 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvLiters = TextView(this).apply {
-                text = String.format(Locale.US, "%.1f L", log.liters ?: 0.0)
+                text = String.format(Locale.US, "%.2f L", log.liters ?: 0.0)
                 textSize = 12f
                 setTextColor(Color.parseColor("#2563EB"))
                 paint.isFakeBoldText = true
-                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
-            }
-
-            val pricePerL = if ((log.liters ?: 0.0) > 0) (log.totalValue ?: 0.0) / log.liters!! else 0.0
-            val tvPpl = TextView(this).apply {
-                text = String.format(Locale.US, "$%.2f/L", pricePerL)
-                textSize = 12f
-                setTextColor(Color.parseColor("#475569"))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
@@ -785,14 +851,23 @@ class ReportsActivity : AppCompatActivity() {
                 textSize = 12f
                 setTextColor(Color.parseColor("#D97706"))
                 paint.isFakeBoldText = true
+                layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+            }
+
+            val tvPriceKm = TextView(this).apply {
+                val pkm = log.pricePerKilometer ?: 0.0
+                text = if (pkm > 0) String.format(Locale.US, "$%.3f/km", pkm) else "$-"
+                textSize = 12f
+                setTextColor(Color.parseColor("#059669"))
+                paint.isFakeBoldText = true
                 gravity = Gravity.END
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
             statsRow.addView(tvLiters)
-            statsRow.addView(tvPpl)
             statsRow.addView(tvKm)
             statsRow.addView(tvEff)
+            statsRow.addView(tvPriceKm)
             card.addView(statsRow)
 
             binding.layoutFuelList.addView(card)
@@ -817,8 +892,16 @@ class ReportsActivity : AppCompatActivity() {
         sb.appendLine("• Total Cost: $${String.format(Locale.US, "%.2f", summary.totalCost)}")
         sb.appendLine()
         sb.appendLine("📊 Category Breakdown:")
-        sb.appendLine("• Personal: ${String.format(Locale.US, "%.1f km ($%.2f)", summary.personalDistanceKm, summary.personalCost)}")
-        sb.appendLine("• Business: ${String.format(Locale.US, "%.1f km ($%.2f)", summary.businessDistanceKm, summary.businessCost)}")
+        sb.appendLine("• Personal: ${String.format(Locale.US, "%.2f km ($%.2f)", summary.personalDistanceKm, summary.personalCost)}")
+        sb.appendLine("• Business: ${String.format(Locale.US, "%.2f km ($%.2f)", summary.businessDistanceKm, summary.businessCost)}")
+
+        if (summary.otherExpenses.isNotEmpty()) {
+            sb.appendLine()
+            sb.appendLine("🧾 Proportional Expenses:")
+            summary.otherExpenses.forEach { exp ->
+                sb.appendLine("• ${exp.expenseTypeName}: Personal $${String.format(Locale.US, "%.2f", exp.personal)} | Business $${String.format(Locale.US, "%.2f", exp.business)}")
+            }
+        }
 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
@@ -828,35 +911,12 @@ class ReportsActivity : AppCompatActivity() {
         startActivity(Intent.createChooser(intent, "Share Report Summary"))
     }
 
-    private fun parseIsoDate(isoStr: String?): Date? {
-        if (isoStr.isNullOrBlank()) return null
-        var clean = isoStr.trim()
-        if (!clean.contains("T")) clean = clean.replace(" ", "T")
-        if (!clean.endsWith("Z") && !clean.contains("+")) clean += "Z"
-
-        val patterns = listOf(
-            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
-            "yyyy-MM-dd'T'HH:mm:ss'Z'",
-            "yyyy-MM-dd'T'HH:mm:ss"
-        )
-        for (pattern in patterns) {
-            try {
-                val sdf = SimpleDateFormat(pattern, Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("UTC")
-                }
-                return sdf.parse(clean)
-            } catch (_: Exception) {}
-        }
-        return null
-    }
-
     private fun formatDuration(hours: Double): String {
-        if (hours <= 0.0) return "0h 0m"
-        val totalSeconds = (hours * 3600).toLong()
-        val h = totalSeconds / 3600
-        val m = (totalSeconds % 3600) / 60
-        val s = totalSeconds % 60
-        return if (h > 0) "${h}h ${m}m" else "${m}m ${s}s"
+        if (hours <= 0.0) return "0h 0m 0s"
+        val h = floor(hours).toLong()
+        val m = floor((hours - h) * 60.0).toLong()
+        val s = floor(((hours - h) * 60.0 - m) * 60.0).toLong()
+        return "${h}h ${m}m ${s}s"
     }
 
     private fun dpToPx(dp: Int): Int {

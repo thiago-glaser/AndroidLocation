@@ -19,7 +19,6 @@ import com.example.locationservice.databinding.ActivityFuelBinding
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
-import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
@@ -101,10 +100,8 @@ class FuelActivity : AppCompatActivity() {
         }
 
         val formattedDate = try {
-            val raw = item.timestampUtc?.substringBefore("Z") ?: ""
-            val inFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
+            val d = apiClient.parseUtcDate(item.timestampUtc)
             val outFmt = SimpleDateFormat("MMM d, yyyy h:mm a", Locale.getDefault())
-            val d = inFmt.parse(raw)
             if (d != null) outFmt.format(d) else item.timestampUtc ?: "N/A"
         } catch (e: Exception) {
             item.timestampUtc ?: "N/A"
@@ -119,7 +116,7 @@ class FuelActivity : AppCompatActivity() {
 
         val tvStats = TextView(this).apply {
             val costStr = String.format(Locale.US, "$%.2f", item.totalValue ?: 0.0)
-            val litStr = String.format(Locale.US, "%.1f L", item.liters ?: 0.0)
+            val litStr = String.format(Locale.US, "%.2f L", item.liters ?: 0.0)
             text = "Total: $costStr | Volume: $litStr"
             textSize = 14f
             setTextColor(Color.parseColor("#059669"))
@@ -132,27 +129,58 @@ class FuelActivity : AppCompatActivity() {
 
         if ((item.totalKilometers ?: 0.0) > 0.0) {
             val tvEfficiency = TextView(this).apply {
-                val km = String.format(Locale.US, "%.1f km", item.totalKilometers)
-                val kml = String.format(Locale.US, "%.1f km/L", item.kilometerPerLiter ?: 0.0)
-                text = "Traveled: $km ($kml)"
+                val km = String.format(Locale.US, "%.2f km", item.totalKilometers)
+                val kml = String.format(Locale.US, "%.2f km/L", item.kilometerPerLiter ?: 0.0)
+                val pkm = String.format(Locale.US, "$%.4f/km", item.pricePerKilometer ?: 0.0)
+                text = "Traveled: $km • $kml • $pkm"
                 textSize = 12f
                 setTextColor(Color.parseColor("#475569"))
             }
             textLayout.addView(tvEfficiency)
         }
 
+        val actionsCol = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+        }
+
+        val btnCalculate = Button(this).apply {
+            text = "Calculate"
+            textSize = 11f
+            setTextColor(Color.parseColor("#2563EB"))
+            setBackgroundColor(Color.TRANSPARENT)
+            setOnClickListener { calculateFuelEfficiency(item) }
+        }
+
         val btnDelete = Button(this).apply {
             text = "Delete"
-            textSize = 12f
+            textSize = 11f
             setTextColor(Color.parseColor("#EF4444"))
             setBackgroundColor(Color.TRANSPARENT)
             setOnClickListener { confirmDeleteFuel(item) }
         }
 
+        actionsCol.addView(btnCalculate)
+        actionsCol.addView(btnDelete)
+
         card.addView(textLayout)
-        card.addView(btnDelete)
+        card.addView(actionsCol)
 
         binding.containerFuel.addView(card)
+    }
+
+    private fun calculateFuelEfficiency(item: FuelItem) {
+        binding.progressBar.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            val res = apiClient.calculateFuel(item.id)
+            binding.progressBar.visibility = View.GONE
+            res.onSuccess {
+                Toast.makeText(this@FuelActivity, "Calculated fuel efficiency!", Toast.LENGTH_SHORT).show()
+                loadFuel()
+            }.onFailure { err ->
+                Toast.makeText(this@FuelActivity, "Calculate failed: ${err.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun showAddFuelDialog() {
