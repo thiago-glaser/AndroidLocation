@@ -1,6 +1,7 @@
 package com.example.locationservice
 
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
@@ -49,7 +50,10 @@ class SessionsActivity : AppCompatActivity() {
     }
 
     private fun setupFilters() {
-        val years = arrayOf("Any Year", "2024", "2025", "2026")
+        val years = mutableListOf("Any Year")
+        for (y in 2024..2040) {
+            years.add(y.toString())
+        }
         binding.spinnerYearFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, years)
 
         binding.btnApplyFilters.setOnClickListener {
@@ -71,6 +75,28 @@ class SessionsActivity : AppCompatActivity() {
                 loadSessions()
             }
         }
+        updatePaginationButtons()
+    }
+
+    private fun updatePaginationButtons() {
+        val hasPrev = currentPage > 1
+        val hasNext = currentPage < totalPages
+
+        binding.btnPrevPage.isEnabled = hasPrev
+        binding.btnPrevPage.backgroundTintList = ColorStateList.valueOf(
+            if (hasPrev) Color.parseColor("#2563EB") else Color.parseColor("#E2E8F0")
+        )
+        binding.btnPrevPage.setTextColor(
+            if (hasPrev) Color.WHITE else Color.parseColor("#64748B")
+        )
+
+        binding.btnNextPage.isEnabled = hasNext
+        binding.btnNextPage.backgroundTintList = ColorStateList.valueOf(
+            if (hasNext) Color.parseColor("#2563EB") else Color.parseColor("#E2E8F0")
+        )
+        binding.btnNextPage.setTextColor(
+            if (hasNext) Color.WHITE else Color.parseColor("#64748B")
+        )
     }
 
     private fun loadCarsAndSessions() {
@@ -126,10 +152,9 @@ class SessionsActivity : AppCompatActivity() {
                 val pag = resp.pagination
                 if (pag != null) {
                     currentPage = pag.page
-                    totalPages = pag.totalPages
+                    totalPages = pag.totalPages.coerceAtLeast(1)
                     binding.tvPageInfo.text = "Page $currentPage / $totalPages"
-                    binding.btnPrevPage.isEnabled = currentPage > 1
-                    binding.btnNextPage.isEnabled = currentPage < totalPages
+                    updatePaginationButtons()
                 }
             }.onFailure { err ->
                 Toast.makeText(this@SessionsActivity, "Error: ${err.message}", Toast.LENGTH_LONG).show()

@@ -113,34 +113,45 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center"
-        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
         android:background="#FFFFFF"
-        android:elevation="4dp">
+        android:elevation="6dp">
 
         <Button
             android:id="@+id/btnPrevPage"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Prev"
-            android:enabled="false"
-            style="?android:attr/borderlessButtonStyle" />
+            android:layout_height="40dp"
+            android:text="← Prev"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:backgroundTint="#E2E8F0"
+            android:textColor="#64748B"
+            android:enabled="false" />
 
         <TextView
             android:id="@+id/tvPageInfo"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
             android:text="Page 1 / 1"
-            android:layout_marginHorizontal="16dp"
-            android:textColor="#374151"
+            android:textSize="14sp"
+            android:textColor="#0F172A"
             android:textStyle="bold" />
 
         <Button
             android:id="@+id/btnNextPage"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Next"
-            android:enabled="false"
-            style="?android:attr/borderlessButtonStyle" />
+            android:layout_height="40dp"
+            android:text="Next →"
+            android:textSize="13sp"
+            android:textStyle="bold"
+            android:textAllCaps="false"
+            android:backgroundTint="#E2E8F0"
+            android:textColor="#64748B"
+            android:enabled="false" />
     </LinearLayout>
 </LinearLayout>
