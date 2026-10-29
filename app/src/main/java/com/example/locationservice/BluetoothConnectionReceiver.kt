@@ -73,7 +73,10 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                     db.queuedBluetoothDeviceDao().insert(newDevice)
                     Log.d("BluetoothReceiver", "New unknown bluetooth device queued for sending to server.")
                 }
-            } catch(e: Exception) {
+
+                // Ensure LocationLoggingService is running and flushes session event
+                LocationLoggingService.ensureServiceRunning(context.applicationContext)
+            } catch (e: Exception) {
                 Log.e("BluetoothReceiver", "Failed to process bluetooth event", e)
             } finally {
                 pendingResult.finish()

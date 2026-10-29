@@ -1,5 +1,6 @@
 package com.example.locationservice
-import android.util.Log
+
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -7,24 +8,40 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
+import android.location.Location
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
-import androidx.core.app.NotificationCompat
-import com.google.android.gms.location.*
-import java.text.SimpleDateFormat
-import java.util.*
+import android.os.PowerManager
 import android.provider.Settings
-import android.location.Location
+import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.google.android.gms.location.*
+import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
-import org.json.JSONObject
-import com.google.android.gms.location.LocationServices
 import org.json.JSONArray
-import java.util.concurrent.TimeUnit
 import org.json.JSONException
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.*
+import java.util.concurrent.TimeUnit
+
+data class LiveGpsTelemetry(
+    val latitude: Double,
+    val longitude: Double,
+    val speedKmh: Double,
+    val altitudeMeters: Double,
+    val timestampMs: Long
+)
 
 class LocationLoggingService : Service() {
 
@@ -40,6 +57,9 @@ class LocationLoggingService : Service() {
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
         private const val API_KEY_SETTING = "api_key"
 
+        private val _liveTelemetry = MutableStateFlow<LiveGpsTelemetry?>(null)
+        val liveTelemetry: StateFlow<LiveGpsTelemetry?> = _liveTelemetry.asStateFlow()
+
         fun getDeviceAndroidId(context: Context): String {
             return try {
                 Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
@@ -49,10 +69,39 @@ class LocationLoggingService : Service() {
                 "UNKNOWN_ID"
             }
         }
+
+        fun ensureServiceRunning(context: Context) {
+            val hasFine = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            val hasCoarse = ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasFine && !hasCoarse) {
+                Log.w("LocationService", "Cannot start LocationLoggingService: location permission not granted.")
+                return
+            }
+
+            try {
+                val serviceIntent = Intent(context, LocationLoggingService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } catch (e: Exception) {
+                Log.w("LocationService", "Could not start LocationLoggingService", e)
+            }
+        }
     }
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
+    private var lastLocationFix: Location? = null
+    private var wakeLock: PowerManager.WakeLock? = null
     private val client = OkHttpClient()
     private val JSON = "application/json; charset=utf-8".toMediaType()
     private lateinit var db: LocationDatabase
@@ -65,8 +114,39 @@ class LocationLoggingService : Service() {
         super.onCreate()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         db = LocationDatabase.getDatabase(this)
-        startLocationUpdates()
         createSessionEventNotificationChannel()
+        acquireWakeLock()
+    }
+
+    private fun acquireWakeLock() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            if (wakeLock == null) {
+                wakeLock = pm.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "LocationService::LocationWakeLock"
+                ).apply {
+                    setReferenceCounted(false)
+                }
+            }
+            if (wakeLock?.isHeld == false) {
+                wakeLock?.acquire()
+                Log.d("LocationService", "Partial WakeLock acquired")
+            }
+        } catch (e: Exception) {
+            Log.w("LocationService", "Failed to acquire WakeLock", e)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+                Log.d("LocationService", "Partial WakeLock released")
+            }
+        } catch (e: Exception) {
+            Log.w("LocationService", "Failed to release WakeLock", e)
+        }
     }
 
     private suspend fun fetchBluetoothDevices() {
@@ -124,33 +204,58 @@ class LocationLoggingService : Service() {
         if (!::fusedLocationClient.isInitialized) {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         }
-        startForeground(NOTIFICATION_ID, buildNotification())
+
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(),
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, buildNotification())
+            }
+        } catch (e: Exception) {
+            Log.e("LocationService", "Failed to start foreground service", e)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        acquireWakeLock()
         startLocationUpdates()
         startPeriodicSending()
         return START_STICKY
     }
 
     private fun startPeriodicSending() {
-        periodicJob?.cancel()
+        if (periodicJob?.isActive == true) {
+            // Already running periodic loop; flush any pending session events without resetting timer
+            sendQueuedSessionEvents()
+            return
+        }
+
         periodicJob = scope.launch {
-            // Initial fetch
+            // Initial fetch & flush
             fetchBluetoothDevices()
-            
+            sendQueuedSessionEvents()
+            sendQueuedLocations()
+            sendQueuedBluetoothDevices()
+
             var timeSinceLastSend = 0L
             val pollInterval = 5000L // check every 5 seconds
-            
+
             while (isActive) {
                 delay(pollInterval)
                 timeSinceLastSend += pollInterval
-                
+
                 val latestEvent = db.sessionEventDao().getLatestEvent()
                 val isSessionActive = latestEvent?.eventType == "start"
                 val limit = if (isSessionActive) SEND_BATCH_INTERVAL_ACTIVE_MS else SEND_BATCH_INTERVAL_MS
-                
+
                 if (timeSinceLastSend >= limit) {
                     timeSinceLastSend = 0L
                     Log.d("LocationService", "Interval reached, sending batch and cleaning up old data.")
-                    
+
                     // Refresh bluetooth devices if interval exceeded
                     if (System.currentTimeMillis() - lastBluetoothFetchTime > BLUETOOTH_REFRESH_INTERVAL_MS) {
                         fetchBluetoothDevices()
@@ -167,26 +272,77 @@ class LocationLoggingService : Service() {
     }
 
     private fun startLocationUpdates() {
+        if (locationCallback != null) {
+            Log.d("LocationService", "Location updates already registered")
+            return
+        }
+
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
             .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS)
             .setMaxUpdateDelayMillis(UPDATE_INTERVAL_MS * 2)
+            .setWaitForAccurateLocation(false)
             .build()
 
-        locationCallback = object : LocationCallback() {
+        val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
-                Log.d("LocationService", "GPS: ${location.latitude}, ${location.longitude}, Alt: ${location.altitude}")
+                val speedKmh = computeSpeedKmh(location)
+                val altMeters = if (location.hasAltitude() && location.altitude != 0.0) {
+                    location.altitude
+                } else {
+                    _liveTelemetry.value?.altitudeMeters ?: 0.0
+                }
+
+                lastLocationFix = location
+                _liveTelemetry.value = LiveGpsTelemetry(
+                    latitude = location.latitude,
+                    longitude = location.longitude,
+                    speedKmh = speedKmh,
+                    altitudeMeters = altMeters,
+                    timestampMs = location.time
+                )
+
+                Log.d(
+                    "LocationService",
+                    String.format(
+                        Locale.US,
+                        "GPS: %.7f, %.7f, Alt: %.1fm, Speed: %.1f km/h",
+                        location.latitude,
+                        location.longitude,
+                        altMeters,
+                        speedKmh
+                    )
+                )
                 queueLocation(location)
             }
         }
 
         try {
-            fusedLocationClient.requestLocationUpdates(request, locationCallback!!, Looper.getMainLooper())
+            fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
+            locationCallback = callback
             Log.d("LocationService", "Location updates requested")
         } catch (e: SecurityException) {
             Log.e("LocationService", "Permission denied", e)
             stopSelf()
         }
+    }
+
+    private fun computeSpeedKmh(location: Location): Double {
+        if (location.hasSpeed() && location.speed > 0f) {
+            val s = (location.speed * 3.6).toDouble()
+            return if (s < 1.5) 0.0 else s
+        }
+        val prev = lastLocationFix ?: return 0.0
+        val deltaMs = location.time - prev.time
+        if (deltaMs !in 1_000L..60_000L) return 0.0
+
+        val results = FloatArray(1)
+        Location.distanceBetween(prev.latitude, prev.longitude, location.latitude, location.longitude, results)
+        val distMeters = results[0].toDouble()
+        if (distMeters < 5.0) return 0.0
+
+        val computedKmh = (distMeters / (deltaMs / 1000.0)) * 3.6
+        return if (computedKmh in 1.5..250.0) computedKmh else 0.0
     }
 
     private fun queueLocation(location: Location) {
@@ -259,7 +415,7 @@ class LocationLoggingService : Service() {
                     .header("X-API-Key", apiKey)
                     .post(batchPayload.toRequestBody(JSON))
                     .build()
-                
+
                 Log.d("LocationService", "Sending location data to $url. Method: ${request.method}. Payload: $batchPayload")
 
                 client.newCall(request).execute().use { response ->
@@ -425,6 +581,8 @@ class LocationLoggingService : Service() {
 
     override fun onDestroy() {
         locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
+        locationCallback = null
+        releaseWakeLock()
         scope.cancel()
         super.onDestroy()
     }

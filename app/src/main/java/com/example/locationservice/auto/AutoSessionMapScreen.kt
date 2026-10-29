@@ -1,17 +1,18 @@
 package com.example.locationservice.auto
 
 import android.location.Location
+import android.util.Log
 import androidx.car.app.CarContext
 import androidx.car.app.Screen
 import androidx.car.app.model.Action
 import androidx.car.app.model.ActionStrip
-import androidx.car.app.model.CarColor
 import androidx.car.app.model.Template
 import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.LocationDatabase
+import com.example.locationservice.LocationLoggingService
 import com.example.locationservice.MapPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,26 +35,41 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
 
     private val autoLaunchUtc: String = formatUtcNow()
     private var observationJob: Job? = null
-
-    private var displayedPointsCount: Int = 0
-    private var displayedDistanceKm: Double = 0.0
+    private var telemetryJob: Job? = null
 
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 surfaceRenderer.register()
                 startObservingLocalDb()
+                startObservingLiveTelemetry()
             }
 
             override fun onStop(owner: LifecycleOwner) {
                 observationJob?.cancel()
                 observationJob = null
+                telemetryJob?.cancel()
+                telemetryJob = null
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
                 surfaceRenderer.unregister()
             }
         })
+    }
+
+    private fun startObservingLiveTelemetry() {
+        telemetryJob?.cancel()
+        telemetryJob = lifecycleScope.launch {
+            LocationLoggingService.liveTelemetry.collect { telemetry ->
+                if (telemetry != null) {
+                    surfaceRenderer.updateLiveTelemetry(
+                        speedKmh = telemetry.speedKmh,
+                        altitudeMeters = telemetry.altitudeMeters
+                    )
+                }
+            }
+        }
     }
 
     private fun startObservingLocalDb() {
@@ -93,65 +109,122 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
                     val endTimestamp = rawPoints.lastOrNull()?.date ?: formatUtcNow()
                     val durationStr = calculateDurationString(sessionStartUtc, endTimestamp)
 
+                    val live = LocationLoggingService.liveTelemetry.value
+                    val currentSpeedKmh = live?.speedKmh ?: computeFallbackSpeedKmh(rawPoints)
+                    val currentAltitudeM = if (live != null && live.altitudeMeters != 0.0) {
+                        live.altitudeMeters
+                    } else {
+                        rawPoints.lastOrNull { it.altitude != 0.0 }?.altitude ?: 0.0
+                    }
+
                     val subtitle = buildSubtitle(
                         sessionStartUtc = sessionStartUtc,
                         isBluetoothSession = isBluetoothSession,
                         pointCount = filteredPoints.size
                     )
 
-                    displayedPointsCount = filteredPoints.size
-                    displayedDistanceKm = distanceKm
-
                     surfaceRenderer.updateSessionData(
                         filteredPoints = filteredPoints,
                         totalRawPoints = rawPoints.size,
                         distanceKm = distanceKm,
+                        speedKmh = currentSpeedKmh,
+                        altitudeMeters = currentAltitudeM,
                         durationText = durationStr,
                         subtitle = subtitle
                     )
-
-                    invalidate()
                 }
         }
     }
 
     override fun onGetTemplate(): Template {
-        val summaryTitle = if (displayedPointsCount > 0) {
-            String.format(Locale.US, "%.1f km (%d pts)", displayedDistanceKm, displayedPointsCount)
-        } else {
-            "Waiting for GPS"
+        return try {
+            val actionStrip = ActionStrip.Builder()
+                .addAction(
+                    Action.Builder()
+                        .setTitle("Fit Route")
+                        .setOnClickListener {
+                            surfaceRenderer.fitAllSessionPoints()
+                            surfaceRenderer.renderFrame()
+                        }
+                        .build()
+                )
+                .build()
+
+            val builder = NavigationTemplate.Builder()
+                .setActionStrip(actionStrip)
+
+            if (carContext.carAppApiLevel >= 2) {
+                try {
+                    val mapActionStrip = ActionStrip.Builder()
+                        .addAction(Action.PAN)
+                        .build()
+                    builder.setMapActionStrip(mapActionStrip)
+                    builder.setPanModeListener { _ -> }
+                } catch (e: Exception) {
+                    Log.w("AutoSessionMapScreen", "MapActionStrip not supported by host", e)
+                }
+            }
+
+            builder.build()
+        } catch (e: Exception) {
+            Log.e("AutoSessionMapScreen", "Fallback template due to error", e)
+            val fallbackStrip = ActionStrip.Builder()
+                .addAction(
+                    Action.Builder()
+                        .setTitle("Fit Route")
+                        .setOnClickListener {
+                            surfaceRenderer.fitAllSessionPoints()
+                            surfaceRenderer.renderFrame()
+                        }
+                        .build()
+                )
+                .build()
+            NavigationTemplate.Builder()
+                .setActionStrip(fallbackStrip)
+                .build()
         }
+    }
 
-        val actionStrip = ActionStrip.Builder()
-            .addAction(
-                Action.Builder()
-                    .setTitle(summaryTitle)
-                    .setOnClickListener {
-                        surfaceRenderer.fitAllSessionPoints()
-                        surfaceRenderer.renderFrame()
-                    }
-                    .build()
-            )
-            .addAction(
-                Action.Builder()
-                    .setTitle("Fit Route")
-                    .setBackgroundColor(CarColor.PRIMARY)
-                    .setOnClickListener {
-                        surfaceRenderer.fitAllSessionPoints()
-                        surfaceRenderer.renderFrame()
-                    }
-                    .build()
-            )
-            .build()
+    private fun computeFallbackSpeedKmh(points: List<MapPoint>): Double {
+        if (points.size < 2) return 0.0
+        val p1 = points[points.size - 2]
+        val p2 = points.last()
+        val t1 = parseUtcMillis(p1.date) ?: return 0.0
+        val t2 = parseUtcMillis(p2.date) ?: return 0.0
 
-        val mapActionStrip = ActionStrip.Builder()
-            .addAction(Action.PAN)
-            .build()
+        // If latest point is older than 45 seconds, vehicle is not actively moving
+        if (System.currentTimeMillis() - t2 > 45_000L) return 0.0
 
-        return NavigationTemplate.Builder()
-            .setActionStrip(actionStrip)
-            .setMapActionStrip(mapActionStrip)
-            .build()
+        val deltaSec = (t2 - t1) / 1000.0
+        if (deltaSec <= 0.5 || deltaSec > 120.0) return 0.0
+
+        val results = FloatArray(1)
+        Location.distanceBetween(p1.lat, p1.lng, p2.lat, p2.lng, results)
+        val distMeters = results[0].toDouble()
+        if (distMeters < 5.0) return 0.0
+
+        val kmh = (distMeters / deltaSec) * 3.6
+        return if (kmh in 1.5..250.0) kmh else 0.0
+    }
+
+    private fun parseUtcMillis(isoUtc: String?): Long? {
+        if (isoUtc.isNullOrEmpty()) return null
+        return try {
+            val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            fmt.parse(isoUtc)?.time
+        } catch (e: Exception) {
+            try {
+                val clean = isoUtc.substringBefore("Z").substringBefore(".")
+                val fmt2 = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }
+                fmt2.parse(clean)?.time
+            } catch (_: Exception) {
+                null
+            }
+        }
     }
 
     private fun buildSubtitle(
@@ -162,9 +235,9 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
         val startFormatted = formatTimeShort(sessionStartUtc)
         val sessionLabel = if (isBluetoothSession) "Active Session" else "Live Session"
         return if (pointCount > 0) {
-            "Local DB • $sessionLabel (Started $startFormatted)"
+            "$sessionLabel • Started $startFormatted"
         } else {
-            "Local DB • Waiting for GPS points (Started $startFormatted)..."
+            "Waiting for GPS • Started $startFormatted"
         }
     }
 
@@ -260,4 +333,3 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
         }
     }
 }
-

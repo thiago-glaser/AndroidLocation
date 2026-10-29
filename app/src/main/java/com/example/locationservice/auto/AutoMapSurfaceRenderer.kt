@@ -26,8 +26,8 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Collections
+import java.util.Locale
 import java.util.concurrent.TimeUnit
-import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.ln
 import kotlin.math.log2
@@ -38,7 +38,7 @@ import kotlin.math.sin
 
 /**
  * Renders the OpenStreetMap tiles, session route polyline, start/intermediate/end circle markers,
- * and live session stats banner onto the Android Auto surface, matching the visual style of SessionMapActivity.
+ * and top telemetry HUD (Session Distance, Speed, Altitude) onto the Android Auto surface.
  */
 class AutoMapSurfaceRenderer(
     private val carContext: CarContext
@@ -50,8 +50,8 @@ class AutoMapSurfaceRenderer(
         private const val MIN_ZOOM = 2.0
         private const val MAX_ZOOM = 18.0
         private const val DEFAULT_SINGLE_POINT_ZOOM = 16.5
-        private const val DEFAULT_EMPTY_LAT = 43.6532
-        private const val DEFAULT_EMPTY_LNG = -79.3832
+        private const val DEFAULT_EMPTY_LAT = 49.8951
+        private const val DEFAULT_EMPTY_LNG = -97.1384
         private const val DEFAULT_EMPTY_ZOOM = 12.0
         private val SUBDOMAINS = arrayOf("a", "b", "c")
     }
@@ -64,7 +64,7 @@ class AutoMapSurfaceRenderer(
 
     private val tileCacheDir = File(carContext.cacheDir, "osm_auto_tiles").apply { mkdirs() }
     private val memoryCache = object : LruCache<String, Bitmap>(128) {}
-    private val inFlightTiles = Collections.synchronizedSet( mutableSetOf<String>())
+    private val inFlightTiles = Collections.synchronizedSet(mutableSetOf<String>())
 
     private var surfaceContainer: SurfaceContainer? = null
     private var visibleArea: Rect = Rect()
@@ -77,9 +77,13 @@ class AutoMapSurfaceRenderer(
     @Volatile
     private var distanceKm: Double = 0.0
     @Volatile
+    private var speedKmh: Double = 0.0
+    @Volatile
+    private var altitudeMeters: Double = 0.0
+    @Volatile
     private var durationText: String = "⏱️ 0 min"
     @Volatile
-    private var sessionSubtitle: String = "Local DB • Waiting for GPS..."
+    private var sessionSubtitle: String = "Waiting for GPS..."
 
     // Camera state (in normalized Web Mercator [0..1] coordinates and continuous zoom)
     @Volatile
@@ -144,25 +148,46 @@ class AutoMapSurfaceRenderer(
     }
 
     private val hudCardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#F8FAFC")
-        alpha = 240
+        color = Color.parseColor("#0F172A")
+        alpha = 232
         style = Paint.Style.FILL
     }
 
     private val hudBorderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#CBD5E1")
+        color = Color.parseColor("#334155")
         style = Paint.Style.STROKE
         strokeWidth = 2f
     }
 
-    private val hudTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#0F172A")
+    private val hudDividerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#334155")
+        style = Paint.Style.STROKE
+        strokeWidth = 1.5f
+    }
+
+    private val hudLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#94A3B8")
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private val hudValueDistancePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#38BDF8")
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private val hudValueSpeedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#34D399")
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private val hudValueAltitudePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#FBBF24")
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
 
     private val hudSubtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#059669")
-        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        color = Color.parseColor("#E2E8F0")
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
     }
 
     private val attributionBgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -199,16 +224,33 @@ class AutoMapSurfaceRenderer(
         filteredPoints: List<MapPoint>,
         totalRawPoints: Int,
         distanceKm: Double,
+        speedKmh: Double,
+        altitudeMeters: Double,
         durationText: String,
         subtitle: String
     ) {
         this.sessionPoints = filteredPoints
         this.rawPointsCount = totalRawPoints
         this.distanceKm = distanceKm
+        this.speedKmh = speedKmh
+        if (altitudeMeters != 0.0 || this.altitudeMeters == 0.0) {
+            this.altitudeMeters = altitudeMeters
+        }
         this.durationText = durationText
         this.sessionSubtitle = subtitle
 
         fitAllSessionPoints()
+        renderFrame()
+    }
+
+    /**
+     * Updates live GPS speed and altitude on every location tick without resetting map zoom.
+     */
+    fun updateLiveTelemetry(speedKmh: Double, altitudeMeters: Double) {
+        this.speedKmh = speedKmh
+        if (altitudeMeters != 0.0) {
+            this.altitudeMeters = altitudeMeters
+        }
         renderFrame()
     }
 
@@ -244,7 +286,7 @@ class AutoMapSurfaceRenderer(
 
         val viewport = getEffectiveViewport()
         val padPx = 48f * density
-        val topHudPx = 64f * density
+        val topHudPx = 80f * density
         val availWidth = (viewport.width() - padPx * 2f).coerceAtLeast(80f).toDouble()
         val availHeight = (viewport.height() - padPx * 2f - topHudPx).coerceAtLeast(80f).toDouble()
 
@@ -334,7 +376,7 @@ class AutoMapSurfaceRenderer(
             canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
 
             val viewport = getEffectiveViewport()
-            val topHudOffset = (28f * d).toInt()
+            val topHudOffset = (36f * d).toInt()
             val viewCenterX = viewport.exactCenterX()
             val viewCenterY = viewport.exactCenterY() + topHudOffset
 
@@ -367,7 +409,6 @@ class AutoMapSurfaceRenderer(
                     if (bitmap != null && !bitmap.isRecycled) {
                         canvas.drawBitmap(bitmap, null, dstRect, tilePaint)
                     } else {
-                        // Draw fallback parent tile if cached, or placeholder grid
                         val parentDrawn = drawParentFallbackTile(canvas, dstRect, tileZoom, wrappedTx, ty)
                         if (!parentDrawn) {
                             canvas.drawRect(dstRect, gridPaint)
@@ -376,7 +417,7 @@ class AutoMapSurfaceRenderer(
                 }
             }
 
-            // 2. Draw route polyline & markers (same style as SessionMapActivity)
+            // 2. Draw route polyline & markers
             val pts = sessionPoints
             if (pts.isNotEmpty()) {
                 val screenPts = pts.map { p ->
@@ -424,7 +465,7 @@ class AutoMapSurfaceRenderer(
                 }
             }
 
-            // 3. Draw HUD Stats Pill Bar at top of visibleArea
+            // 3. Draw Top Telemetry HUD (Session Distance, Speed, Altitude) at top of screen
             drawHudOverlay(canvas, viewport, d)
 
             // 4. Draw OpenStreetMap attribution in bottom-right of visibleArea
@@ -462,37 +503,92 @@ class AutoMapSurfaceRenderer(
         return true
     }
 
+    /**
+     * Draws the top telemetry bar showing Session Distance, Speed, and Altitude prominently
+     * across the top of the Android Auto screen.
+     */
     private fun drawHudOverlay(canvas: Canvas, viewport: Rect, d: Float) {
-        hudTitlePaint.textSize = 14f * d
-        hudSubtitlePaint.textSize = 12f * d
+        hudLabelPaint.textSize = 9.5f * d
+        hudValueDistancePaint.textSize = 16.5f * d
+        hudValueSpeedPaint.textSize = 16.5f * d
+        hudValueAltitudePaint.textSize = 16.5f * d
+        hudSubtitlePaint.textSize = 11f * d
 
-        val statsLine = String.format(
-            java.util.Locale.US,
-            "🛣️ %.2f km   •   📍 %d pts   •   %s",
-            distanceKm,
+        val distLabel = "SESSION DISTANCE"
+        val distValue = String.format(Locale.US, "%.2f km", distanceKm)
+
+        val speedLabel = "SPEED"
+        val speedValue = String.format(Locale.US, "%.0f km/h", speedKmh)
+
+        val altLabel = "ALTITUDE"
+        val altValue = String.format(Locale.US, "%.0f m", altitudeMeters)
+
+        val subLine = String.format(
+            Locale.US,
+            "%s   •   📍 %d pts   •   %s",
+            durationText,
             sessionPoints.size,
-            durationText
+            sessionSubtitle
         )
-        val subLine = sessionSubtitle
 
-        val textWidth = max(
-            hudTitlePaint.measureText(statsLine),
-            hudSubtitlePaint.measureText(subLine)
-        )
-        val padH = 14f * d
-        val padV = 8f * d
-        val boxW = (textWidth + padH * 2).coerceAtMost(viewport.width() - 24f * d)
-        val boxH = 46f * d
+        val colPadH = 14f * d
+        val col1W = max(hudLabelPaint.measureText(distLabel), hudValueDistancePaint.measureText(distValue)) + colPadH * 2
+        val col2W = max(hudLabelPaint.measureText(speedLabel), hudValueSpeedPaint.measureText(speedValue)) + colPadH * 2
+        val col3W = max(hudLabelPaint.measureText(altLabel), hudValueAltitudePaint.measureText(altValue)) + colPadH * 2
 
-        val left = viewport.left + 12f * d
-        val top = viewport.top + 10f * d
+        val metricsTotalW = col1W + col2W + col3W
+        val subtitleTotalW = hudSubtitlePaint.measureText(subLine) + colPadH * 2
+        val desiredBoxW = max(metricsTotalW, subtitleTotalW).coerceAtLeast(320f * d)
+        val maxBoxW = (viewport.width() - 20f * d).coerceAtLeast(240f * d)
+        val boxW = desiredBoxW.coerceAtMost(maxBoxW)
+
+        val topRowH = 44f * d
+        val bottomRowH = 22f * d
+        val boxH = topRowH + bottomRowH
+
+        val left = viewport.left + 10f * d
+        val top = viewport.top.coerceAtLeast((6f * d).toInt()).toFloat() + 6f * d
         val cardRect = RectF(left, top, left + boxW, top + boxH)
 
-        canvas.drawRoundRect(cardRect, 10f * d, 10f * d, hudCardPaint)
-        canvas.drawRoundRect(cardRect, 10f * d, 10f * d, hudBorderPaint)
+        // Draw dark translucent HUD card with border
+        canvas.drawRoundRect(cardRect, 12f * d, 12f * d, hudCardPaint)
+        canvas.drawRoundRect(cardRect, 12f * d, 12f * d, hudBorderPaint)
 
-        canvas.drawText(statsLine, left + padH, top + padV + 13f * d, hudTitlePaint)
-        canvas.drawText(subLine, left + padH, top + padV + 30f * d, hudSubtitlePaint)
+        // Equal/proportional 3-column layout inside boxW
+        val scale = boxW / metricsTotalW
+        val c1W = col1W * scale
+        val c2W = col2W * scale
+
+        val col1Left = left
+        val col2Left = col1Left + c1W
+        val col3Left = col2Left + c2W
+
+        // Vertical dividers between the 3 columns
+        canvas.drawLine(col2Left, top + 6f * d, col2Left, top + topRowH - 6f * d, hudDividerPaint)
+        canvas.drawLine(col3Left, top + 6f * d, col3Left, top + topRowH - 6f * d, hudDividerPaint)
+
+        // Horizontal divider above the subtitle row
+        val dividerY = top + topRowH
+        canvas.drawLine(left + 10f * d, dividerY, left + boxW - 10f * d, dividerY, hudDividerPaint)
+
+        val labelBaselineY = top + 14f * d
+        val valueBaselineY = top + 35f * d
+
+        // Column 1: Session Distance
+        canvas.drawText(distLabel, col1Left + colPadH, labelBaselineY, hudLabelPaint)
+        canvas.drawText(distValue, col1Left + colPadH, valueBaselineY, hudValueDistancePaint)
+
+        // Column 2: Speed
+        canvas.drawText(speedLabel, col2Left + colPadH, labelBaselineY, hudLabelPaint)
+        canvas.drawText(speedValue, col2Left + colPadH, valueBaselineY, hudValueSpeedPaint)
+
+        // Column 3: Altitude
+        canvas.drawText(altLabel, col3Left + colPadH, labelBaselineY, hudLabelPaint)
+        canvas.drawText(altValue, col3Left + colPadH, valueBaselineY, hudValueAltitudePaint)
+
+        // Bottom row: Duration, Points, Active/Live Session status
+        val subBaselineY = dividerY + 15.5f * d
+        canvas.drawText(subLine, left + colPadH, subBaselineY, hudSubtitlePaint)
     }
 
     private fun drawAttribution(canvas: Canvas, viewport: Rect, d: Float) {
@@ -586,4 +682,3 @@ class AutoMapSurfaceRenderer(
         return (0.5 - ln((1.0 + sinLat) / (1.0 - sinLat)) / (4.0 * Math.PI)).coerceIn(0.0, 1.0)
     }
 }
-

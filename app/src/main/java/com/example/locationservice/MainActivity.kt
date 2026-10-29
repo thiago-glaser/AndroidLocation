@@ -28,6 +28,18 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var db: LocationDatabase
 
+    private val backgroundLocationLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            Toast.makeText(
+                this,
+                "Tip: Set Location permission to 'Allow all the time' for uninterrupted background & Android Auto logging.",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
     private val permissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -41,6 +53,7 @@ class MainActivity : AppCompatActivity() {
         if (fineGranted && fgsLocationGranted && bluetoothScanGranted && bluetoothConnectGranted) {
             updateStatusText("All required permissions granted → Service starting...")
             startLocationService()
+            checkBackgroundLocationPermission()
         } else {
             updateStatusText("Missing critical permission(s)!")
             Toast.makeText(this, "You must grant location and bluetooth permissions", Toast.LENGTH_LONG).show()
@@ -172,6 +185,25 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun checkBackgroundLocationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val hasBackground = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+            if (!hasBackground) {
+                AlertDialog.Builder(this)
+                    .setTitle("Background Location Required")
+                    .setMessage("To record GPS routes reliably when the screen is off or while using Android Auto, please select \"Allow all the time\" on the next screen.")
+                    .setPositiveButton("Allow all the time") { _, _ ->
+                        backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    }
+                    .setNegativeButton("Later", null)
+                    .show()
+            }
+        }
+    }
+
     private fun stopLocationService() {
         val intent = Intent(this, LocationLoggingService::class.java)
         stopService(intent)
@@ -209,6 +241,10 @@ class MainActivity : AppCompatActivity() {
             Manifest.permission.BLUETOOTH_SCAN,
             Manifest.permission.BLUETOOTH_CONNECT
         )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            list.add(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             list.add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
