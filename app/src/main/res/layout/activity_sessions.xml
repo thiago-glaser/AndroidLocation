@@ -56,22 +56,26 @@
         <Spinner
             android:id="@+id/spinnerCarFilter"
             android:layout_width="0dp"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
             android:layout_weight="1"
-            android:layout_marginEnd="6dp" />
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_spinner" />
 
         <Spinner
             android:id="@+id/spinnerYearFilter"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
-            android:layout_marginEnd="6dp" />
+            android:layout_height="42dp"
+            android:layout_marginEnd="8dp"
+            android:minWidth="105dp"
+            android:background="@drawable/bg_spinner" />
 
         <Button
             android:id="@+id/btnApplyFilters"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="42dp"
             android:text="Filter"
-            android:textSize="12sp"
+            android:textSize="13sp"
+            android:textStyle="bold"
             android:textAllCaps="false"
             android:backgroundTint="#334155"
             android:textColor="#FFFFFF" />

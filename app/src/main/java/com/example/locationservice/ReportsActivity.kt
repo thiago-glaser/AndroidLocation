@@ -115,7 +115,9 @@ class ReportsActivity : AppCompatActivity() {
         for (y in 2024..2040) {
             years.add(y.toString())
         }
-        val yearAdapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, years)
+        val yearAdapter = ArrayAdapter(this, R.layout.spinner_item_selected, years).apply {
+            setDropDownViewResource(R.layout.spinner_item_dropdown)
+        }
         binding.spinnerYearFilter.adapter = yearAdapter
         val currentYearIdx = years.indexOf(currentYear.toString())
         if (currentYearIdx >= 0) {
@@ -126,10 +128,14 @@ class ReportsActivity : AppCompatActivity() {
             "Any Month", "January", "February", "March", "April", "May", "June",
             "July", "August", "September", "October", "November", "December"
         )
-        binding.spinnerMonthFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, months)
+        binding.spinnerMonthFilter.adapter = ArrayAdapter(this, R.layout.spinner_item_selected, months).apply {
+            setDropDownViewResource(R.layout.spinner_item_dropdown)
+        }
 
         val types = listOf("All Types", "Personal Only", "Business Only")
-        binding.spinnerTypeFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, types)
+        binding.spinnerTypeFilter.adapter = ArrayAdapter(this, R.layout.spinner_item_selected, types).apply {
+            setDropDownViewResource(R.layout.spinner_item_dropdown)
+        }
 
         binding.btnApplyFilters.setOnClickListener {
             refreshActiveReport()
@@ -155,9 +161,11 @@ class ReportsActivity : AppCompatActivity() {
             }
             binding.spinnerCarFilter.adapter = ArrayAdapter(
                 this@ReportsActivity,
-                android.R.layout.simple_spinner_dropdown_item,
+                R.layout.spinner_item_selected,
                 carNames
-            )
+            ).apply {
+                setDropDownViewResource(R.layout.spinner_item_dropdown)
+            }
 
             loadReports()
         }

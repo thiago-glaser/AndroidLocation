@@ -17,6 +17,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivitySessionsBinding
 import kotlinx.coroutines.launch
@@ -54,7 +55,10 @@ class SessionsActivity : AppCompatActivity() {
         for (y in 2024..2040) {
             years.add(y.toString())
         }
-        binding.spinnerYearFilter.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, years)
+        val yearAdapter = ArrayAdapter(this, R.layout.spinner_item_selected, years).apply {
+            setDropDownViewResource(R.layout.spinner_item_dropdown)
+        }
+        binding.spinnerYearFilter.adapter = yearAdapter
 
         binding.btnApplyFilters.setOnClickListener {
             currentPage = 1
@@ -108,11 +112,14 @@ class SessionsActivity : AppCompatActivity() {
             carsList.forEach { car ->
                 carNames.add(car.description ?: car.licensePlate ?: "Car #${car.id}")
             }
-            binding.spinnerCarFilter.adapter = ArrayAdapter(
+            val carAdapter = ArrayAdapter(
                 this@SessionsActivity,
-                android.R.layout.simple_spinner_dropdown_item,
+                R.layout.spinner_item_selected,
                 carNames
-            )
+            ).apply {
+                setDropDownViewResource(R.layout.spinner_item_dropdown)
+            }
+            binding.spinnerCarFilter.adapter = carAdapter
 
             loadSessions()
         }
@@ -368,12 +375,18 @@ class SessionsActivity : AppCompatActivity() {
         }
 
         val carSpinner = Spinner(this).apply {
+            background = ContextCompat.getDrawable(this@SessionsActivity, R.drawable.bg_spinner)
             val names = carsList.map { it.description ?: it.licensePlate ?: "Car #${it.id}" }
-            adapter = ArrayAdapter(this@SessionsActivity, android.R.layout.simple_spinner_dropdown_item, names)
+            adapter = ArrayAdapter(this@SessionsActivity, R.layout.spinner_item_selected, names).apply {
+                setDropDownViewResource(R.layout.spinner_item_dropdown)
+            }
         }
 
         val typeSpinner = Spinner(this).apply {
-            adapter = ArrayAdapter(this@SessionsActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("Personal", "Business"))
+            background = ContextCompat.getDrawable(this@SessionsActivity, R.drawable.bg_spinner)
+            adapter = ArrayAdapter(this@SessionsActivity, R.layout.spinner_item_selected, arrayOf("Personal", "Business")).apply {
+                setDropDownViewResource(R.layout.spinner_item_dropdown)
+            }
         }
 
         val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
