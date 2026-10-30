@@ -11,6 +11,8 @@ import androidx.car.app.navigation.model.NavigationTemplate
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.example.locationservice.ApiClient
+import com.example.locationservice.FuelItem
 import com.example.locationservice.LocationDatabase
 import com.example.locationservice.LocationLoggingService
 import com.example.locationservice.MapPoint
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -31,16 +34,22 @@ import java.util.TimeZone
 class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
 
     private val db = LocationDatabase.getDatabase(carContext)
+    private val apiClient = ApiClient(carContext)
     private val surfaceRenderer = AutoMapSurfaceRenderer(carContext)
 
     private val autoLaunchUtc: String = formatUtcNow()
     private var observationJob: Job? = null
     private var telemetryJob: Job? = null
+    private var fuelFetchJob: Job? = null
+
+    @Volatile
+    private var cachedPricePerKm: Double = 0.0
 
     init {
         lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 surfaceRenderer.register()
+                fetchLatestFuelPricePerKm()
                 startObservingLocalDb()
                 startObservingLiveTelemetry()
             }
@@ -50,12 +59,82 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
                 observationJob = null
                 telemetryJob?.cancel()
                 telemetryJob = null
+                fuelFetchJob?.cancel()
+                fuelFetchJob = null
             }
 
             override fun onDestroy(owner: LifecycleOwner) {
                 surfaceRenderer.unregister()
             }
         })
+    }
+
+    private fun fetchLatestFuelPricePerKm() {
+        fuelFetchJob?.cancel()
+        fuelFetchJob = lifecycleScope.launch(Dispatchers.IO) {
+            // First check if cached in Setting
+            val cachedSetting = db.settingDao().getSetting("last_calculated_price_per_km")?.value?.toDoubleOrNull()
+            if (cachedSetting != null && cachedSetting > 0.0) {
+                cachedPricePerKm = cachedSetting
+            }
+
+            // Also check latest active Bluetooth car if any
+            val latestEvent = db.sessionEventDao().getLatestEvent()
+            var activeCarId: String? = null
+            if (latestEvent != null && latestEvent.eventType == "start") {
+                val btDevice = db.bluetoothDeviceDao().getAll().find { it.address.equals(latestEvent.bluetoothAddress, ignoreCase = true) }
+                if (btDevice != null && btDevice.carId.isNotEmpty()) {
+                    activeCarId = btDevice.carId
+                }
+            }
+
+            try {
+                val fuelRes = apiClient.getFuel()
+                fuelRes.onSuccess { fuelList ->
+                    val resolvedRate = resolvePricePerKm(fuelList, activeCarId)
+                    if (resolvedRate > 0.0) {
+                        cachedPricePerKm = resolvedRate
+                        db.settingDao().insert(com.example.locationservice.Setting("last_calculated_price_per_km", resolvedRate.toString()))
+                    }
+                }
+            } catch (e: Exception) {
+                Log.w("AutoSessionMapScreen", "Could not fetch fuel logs from cloud", e)
+            }
+        }
+    }
+
+    private fun resolvePricePerKm(fuelList: List<FuelItem>, carId: String?): Double {
+        if (fuelList.isEmpty()) return 0.0
+
+        // If a specific car is identified, filter by car first
+        val carFiltered = if (!carId.isNullOrEmpty()) {
+            fuelList.filter { it.carId == carId }
+        } else {
+            fuelList
+        }
+
+        val pool = if (carFiltered.isNotEmpty()) carFiltered else fuelList
+
+        // Sort chronologically by date descending to find the last calculated log
+        val sortedLogs = pool.sortedByDescending { log ->
+            parseUtcMillis(log.timestampUtc) ?: 0L
+        }
+
+        // Find the most recent fuel log with a positive calculated pricePerKilometer
+        val lastCalculated = sortedLogs.firstOrNull { (it.pricePerKilometer ?: 0.0) > 0.0 }
+        if (lastCalculated != null) {
+            return lastCalculated.pricePerKilometer ?: 0.0
+        }
+
+        // Fallback: if pricePerKilometer isn't computed yet but totalValue & totalKilometers exist
+        val fallbackLog = sortedLogs.firstOrNull {
+            (it.totalValue ?: 0.0) > 0.0 && (it.totalKilometers ?: 0.0) > 0.0
+        }
+        if (fallbackLog != null) {
+            return fallbackLog.totalValue!! / fallbackLog.totalKilometers!!
+        }
+
+        return 0.0
     }
 
     private fun startObservingLiveTelemetry() {
@@ -109,6 +188,16 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
                     val endTimestamp = rawPoints.lastOrNull()?.date ?: formatUtcNow()
                     val durationStr = calculateDurationString(sessionStartUtc, endTimestamp)
 
+                    // Calculate average speed: distanceKm / durationHours
+                    val durationHours = calculateDurationHours(sessionStartUtc, endTimestamp)
+                    val avgSpeedKmh = if (durationHours > (1.0 / 360.0) && distanceKm > 0.05) {
+                        (distanceKm / durationHours).coerceIn(0.0, 250.0)
+                    } else 0.0
+
+                    // Calculate trip cost using last calculated fuel log (value / km)
+                    val currentPricePerKm = cachedPricePerKm
+                    val tripCost = distanceKm * currentPricePerKm
+
                     val live = LocationLoggingService.liveTelemetry.value
                     val currentSpeedKmh = live?.speedKmh ?: computeFallbackSpeedKmh(rawPoints)
                     val currentAltitudeM = if (live != null && live.altitudeMeters != 0.0) {
@@ -128,6 +217,9 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
                         totalRawPoints = rawPoints.size,
                         distanceKm = distanceKm,
                         speedKmh = currentSpeedKmh,
+                        avgSpeedKmh = avgSpeedKmh,
+                        tripCost = tripCost,
+                        pricePerKm = currentPricePerKm,
                         altitudeMeters = currentAltitudeM,
                         durationText = durationStr,
                         subtitle = subtitle
@@ -283,6 +375,13 @@ class AutoSessionMapScreen(carContext: CarContext) : Screen(carContext) {
             total += results[0]
         }
         return total
+    }
+
+    private fun calculateDurationHours(startIso: String, endIso: String): Double {
+        val t1 = parseUtcMillis(startIso) ?: return 0.0
+        val t2 = parseUtcMillis(endIso) ?: return 0.0
+        val diffMs = (t2 - t1).coerceAtLeast(0L)
+        return diffMs / (1000.0 * 60.0 * 60.0)
     }
 
     private fun calculateDurationString(startIso: String, endIso: String): String {

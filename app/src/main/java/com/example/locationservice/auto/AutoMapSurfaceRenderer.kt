@@ -38,7 +38,7 @@ import kotlin.math.sin
 
 /**
  * Renders the OpenStreetMap tiles, session route polyline, start/intermediate/end circle markers,
- * and top telemetry HUD (Session Distance, Speed, Altitude) onto the Android Auto surface.
+ * and top telemetry HUD (Distance, Speed, Avg Speed, Altitude, and Trip Cost) onto the Android Auto surface.
  */
 class AutoMapSurfaceRenderer(
     private val carContext: CarContext
@@ -78,6 +78,12 @@ class AutoMapSurfaceRenderer(
     private var distanceKm: Double = 0.0
     @Volatile
     private var speedKmh: Double = 0.0
+    @Volatile
+    private var avgSpeedKmh: Double = 0.0
+    @Volatile
+    private var tripCost: Double = 0.0
+    @Volatile
+    private var pricePerKm: Double = 0.0
     @Volatile
     private var altitudeMeters: Double = 0.0
     @Volatile
@@ -149,7 +155,7 @@ class AutoMapSurfaceRenderer(
 
     private val hudCardPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#0F172A")
-        alpha = 232
+        alpha = 236
         style = Paint.Style.FILL
     }
 
@@ -177,6 +183,16 @@ class AutoMapSurfaceRenderer(
 
     private val hudValueSpeedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.parseColor("#34D399")
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private val hudValueAvgSpeedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#A7F3D0")
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+
+    private val hudValueCostPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#F43F5E")
         typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
     }
 
@@ -217,14 +233,17 @@ class AutoMapSurfaceRenderer(
     }
 
     /**
-     * Updates the session points and stats from the local database, recalculates bounds to fit
-     * all points of the session, and redraws the map surface.
+     * Updates the session points, stats, average speed, and trip cost from the local database,
+     * recalculates bounds to fit all points of the session, and redraws the map surface.
      */
     fun updateSessionData(
         filteredPoints: List<MapPoint>,
         totalRawPoints: Int,
         distanceKm: Double,
         speedKmh: Double,
+        avgSpeedKmh: Double,
+        tripCost: Double,
+        pricePerKm: Double,
         altitudeMeters: Double,
         durationText: String,
         subtitle: String
@@ -233,6 +252,9 @@ class AutoMapSurfaceRenderer(
         this.rawPointsCount = totalRawPoints
         this.distanceKm = distanceKm
         this.speedKmh = speedKmh
+        this.avgSpeedKmh = avgSpeedKmh
+        this.tripCost = tripCost
+        this.pricePerKm = pricePerKm
         if (altitudeMeters != 0.0 || this.altitudeMeters == 0.0) {
             this.altitudeMeters = altitudeMeters
         }
@@ -465,7 +487,7 @@ class AutoMapSurfaceRenderer(
                 }
             }
 
-            // 3. Draw Top Telemetry HUD (Session Distance, Speed, Altitude) at top of screen
+            // 3. Draw Top Telemetry HUD (Distance, Speed, Avg Speed, Cost, Altitude)
             drawHudOverlay(canvas, viewport, d)
 
             // 4. Draw OpenStreetMap attribution in bottom-right of visibleArea
@@ -504,90 +526,121 @@ class AutoMapSurfaceRenderer(
     }
 
     /**
-     * Draws the top telemetry bar showing Session Distance, Speed, and Altitude prominently
-     * across the top of the Android Auto screen.
+     * Draws the top telemetry bar showing 5 metrics:
+     * [DISTANCE] | [SPEED] | [AVG SPEED] | [EST. COST] | [ALTITUDE]
+     * plus session duration, GPS points, rate/km, and active/live status.
      */
     private fun drawHudOverlay(canvas: Canvas, viewport: Rect, d: Float) {
-        hudLabelPaint.textSize = 9.5f * d
-        hudValueDistancePaint.textSize = 16.5f * d
-        hudValueSpeedPaint.textSize = 16.5f * d
-        hudValueAltitudePaint.textSize = 16.5f * d
-        hudSubtitlePaint.textSize = 11f * d
+        hudLabelPaint.textSize = 8.5f * d
+        hudValueDistancePaint.textSize = 15f * d
+        hudValueSpeedPaint.textSize = 15f * d
+        hudValueAvgSpeedPaint.textSize = 15f * d
+        hudValueCostPaint.textSize = 15f * d
+        hudValueAltitudePaint.textSize = 15f * d
+        hudSubtitlePaint.textSize = 10.5f * d
 
-        val distLabel = "SESSION DISTANCE"
+        val distLabel = "DISTANCE"
         val distValue = String.format(Locale.US, "%.2f km", distanceKm)
 
         val speedLabel = "SPEED"
         val speedValue = String.format(Locale.US, "%.0f km/h", speedKmh)
 
+        val avgSpeedLabel = "AVG SPEED"
+        val avgSpeedValue = String.format(Locale.US, "%.0f km/h", avgSpeedKmh)
+
+        val costLabel = "EST. COST"
+        val costValue = String.format(Locale.US, "$%.2f", tripCost)
+
         val altLabel = "ALTITUDE"
         val altValue = String.format(Locale.US, "%.0f m", altitudeMeters)
 
+        val rateNotice = if (pricePerKm > 0.0) {
+            String.format(Locale.US, "•  $%.3f/km", pricePerKm)
+        } else ""
+
         val subLine = String.format(
             Locale.US,
-            "%s   •   📍 %d pts   •   %s",
+            "%s   •   📍 %d pts   %s   •   %s",
             durationText,
             sessionPoints.size,
+            rateNotice,
             sessionSubtitle
-        )
+        ).replace("      ", "   ")
 
-        val colPadH = 14f * d
+        val colPadH = 8f * d
         val col1W = max(hudLabelPaint.measureText(distLabel), hudValueDistancePaint.measureText(distValue)) + colPadH * 2
         val col2W = max(hudLabelPaint.measureText(speedLabel), hudValueSpeedPaint.measureText(speedValue)) + colPadH * 2
-        val col3W = max(hudLabelPaint.measureText(altLabel), hudValueAltitudePaint.measureText(altValue)) + colPadH * 2
+        val col3W = max(hudLabelPaint.measureText(avgSpeedLabel), hudValueAvgSpeedPaint.measureText(avgSpeedValue)) + colPadH * 2
+        val col4W = max(hudLabelPaint.measureText(costLabel), hudValueCostPaint.measureText(costValue)) + colPadH * 2
+        val col5W = max(hudLabelPaint.measureText(altLabel), hudValueAltitudePaint.measureText(altValue)) + colPadH * 2
 
-        val metricsTotalW = col1W + col2W + col3W
+        val metricsTotalW = col1W + col2W + col3W + col4W + col5W
         val subtitleTotalW = hudSubtitlePaint.measureText(subLine) + colPadH * 2
-        val desiredBoxW = max(metricsTotalW, subtitleTotalW).coerceAtLeast(320f * d)
-        val maxBoxW = (viewport.width() - 20f * d).coerceAtLeast(240f * d)
+        val desiredBoxW = max(metricsTotalW, subtitleTotalW).coerceAtLeast(360f * d)
+        val maxBoxW = (viewport.width() - 16f * d).coerceAtLeast(260f * d)
         val boxW = desiredBoxW.coerceAtMost(maxBoxW)
 
-        val topRowH = 44f * d
-        val bottomRowH = 22f * d
+        val topRowH = 42f * d
+        val bottomRowH = 20f * d
         val boxH = topRowH + bottomRowH
 
-        val left = viewport.left + 10f * d
+        val left = viewport.left + 8f * d
         val top = viewport.top.coerceAtLeast((6f * d).toInt()).toFloat() + 6f * d
         val cardRect = RectF(left, top, left + boxW, top + boxH)
 
         // Draw dark translucent HUD card with border
-        canvas.drawRoundRect(cardRect, 12f * d, 12f * d, hudCardPaint)
-        canvas.drawRoundRect(cardRect, 12f * d, 12f * d, hudBorderPaint)
+        canvas.drawRoundRect(cardRect, 10f * d, 10f * d, hudCardPaint)
+        canvas.drawRoundRect(cardRect, 10f * d, 10f * d, hudBorderPaint)
 
-        // Equal/proportional 3-column layout inside boxW
+        // Proportional 5-column layout inside boxW
         val scale = boxW / metricsTotalW
         val c1W = col1W * scale
         val c2W = col2W * scale
+        val c3W = col3W * scale
+        val c4W = col4W * scale
+        val c5W = col5W * scale
 
         val col1Left = left
         val col2Left = col1Left + c1W
         val col3Left = col2Left + c2W
+        val col4Left = col3Left + c3W
+        val col5Left = col4Left + c4W
 
-        // Vertical dividers between the 3 columns
+        // Vertical dividers between the 5 columns
         canvas.drawLine(col2Left, top + 6f * d, col2Left, top + topRowH - 6f * d, hudDividerPaint)
         canvas.drawLine(col3Left, top + 6f * d, col3Left, top + topRowH - 6f * d, hudDividerPaint)
+        canvas.drawLine(col4Left, top + 6f * d, col4Left, top + topRowH - 6f * d, hudDividerPaint)
+        canvas.drawLine(col5Left, top + 6f * d, col5Left, top + topRowH - 6f * d, hudDividerPaint)
 
         // Horizontal divider above the subtitle row
         val dividerY = top + topRowH
-        canvas.drawLine(left + 10f * d, dividerY, left + boxW - 10f * d, dividerY, hudDividerPaint)
+        canvas.drawLine(left + 8f * d, dividerY, left + boxW - 8f * d, dividerY, hudDividerPaint)
 
-        val labelBaselineY = top + 14f * d
-        val valueBaselineY = top + 35f * d
+        val labelBaselineY = top + 13f * d
+        val valueBaselineY = top + 33f * d
 
-        // Column 1: Session Distance
+        // Column 1: Distance
         canvas.drawText(distLabel, col1Left + colPadH, labelBaselineY, hudLabelPaint)
         canvas.drawText(distValue, col1Left + colPadH, valueBaselineY, hudValueDistancePaint)
 
-        // Column 2: Speed
+        // Column 2: Current Speed
         canvas.drawText(speedLabel, col2Left + colPadH, labelBaselineY, hudLabelPaint)
         canvas.drawText(speedValue, col2Left + colPadH, valueBaselineY, hudValueSpeedPaint)
 
-        // Column 3: Altitude
-        canvas.drawText(altLabel, col3Left + colPadH, labelBaselineY, hudLabelPaint)
-        canvas.drawText(altValue, col3Left + colPadH, valueBaselineY, hudValueAltitudePaint)
+        // Column 3: Average Speed
+        canvas.drawText(avgSpeedLabel, col3Left + colPadH, labelBaselineY, hudLabelPaint)
+        canvas.drawText(avgSpeedValue, col3Left + colPadH, valueBaselineY, hudValueAvgSpeedPaint)
 
-        // Bottom row: Duration, Points, Active/Live Session status
-        val subBaselineY = dividerY + 15.5f * d
+        // Column 4: Trip Cost
+        canvas.drawText(costLabel, col4Left + colPadH, labelBaselineY, hudLabelPaint)
+        canvas.drawText(costValue, col4Left + colPadH, valueBaselineY, hudValueCostPaint)
+
+        // Column 5: Altitude
+        canvas.drawText(altLabel, col5Left + colPadH, labelBaselineY, hudLabelPaint)
+        canvas.drawText(altValue, col5Left + colPadH, valueBaselineY, hudValueAltitudePaint)
+
+        // Bottom row: Duration, Points, Rate/km, Active/Live status
+        val subBaselineY = dividerY + 14f * d
         canvas.drawText(subLine, left + colPadH, subBaselineY, hudSubtitlePaint)
     }
 
