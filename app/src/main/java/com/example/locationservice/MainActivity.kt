@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         db = LocationDatabase.getDatabase(this)
 
-        requestPermissions()
+        checkAndRequestPermissionsWithDisclosure()
 
         if (!isAppLaunchedByUser()) {
             updateStatusText("Warning: Open the app manually once after install/reboot to enable auto-start!")
@@ -134,7 +134,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupSettingsControls() {
-        binding.btnStart.setOnClickListener { requestPermissions() }
+        binding.btnStart.setOnClickListener { checkAndRequestPermissionsWithDisclosure() }
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
     }
@@ -185,6 +185,58 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun hasRequiredPermissions(): Boolean {
+        val fineGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val btScanGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.BLUETOOTH_SCAN
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val btConnectGranted = ContextCompat.checkSelfPermission(
+            this, Manifest.permission.BLUETOOTH_CONNECT
+        ) == PackageManager.PERMISSION_GRANTED
+
+        val fgsLocationGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ContextCompat.checkSelfPermission(
+                this, Manifest.permission.FOREGROUND_SERVICE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else true
+
+        return fineGranted && btScanGranted && btConnectGranted && fgsLocationGranted
+    }
+
+    private fun checkAndRequestPermissionsWithDisclosure() {
+        if (hasRequiredPermissions()) {
+            startLocationService()
+            checkBackgroundLocationPermission()
+        } else {
+            showLocationDisclosureDialog()
+        }
+    }
+
+    private fun showLocationDisclosureDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Location & Trip Logging Notice")
+            .setMessage(
+                "Travel Access collects location data to enable:\n\n" +
+                "• Automated driving trip logging and route tracking\n" +
+                "• Accurate vehicle mileage calculation for business and personal expense reports\n" +
+                "• Hands-free trip detection when connected to vehicle Bluetooth or Android Auto\n\n" +
+                "Location data is collected while the app is active and continues in the background (even when the app is closed, not in use, or the screen is off) while a driving trip is ongoing.\n\n" +
+                "Your location data is stored securely on your device and sent only to your configured private server. It is never sold, shared with third parties, or used for advertising."
+            )
+            .setPositiveButton("Agree & Continue") { _, _ ->
+                requestPermissions()
+            }
+            .setNegativeButton("No Thanks") { _, _ ->
+                updateStatusText("Location permissions required for automated trip recording.")
+            }
+            .setCancelable(false)
+            .show()
+    }
+
     private fun checkBackgroundLocationPermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val hasBackground = ContextCompat.checkSelfPermission(
@@ -193,12 +245,16 @@ class MainActivity : AppCompatActivity() {
             ) == PackageManager.PERMISSION_GRANTED
             if (!hasBackground) {
                 AlertDialog.Builder(this)
-                    .setTitle("Background Location Required")
-                    .setMessage("To record GPS routes reliably when the screen is off or while using Android Auto, please select \"Allow all the time\" on the next screen.")
-                    .setPositiveButton("Allow all the time") { _, _ ->
+                    .setTitle("Background Location Permission")
+                    .setMessage(
+                        "To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off or while using Android Auto, Travel Access requires background location access.\n\n" +
+                        "On the next screen, please select \"Allow all the time\" to ensure continuous trip logging."
+                    )
+                    .setPositiveButton("Continue") { _, _ ->
                         backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
                     .setNegativeButton("Later", null)
+                    .setCancelable(false)
                     .show()
             }
         }
