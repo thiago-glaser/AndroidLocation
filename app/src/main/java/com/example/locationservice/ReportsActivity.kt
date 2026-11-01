@@ -63,7 +63,7 @@ class ReportsActivity : AppCompatActivity() {
         val activeBg = ContextCompat.getDrawable(this, R.drawable.bg_pill_active)
         val inactiveBg = ContextCompat.getDrawable(this, R.drawable.bg_pill_inactive)
         val whiteColor = Color.WHITE
-        val slateColor = Color.parseColor("#475569")
+        val slateColor = ContextCompat.getColor(this, R.color.pill_inactive_text)
 
         binding.tabTrips.background = if (tabIndex == 0) activeBg else inactiveBg
         binding.tabTrips.setTextColor(if (tabIndex == 0) whiteColor else slateColor)
@@ -354,7 +354,7 @@ class ReportsActivity : AppCompatActivity() {
             val tvTitle = TextView(this).apply {
                 text = session.description ?: "Unknown Vehicle"
                 textSize = 14f
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_primary))
                 paint.isFakeBoldText = true
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
@@ -363,7 +363,7 @@ class ReportsActivity : AppCompatActivity() {
             val tvStatus = TextView(this).apply {
                 text = if (isCompleted) "Completed" else "Active"
                 textSize = 10f
-                setTextColor(if (isCompleted) Color.parseColor("#475569") else Color.parseColor("#15803D"))
+                setTextColor(if (isCompleted) ContextCompat.getColor(context, R.color.text_secondary) else Color.parseColor("#15803D"))
                 background = ContextCompat.getDrawable(
                     this@ReportsActivity,
                     if (isCompleted) R.drawable.bg_badge else R.drawable.bg_badge_active
@@ -391,7 +391,7 @@ class ReportsActivity : AppCompatActivity() {
             val tvDate = TextView(this).apply {
                 text = dateText
                 textSize = 12f
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                     setMargins(0, dpToPx(3), 0, dpToPx(6))
                 }
@@ -410,7 +410,7 @@ class ReportsActivity : AppCompatActivity() {
                 val tvLoc = TextView(this).apply {
                     text = "📍 $locText"
                     textSize = 11f
-                    setTextColor(Color.parseColor("#475569"))
+                    setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                     layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                         setMargins(0, 0, 0, dpToPx(6))
                     }
@@ -530,7 +530,7 @@ class ReportsActivity : AppCompatActivity() {
                 val tvExpHeader = TextView(this).apply {
                     text = String.format(Locale.US, "EXPENSE ALLOCATION: %s (Total: $%.2f)", exp.expenseTypeName.uppercase(Locale.getDefault()), exp.total)
                     textSize = 11f
-                    setTextColor(Color.parseColor("#64748B"))
+                    setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                     paint.isFakeBoldText = true
                 }
                 expCard.addView(tvExpHeader)
@@ -637,7 +637,7 @@ class ReportsActivity : AppCompatActivity() {
             val tvTitle = TextView(this).apply {
                 text = displayTitle
                 textSize = 16f
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_primary))
                 paint.isFakeBoldText = true
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
@@ -802,7 +802,7 @@ class ReportsActivity : AppCompatActivity() {
             val tvCar = TextView(this).apply {
                 text = log.carDescription ?: log.carLicensePlate ?: "Refuel Log"
                 textSize = 14f
-                setTextColor(Color.parseColor("#0F172A"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_primary))
                 paint.isFakeBoldText = true
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
@@ -824,7 +824,7 @@ class ReportsActivity : AppCompatActivity() {
             val tvDate = TextView(this).apply {
                 text = dateStr
                 textSize = 11f
-                setTextColor(Color.parseColor("#64748B"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                     setMargins(0, dpToPx(2), 0, dpToPx(6))
                 }
@@ -849,7 +849,7 @@ class ReportsActivity : AppCompatActivity() {
                 val km = log.totalKilometers ?: 0.0
                 text = if (km > 0) String.format(Locale.US, "%.1f km", km) else "-"
                 textSize = 12f
-                setTextColor(Color.parseColor("#475569"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 

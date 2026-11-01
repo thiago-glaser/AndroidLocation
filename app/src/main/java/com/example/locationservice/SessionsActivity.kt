@@ -15,7 +15,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -86,21 +86,17 @@ class SessionsActivity : AppCompatActivity() {
         val hasPrev = currentPage > 1
         val hasNext = currentPage < totalPages
 
+        val disabledBg = ContextCompat.getColor(this, R.color.surface_variant)
+        val enabledBg = Color.parseColor("#2563EB")
+        val disabledText = ContextCompat.getColor(this, R.color.text_muted)
+
         binding.btnPrevPage.isEnabled = hasPrev
-        binding.btnPrevPage.backgroundTintList = ColorStateList.valueOf(
-            if (hasPrev) Color.parseColor("#2563EB") else Color.parseColor("#E2E8F0")
-        )
-        binding.btnPrevPage.setTextColor(
-            if (hasPrev) Color.WHITE else Color.parseColor("#64748B")
-        )
+        binding.btnPrevPage.backgroundTintList = ColorStateList.valueOf(if (hasPrev) enabledBg else disabledBg)
+        binding.btnPrevPage.setTextColor(if (hasPrev) Color.WHITE else disabledText)
 
         binding.btnNextPage.isEnabled = hasNext
-        binding.btnNextPage.backgroundTintList = ColorStateList.valueOf(
-            if (hasNext) Color.parseColor("#2563EB") else Color.parseColor("#E2E8F0")
-        )
-        binding.btnNextPage.setTextColor(
-            if (hasNext) Color.WHITE else Color.parseColor("#64748B")
-        )
+        binding.btnNextPage.backgroundTintList = ColorStateList.valueOf(if (hasNext) enabledBg else disabledBg)
+        binding.btnNextPage.setTextColor(if (hasNext) Color.WHITE else disabledText)
     }
 
     private fun loadCarsAndSessions() {
@@ -216,7 +212,7 @@ class SessionsActivity : AppCompatActivity() {
         val tvTitle = TextView(this).apply {
             text = session.description ?: carsList.find { it.id == session.carId }?.description ?: "Car #${session.carId}"
             textSize = 16f
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setTypeface(null, android.graphics.Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
@@ -245,7 +241,7 @@ class SessionsActivity : AppCompatActivity() {
             val end = parseDate(session.endTime)
             text = "Start: $start\nEnd: $end"
             textSize = 13f
-            setTextColor(Color.parseColor("#64748B"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(0, 8, 0, 8)
         }
 
@@ -345,7 +341,7 @@ class SessionsActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteSession(session: SessionItem) {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Delete Trip")
             .setMessage("Are you sure you want to delete this trip record?")
             .setPositiveButton("Delete") { _, _ ->
@@ -404,16 +400,16 @@ class SessionsActivity : AppCompatActivity() {
 
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "UNKNOWN_ID"
 
-        layout.addView(TextView(this).apply { text = "Car:"; setTextColor(Color.parseColor("#334155")) })
+        layout.addView(TextView(this).apply { text = "Car:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) })
         layout.addView(carSpinner)
-        layout.addView(TextView(this).apply { text = "Type:"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Type:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(typeSpinner)
-        layout.addView(TextView(this).apply { text = "Start Time (UTC):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Start Time (UTC):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(startInput)
-        layout.addView(TextView(this).apply { text = "End Time (UTC - Optional):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "End Time (UTC - Optional):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(endInput)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Add Trip / Session")
             .setView(layout)
             .setPositiveButton("Add") { _, _ ->

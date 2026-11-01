@@ -4,6 +4,7 @@ import android.app.DatePickerDialog
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import android.view.Gravity
 import android.view.View
 import android.widget.AdapterView
@@ -14,7 +15,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityExpensesBinding
@@ -106,7 +107,7 @@ class ExpensesActivity : AppCompatActivity() {
         val tvCar = TextView(this).apply {
             text = carLabel
             textSize = 16f
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setTypeface(null, Typeface.BOLD)
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
@@ -128,7 +129,7 @@ class ExpensesActivity : AppCompatActivity() {
         val tvDescription = TextView(this).apply {
             text = item.description ?: "No description"
             textSize = 14f
-            setTextColor(Color.parseColor("#334155"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setPadding(0, 10, 0, 8)
         }
 
@@ -157,7 +158,7 @@ class ExpensesActivity : AppCompatActivity() {
         val tvDate = TextView(this).apply {
             text = formattedDate
             textSize = 13f
-            setTextColor(Color.parseColor("#64748B"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
         }
 
@@ -261,18 +262,18 @@ class ExpensesActivity : AppCompatActivity() {
             }
         }
 
-        layout.addView(TextView(this).apply { text = "Vehicle:"; setTextColor(Color.parseColor("#334155")) })
+        layout.addView(TextView(this).apply { text = "Vehicle:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) })
         layout.addView(carSpinner)
-        layout.addView(TextView(this).apply { text = "Expense Type:"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Expense Type:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(typeSpinner)
-        layout.addView(TextView(this).apply { text = "Amount ($):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Amount ($):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(amountInput)
-        layout.addView(TextView(this).apply { text = "Description:"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Description:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(descriptionInput)
-        layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(dateInput)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Log Vehicle Expense")
             .setView(layout)
             .setPositiveButton("Save") { _, _ ->
@@ -330,7 +331,7 @@ class ExpensesActivity : AppCompatActivity() {
             addView(input)
         }
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("New Expense Type")
             .setView(layout)
             .setPositiveButton("Create") { _, _ ->
@@ -359,7 +360,7 @@ class ExpensesActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteExpense(item: ExpenseItem) {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Delete Expense")
             .setMessage("Are you sure you want to delete this expense record?")
             .setPositiveButton("Delete") { _, _ ->

@@ -3,6 +3,7 @@ package com.example.locationservice
 import android.app.DatePickerDialog
 import android.graphics.Color
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -12,7 +13,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityFuelBinding
@@ -95,7 +96,7 @@ class FuelActivity : AppCompatActivity() {
         val tvCar = TextView(this).apply {
             text = carLabel
             textSize = 16f
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setTypeface(null, android.graphics.Typeface.BOLD)
         }
 
@@ -110,7 +111,7 @@ class FuelActivity : AppCompatActivity() {
         val tvDate = TextView(this).apply {
             text = formattedDate
             textSize = 13f
-            setTextColor(Color.parseColor("#64748B"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(0, 2, 0, 4)
         }
 
@@ -134,7 +135,7 @@ class FuelActivity : AppCompatActivity() {
                 val pkm = String.format(Locale.US, "$%.4f/km", item.pricePerKilometer ?: 0.0)
                 text = "Traveled: $km • $kml • $pkm"
                 textSize = 12f
-                setTextColor(Color.parseColor("#475569"))
+                setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             }
             textLayout.addView(tvEfficiency)
         }
@@ -228,16 +229,16 @@ class FuelActivity : AppCompatActivity() {
             }
         }
 
-        layout.addView(TextView(this).apply { text = "Vehicle:"; setTextColor(Color.parseColor("#334155")) })
+        layout.addView(TextView(this).apply { text = "Vehicle:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) })
         layout.addView(carSpinner)
-        layout.addView(TextView(this).apply { text = "Total Cost ($):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Total Cost ($):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(totalCostInput)
-        layout.addView(TextView(this).apply { text = "Liters (L):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Liters (L):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(litersInput)
-        layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(Color.parseColor("#334155")); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(dateInput)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Log Fuel Fill-Up")
             .setView(layout)
             .setPositiveButton("Save") { _, _ ->
@@ -274,7 +275,7 @@ class FuelActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteFuel(item: FuelItem) {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Delete Fuel Entry")
             .setMessage("Are you sure you want to delete this fuel record?")
             .setPositiveButton("Delete") { _, _ ->

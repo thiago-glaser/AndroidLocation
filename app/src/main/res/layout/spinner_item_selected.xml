@@ -5,11 +5,10 @@
     android:layout_height="wrap_content"
     android:ellipsize="marquee"
     android:singleLine="true"
-    android:textColor="#0F172A"
+    android:textColor="@color/text_primary"
     android:textSize="14sp"
     android:textStyle="bold"
     android:paddingStart="12dp"
     android:paddingEnd="32dp"
     android:paddingTop="8dp"
     android:paddingBottom="8dp" />
-

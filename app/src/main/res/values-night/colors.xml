@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Colors -->
+    <color name="purple_200">#FFBB86FC</color>
+    <color name="purple_500">#FF6200EE</color>
+    <color name="purple_700">#FF3700B3</color>
+    <color name="teal_200">#FF03DAC5</color>
+    <color name="teal_700">#FF018786</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <!-- Semantic App Theme Colors (Dark / OLED Black Mode) -->
+    <color name="screen_background">#000000</color>
+    <color name="surface_header">#121212</color>
+    <color name="surface_card">#18181B</color>
+    <color name="surface_variant">#202024</color>
+    <color name="border_subtle">#27272A</color>
+    <color name="border_outline">#3F3F46</color>
+
+    <!-- Text Colors (Dark Mode) -->
+    <color name="text_primary">#F4F4F5</color>
+    <color name="text_secondary">#A1A1AA</color>
+    <color name="text_muted">#71717A</color>
+    <color name="icon_tint">#F4F4F5</color>
+
+    <!-- Badges & Progress -->
+    <color name="pill_inactive_bg">#27272A</color>
+    <color name="pill_inactive_text">#A1A1AA</color>
+    <color name="track_progress_bg">#27272A</color>
+</resources>
+

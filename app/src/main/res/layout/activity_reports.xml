@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8FAFC"
+    android:background="@color/screen_background"
     android:fitsSystemWindows="true">
 
     <!-- Top Header Bar -->
@@ -13,7 +14,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:padding="16dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface_header"
         android:elevation="2dp">
 
         <ImageButton
@@ -22,7 +23,8 @@
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_revert"
-            android:contentDescription="Back" />
+            android:contentDescription="Back"
+            app:tint="@color/icon_tint" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -37,14 +39,14 @@
                 android:text="Reports &amp; Analytics"
                 android:textSize="18sp"
                 android:textStyle="bold"
-                android:textColor="#0F172A" />
+                android:textColor="@color/text_primary" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Mileage, efficiency &amp; costs"
                 android:textSize="12sp"
-                android:textColor="#64748B" />
+                android:textColor="@color/text_secondary" />
         </LinearLayout>
 
         <ImageButton
@@ -54,7 +56,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_share"
             android:contentDescription="Share Summary"
-            android:tint="#475569" />
+            app:tint="@color/icon_tint" />
 
         <ImageButton
             android:id="@+id/btnRefresh"
@@ -63,7 +65,7 @@
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_popup_sync"
             android:contentDescription="Refresh"
-            android:tint="#2563EB" />
+            app:tint="?attr/colorPrimary" />
     </LinearLayout>
 
     <!-- Tab Selector Bar (Pills) -->
@@ -73,7 +75,7 @@
         android:scrollbars="none"
         android:paddingHorizontal="12dp"
         android:paddingVertical="10dp"
-        android:background="#FFFFFF">
+        android:background="@color/surface_header">
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -99,7 +101,7 @@
                 android:layout_height="wrap_content"
                 android:text="📅 Monthly Summary"
                 android:textSize="13sp"
-                android:textColor="#475569"
+                android:textColor="@color/text_secondary"
                 android:background="@drawable/bg_pill_inactive"
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp"
@@ -111,7 +113,7 @@
                 android:layout_height="wrap_content"
                 android:text="⛽ Fuel Economy"
                 android:textSize="13sp"
-                android:textColor="#475569"
+                android:textColor="@color/text_secondary"
                 android:background="@drawable/bg_pill_inactive"
                 android:paddingHorizontal="16dp"
                 android:paddingVertical="8dp" />
@@ -124,7 +126,7 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:padding="12dp"
-        android:background="#F1F5F9">
+        android:background="@color/surface_variant">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -145,7 +147,7 @@
                     android:text="VEHICLE"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#64748B"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="2dp" />
 
                 <Spinner
@@ -169,7 +171,7 @@
                     android:text="YEAR"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#64748B"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="2dp" />
 
                 <Spinner
@@ -193,7 +195,7 @@
                     android:text="MONTH"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#64748B"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="2dp" />
 
                 <Spinner
@@ -227,7 +229,7 @@
                     android:text="TYPE"
                     android:textSize="10sp"
                     android:textStyle="bold"
-                    android:textColor="#64748B"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="2dp" />
 
                 <Spinner
@@ -251,7 +253,7 @@
                     android:text="Reset"
                     android:textSize="12sp"
                     android:textAllCaps="false"
-                    android:textColor="#64748B"
+                    android:textColor="@color/text_secondary"
                     android:background="?attr/selectableItemBackground"
                     android:layout_marginEnd="4dp" />
 
@@ -321,7 +323,7 @@
                             android:text="TOTAL DISTANCE"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvTotalDistance"
@@ -352,7 +354,7 @@
                             android:text="TOTAL DURATION"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvTotalDuration"
@@ -388,7 +390,7 @@
                             android:text="TOTAL SESSIONS"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvTotalTrips"
@@ -461,7 +463,7 @@
                     android:text="TYPE BREAKDOWN (PERSONAL VS. BUSINESS)"
                     android:textSize="11sp"
                     android:textStyle="bold"
-                    android:textColor="#64748B"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="12dp" />
 
                 <!-- Distance Distribution -->
@@ -476,7 +478,7 @@
                         android:layout_height="wrap_content"
                         android:text="Distance Distribution"
                         android:textSize="12sp"
-                        android:textColor="#334155"
+                        android:textColor="@color/text_primary"
                         android:textStyle="bold"
                         android:layout_marginBottom="4dp" />
 
@@ -485,7 +487,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="10dp"
                         android:orientation="horizontal"
-                        android:background="#E2E8F0">
+                        android:background="@color/track_progress_bg">
 
                         <View
                             android:id="@+id/barDistPersonal"
@@ -539,7 +541,7 @@
                         android:layout_height="wrap_content"
                         android:text="Time Traveled"
                         android:textSize="12sp"
-                        android:textColor="#334155"
+                        android:textColor="@color/text_primary"
                         android:textStyle="bold"
                         android:layout_marginBottom="4dp" />
 
@@ -548,7 +550,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="10dp"
                         android:orientation="horizontal"
-                        android:background="#E2E8F0">
+                        android:background="@color/track_progress_bg">
 
                         <View
                             android:id="@+id/barTimePersonal"
@@ -601,7 +603,7 @@
                         android:layout_height="wrap_content"
                         android:text="Estimated Cost Distribution"
                         android:textSize="12sp"
-                        android:textColor="#334155"
+                        android:textColor="@color/text_primary"
                         android:textStyle="bold"
                         android:layout_marginBottom="4dp" />
 
@@ -610,7 +612,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="10dp"
                         android:orientation="horizontal"
-                        android:background="#E2E8F0">
+                        android:background="@color/track_progress_bg">
 
                         <View
                             android:id="@+id/barCostPersonal"
@@ -667,7 +669,7 @@
                     android:text="TRIP SESSIONS"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    android:textColor="#475569"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
 
                 <TextView
@@ -703,7 +705,7 @@
                     android:text="MONTHLY BREAKDOWN"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    android:textColor="#475569"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
 
                 <TextView
@@ -756,7 +758,7 @@
                             android:text="TOTAL FUEL COST"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvFuelTotalCost"
@@ -785,7 +787,7 @@
                             android:text="TOTAL VOLUME"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvFuelTotalLiters"
@@ -821,7 +823,7 @@
                             android:text="AVG ECONOMY"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvFuelAvgEconomy"
@@ -850,7 +852,7 @@
                             android:text="AVG PRICE / L"
                             android:textSize="10sp"
                             android:textStyle="bold"
-                            android:textColor="#64748B" />
+                            android:textColor="@color/text_secondary" />
 
                         <TextView
                             android:id="@+id/tvFuelAvgPrice"
@@ -859,7 +861,7 @@
                             android:text="$0.00/L"
                             android:textSize="20sp"
                             android:textStyle="bold"
-                            android:textColor="#475569"
+                            android:textColor="@color/text_secondary"
                             android:layout_marginTop="2dp" />
                     </LinearLayout>
                 </LinearLayout>
@@ -870,7 +872,7 @@
                     android:text="REFUEL LOGS"
                     android:textSize="12sp"
                     android:textStyle="bold"
-                    android:textColor="#475569"
+                    android:textColor="@color/text_secondary"
                     android:layout_marginBottom="8dp" />
 
                 <TextView

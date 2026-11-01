@@ -21,27 +21,28 @@
         <item name="colorOnTertiaryContainer">#064E3B</item>
 
         <!-- Background & Surface -->
-        <item name="android:colorBackground">#F8FAFC</item>
-        <item name="colorOnBackground">#0F172A</item>
-        <item name="colorSurface">#FFFFFF</item>
-        <item name="colorOnSurface">#0F172A</item>
-        <item name="colorSurfaceVariant">#F1F5F9</item>
-        <item name="colorOnSurfaceVariant">#64748B</item>
-        <item name="colorOutline">#CBD5E1</item>
-        <item name="colorOutlineVariant">#E2E8F0</item>
+        <item name="android:colorBackground">@color/screen_background</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/border_outline</item>
+        <item name="colorOutlineVariant">@color/border_subtle</item>
 
         <!-- System bars -->
-        <item name="android:statusBarColor">#F8FAFC</item>
+        <item name="android:statusBarColor">@color/screen_background</item>
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:navigationBarColor">#FFFFFF</item>
         <item name="android:windowLightNavigationBar">true</item>
 
-        <item name="android:textColor">#0F172A</item>
+        <item name="android:textColor">@color/text_primary</item>
         <item name="android:spinnerDropDownItemStyle">@style/LocationService.SpinnerDropDownItem</item>
     </style>
 
     <style name="LocationService.SpinnerDropDownItem" parent="Widget.AppCompat.DropDownItem.Spinner">
-        <item name="android:textColor">#0F172A</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:background">@color/surface_card</item>
     </style>
 
 </resources>

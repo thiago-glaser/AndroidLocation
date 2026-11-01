@@ -9,7 +9,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -84,14 +84,14 @@ class CarsActivity : AppCompatActivity() {
         val tvTitle = TextView(this).apply {
             text = car.description ?: "Car #${car.id}"
             textSize = 16f
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setTypeface(null, android.graphics.Typeface.BOLD)
         }
 
         val tvPlate = TextView(this).apply {
             text = "License Plate: " + (car.licensePlate ?: "N/A")
             textSize = 14f
-            setTextColor(Color.parseColor("#64748B"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(0, 4, 0, 0)
         }
 
@@ -125,12 +125,12 @@ class CarsActivity : AppCompatActivity() {
             hint = "License Plate (e.g. ABC-1234)"
         }
 
-        layout.addView(TextView(this).apply { text = "Description"; setTextColor(Color.parseColor("#334155")) })
+        layout.addView(TextView(this).apply { text = "Description"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) })
         layout.addView(descInput)
-        layout.addView(TextView(this).apply { text = "License Plate"; setTextColor(Color.parseColor("#334155")); setPadding(0, 16, 0, 0) })
+        layout.addView(TextView(this).apply { text = "License Plate"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 16, 0, 0) })
         layout.addView(plateInput)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Add New Car")
             .setView(layout)
             .setPositiveButton("Add") { _, _ ->
@@ -156,7 +156,7 @@ class CarsActivity : AppCompatActivity() {
     }
 
     private fun confirmDeleteCar(car: CarItem) {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Delete Car")
             .setMessage("Are you sure you want to delete ${car.description ?: car.licensePlate}?")
             .setPositiveButton("Delete") { _, _ ->

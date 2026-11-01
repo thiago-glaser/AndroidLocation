@@ -2,6 +2,7 @@ package com.example.locationservice
 
 import android.graphics.Color
 import android.os.Bundle
+import androidx.core.content.ContextCompat
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -10,7 +11,7 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityBluetoothBinding
@@ -89,14 +90,14 @@ class BluetoothActivity : AppCompatActivity() {
         val tvName = TextView(this).apply {
             text = device.name ?: "Unknown Device"
             textSize = 16f
-            setTextColor(Color.parseColor("#0F172A"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setTypeface(null, android.graphics.Typeface.BOLD)
         }
 
         val tvAddress = TextView(this).apply {
             text = "MAC: " + (device.address ?: "N/A")
             textSize = 13f
-            setTextColor(Color.parseColor("#64748B"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(0, 4, 0, 0)
         }
 
@@ -155,12 +156,12 @@ class BluetoothActivity : AppCompatActivity() {
 
         layout.addView(TextView(this).apply {
             text = "Select vehicle for auto-tracking when connected to ${device.name}:"
-            setTextColor(Color.parseColor("#334155"))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setPadding(0, 0, 0, 16)
         })
         layout.addView(spinner)
 
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Link Car to Bluetooth")
             .setView(layout)
             .setPositiveButton("Save") { _, _ ->

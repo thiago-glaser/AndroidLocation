@@ -20,29 +20,29 @@
         <item name="colorTertiaryContainer">#065F46</item>
         <item name="colorOnTertiaryContainer">#D1FAE5</item>
 
-        <!-- Background & Surface -->
-        <item name="android:colorBackground">#0F172A</item>
-        <item name="colorOnBackground">#F8FAFC</item>
-        <item name="colorSurface">#1E293B</item>
-        <item name="colorOnSurface">#F8FAFC</item>
-        <item name="colorSurfaceVariant">#334155</item>
-        <item name="colorOnSurfaceVariant">#94A3B8</item>
-        <item name="colorOutline">#475569</item>
-        <item name="colorOutlineVariant">#334155</item>
+        <!-- Background & Surface (Pure Black for Dark Mode) -->
+        <item name="android:colorBackground">@color/screen_background</item>
+        <item name="colorOnBackground">@color/text_primary</item>
+        <item name="colorSurface">@color/surface_card</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="colorSurfaceVariant">@color/surface_variant</item>
+        <item name="colorOnSurfaceVariant">@color/text_secondary</item>
+        <item name="colorOutline">@color/border_outline</item>
+        <item name="colorOutlineVariant">@color/border_subtle</item>
 
-        <!-- System bars -->
-        <item name="android:statusBarColor">#0F172A</item>
+        <!-- System bars (Pure Black) -->
+        <item name="android:statusBarColor">#000000</item>
         <item name="android:windowLightStatusBar">false</item>
-        <item name="android:navigationBarColor">#1E293B</item>
+        <item name="android:navigationBarColor">#000000</item>
         <item name="android:windowLightNavigationBar">false</item>
 
-        <item name="android:textColor">#F8FAFC</item>
+        <item name="android:textColor">@color/text_primary</item>
         <item name="android:spinnerDropDownItemStyle">@style/LocationService.SpinnerDropDownItem</item>
     </style>
 
     <style name="LocationService.SpinnerDropDownItem" parent="Widget.AppCompat.DropDownItem.Spinner">
-        <item name="android:textColor">#F8FAFC</item>
+        <item name="android:textColor">@color/text_primary</item>
+        <item name="android:background">@color/surface_card</item>
     </style>
 
 </resources>
-

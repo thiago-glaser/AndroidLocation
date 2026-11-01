@@ -5,10 +5,9 @@
     android:layout_height="?attr/dropdownListPreferredItemHeight"
     android:ellipsize="marquee"
     android:singleLine="true"
-    android:textColor="#0F172A"
+    android:textColor="@color/text_primary"
     android:textSize="14sp"
-    android:background="#FFFFFF"
+    android:background="@color/surface_card"
     android:paddingStart="16dp"
     android:paddingEnd="16dp"
     android:gravity="center_vertical" />
-

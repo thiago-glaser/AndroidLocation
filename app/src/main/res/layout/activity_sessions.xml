@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:background="#F8FAFC"
+    android:background="@color/screen_background"
     android:fitsSystemWindows="true">
 
     <!-- Top Header -->
@@ -13,7 +14,7 @@
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:padding="16dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface_header"
         android:elevation="2dp">
 
         <ImageButton
@@ -22,7 +23,8 @@
             android:layout_height="44dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@android:drawable/ic_menu_revert"
-            android:contentDescription="Back" />
+            android:contentDescription="Back"
+            app:tint="@color/icon_tint" />
 
         <TextView
             android:layout_width="0dp"
@@ -32,16 +34,17 @@
             android:text="Trips &amp; Sessions"
             android:textSize="20sp"
             android:textStyle="bold"
-            android:textColor="#0F172A" />
+            android:textColor="@color/text_primary" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnAddSession"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
             android:text="+ Add"
             android:textSize="13sp"
             android:textAllCaps="false"
-            android:backgroundTint="#4F46E5"
+            app:cornerRadius="10dp"
+            app:backgroundTint="#4F46E5"
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
@@ -51,7 +54,7 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:padding="12dp"
-        android:background="#F1F5F9">
+        android:background="@color/surface_variant">
 
         <Spinner
             android:id="@+id/spinnerCarFilter"
@@ -69,7 +72,7 @@
             android:minWidth="105dp"
             android:background="@drawable/bg_spinner" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnApplyFilters"
             android:layout_width="wrap_content"
             android:layout_height="42dp"
@@ -77,7 +80,8 @@
             android:textSize="13sp"
             android:textStyle="bold"
             android:textAllCaps="false"
-            android:backgroundTint="#334155"
+            app:cornerRadius="8dp"
+            app:backgroundTint="#334155"
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
@@ -95,7 +99,7 @@
         android:layout_height="wrap_content"
         android:text="No recorded trips found."
         android:gravity="center"
-        android:textColor="#64748B"
+        android:textColor="@color/text_secondary"
         android:padding="32dp"
         android:visibility="gone" />
 
@@ -120,10 +124,10 @@
         android:gravity="center_vertical"
         android:paddingHorizontal="16dp"
         android:paddingVertical="10dp"
-        android:background="#FFFFFF"
+        android:background="@color/surface_header"
         android:elevation="6dp">
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnPrevPage"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
@@ -131,8 +135,9 @@
             android:textSize="13sp"
             android:textStyle="bold"
             android:textAllCaps="false"
-            android:backgroundTint="#E2E8F0"
-            android:textColor="#64748B"
+            app:cornerRadius="8dp"
+            app:backgroundTint="@color/surface_variant"
+            android:textColor="@color/text_secondary"
             android:enabled="false" />
 
         <TextView
@@ -143,10 +148,10 @@
             android:gravity="center"
             android:text="Page 1 / 1"
             android:textSize="14sp"
-            android:textColor="#0F172A"
+            android:textColor="@color/text_primary"
             android:textStyle="bold" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/btnNextPage"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
@@ -154,8 +159,9 @@
             android:textSize="13sp"
             android:textStyle="bold"
             android:textAllCaps="false"
-            android:backgroundTint="#E2E8F0"
-            android:textColor="#64748B"
+            app:cornerRadius="8dp"
+            app:backgroundTint="@color/surface_variant"
+            android:textColor="@color/text_secondary"
             android:enabled="false" />
     </LinearLayout>
 </LinearLayout>
