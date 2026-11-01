@@ -119,6 +119,68 @@ class ApiClient(private val context: Context) {
         }
     }
 
+    // --- AUTHENTICATION ---
+    suspend fun loginWithCredentials(username: String, password: String): Result<LoginResponse> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("username", username)
+                put("password", password)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/auth/login")
+                .post(payload.toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyStr = response.body?.string() ?: ""
+                val res = gson.fromJson(bodyStr, LoginResponse::class.java)
+                if (response.isSuccessful && (res?.success == true || !res?.token.isNullOrEmpty())) {
+                    Result.success(res)
+                } else {
+                    val errMsg = res?.error ?: try {
+                        JSONObject(bodyStr).optString("error", "Login failed")
+                    } catch (e: Exception) {
+                        "Login failed: ${response.code}"
+                    }
+                    Result.failure(Exception(errMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun loginWithGoogle(idToken: String): Result<LoginResponse> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("idToken", idToken)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/auth/google")
+                .post(payload.toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyStr = response.body?.string() ?: ""
+                val res = gson.fromJson(bodyStr, LoginResponse::class.java)
+                if (response.isSuccessful && (res?.success == true || !res?.token.isNullOrEmpty())) {
+                    Result.success(res)
+                } else {
+                    val errMsg = res?.error ?: try {
+                        JSONObject(bodyStr).optString("error", "Google login failed")
+                    } catch (e: Exception) {
+                        "Google login failed: ${response.code}"
+                    }
+                    Result.failure(Exception(errMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // --- CARS ---
     suspend fun getCars(): Result<List<CarItem>> {
         val req = Request.Builder().url("$baseUrl/user/cars").get()

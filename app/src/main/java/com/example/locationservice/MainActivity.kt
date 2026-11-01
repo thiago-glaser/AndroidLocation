@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
         db = LocationDatabase.getDatabase(this)
 
+        checkLoginState()
         checkAndRequestPermissionsWithDisclosure()
 
         if (!isAppLaunchedByUser()) {
@@ -137,6 +138,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnStart.setOnClickListener { checkAndRequestPermissionsWithDisclosure() }
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
+        binding.btnSignOut.setOnClickListener { confirmSignOut() }
     }
 
     private fun updateStatusText(message: String) {
@@ -147,7 +149,9 @@ class MainActivity : AppCompatActivity() {
     private fun refreshApiKeyStatus() {
         lifecycleScope.launch(Dispatchers.IO) {
             val apiKey = db.settingDao().getSetting("api_key")?.value
+            val username = db.settingDao().getSetting("username")?.value
             withContext(Dispatchers.Main) {
+                binding.tvAccountUser.text = if (!username.isNullOrEmpty()) username else if (!apiKey.isNullOrEmpty()) "Configured Key" else "Not logged in"
                 if (!apiKey.isNullOrEmpty()) {
                     val masked = if (apiKey.length > 8) {
                         "${apiKey.take(4)}••••${apiKey.takeLast(4)}"
@@ -352,6 +356,45 @@ class MainActivity : AppCompatActivity() {
                     .show()
             }
         }
+    }
+
+    private fun checkLoginState() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val apiKey = db.settingDao().getSetting("api_key")?.value
+            val authToken = db.settingDao().getSetting("auth_token")?.value
+            if (apiKey.isNullOrEmpty() && authToken.isNullOrEmpty()) {
+                withContext(Dispatchers.Main) {
+                    val intent = Intent(this@MainActivity, LoginActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    }
+                    startActivity(intent)
+                    finish()
+                }
+            }
+        }
+    }
+
+    private fun confirmSignOut() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Log Out")
+            .setMessage("Are you sure you want to log out? Location logging will be stopped.")
+            .setPositiveButton("Log Out") { _, _ ->
+                lifecycleScope.launch(Dispatchers.IO) {
+                    db.settingDao().insert(Setting("api_key", ""))
+                    db.settingDao().insert(Setting("auth_token", ""))
+                    db.settingDao().insert(Setting("username", ""))
+                    withContext(Dispatchers.Main) {
+                        stopLocationService()
+                        val intent = Intent(this@MainActivity, LoginActivity::class.java).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                        }
+                        startActivity(intent)
+                        finish()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun isAppLaunchedByUser(): Boolean {

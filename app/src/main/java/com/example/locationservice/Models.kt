@@ -140,3 +140,21 @@ data class GpsDataResponse(
 )
 
 
+
+
+// Auth models
+data class AuthUser(
+    val id: String?,
+    val username: String?,
+    val email: String?,
+    val avatar: String?
+)
+
+data class LoginResponse(
+    val success: Boolean,
+    val message: String?,
+    val token: String?,
+    val apiKey: String?,
+    val user: AuthUser?,
+    val error: String?
+)
