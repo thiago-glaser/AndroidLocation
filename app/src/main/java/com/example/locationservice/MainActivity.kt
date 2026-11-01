@@ -14,8 +14,8 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityMainBinding
@@ -217,7 +217,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showLocationDisclosureDialog() {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Location & Trip Logging Notice")
             .setMessage(
                 "Travel Access collects location data to enable:\n\n" +
@@ -244,7 +244,7 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.ACCESS_BACKGROUND_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
             if (!hasBackground) {
-                AlertDialog.Builder(this)
+                MaterialAlertDialogBuilder(this)
                     .setTitle("Background Location Permission")
                     .setMessage(
                         "To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off or while using Android Auto, Travel Access requires background location access.\n\n" +
@@ -270,7 +270,7 @@ class MainActivity : AppCompatActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             val powerManager = getSystemService(POWER_SERVICE) as PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
-                AlertDialog.Builder(this)
+                MaterialAlertDialogBuilder(this)
                     .setTitle("Battery optimisation")
                     .setMessage("For reliable auto-start after reboot on Pixel phones, please select \"Unrestricted\" or at least \"Not optimised\" in the next screen.")
                     .setPositiveButton("Open settings") { _, _ ->
@@ -310,7 +310,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPermissionDeniedDialog() {
-        AlertDialog.Builder(this)
+        MaterialAlertDialogBuilder(this)
             .setTitle("Permission Required")
             .setMessage("Location and Bluetooth permissions are needed. Please enable it in Settings.")
             .setPositiveButton("Open Settings") { _, _ ->
@@ -334,7 +334,7 @@ class MainActivity : AppCompatActivity() {
                 editText.setText(currentKey)
                 editText.setSelection(editText.text.length)
 
-                AlertDialog.Builder(this@MainActivity)
+                MaterialAlertDialogBuilder(this@MainActivity)
                     .setTitle("Update API Key")
                     .setMessage("Enter the API key for server synchronization:")
                     .setView(editText)

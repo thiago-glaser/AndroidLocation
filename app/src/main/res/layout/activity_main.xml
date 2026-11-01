@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fitsSystemWindows="true"
-    android:background="#F8FAFC">
+    android:background="?android:attr/colorBackground">
 
     <!-- Main Page: Dashboard with native feature navigation and settings -->
     <ScrollView
@@ -23,6 +24,7 @@
                 android:layout_height="64dp"
                 android:src="@android:drawable/ic_menu_mylocation"
                 android:contentDescription="Location Icon"
+                app:tint="?attr/colorPrimary"
                 android:layout_marginTop="16dp"
                 android:layout_marginBottom="12dp" />
 
@@ -32,7 +34,7 @@
                 android:text="Location Services"
                 android:textSize="26sp"
                 android:textStyle="bold"
-                android:textColor="#0F172A" />
+                android:textColor="?attr/colorOnSurface" />
 
             <TextView
                 android:id="@+id/tvMainSubtitle"
@@ -40,15 +42,15 @@
                 android:layout_height="wrap_content"
                 android:text="Background tracker is active"
                 android:textSize="14sp"
-                android:textColor="#64748B"
+                android:textColor="?attr/colorOnSurfaceVariant"
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="28dp" />
 
-            <!-- Feature Navigation Grid / Buttons -->
-            <Button
+            <!-- Feature Navigation Grid / Material Buttons -->
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavSessions"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="56dp"
                 android:maxWidth="340dp"
                 android:text="🚗  Trips &amp; Sessions"
                 android:textSize="15sp"
@@ -56,14 +58,16 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#4F46E5"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#4F46E5"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavCars"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="56dp"
                 android:maxWidth="340dp"
                 android:text="🚘  Manage Cars"
                 android:textSize="15sp"
@@ -71,14 +75,16 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#3B82F6"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#3B82F6"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavBluetooth"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="56dp"
                 android:maxWidth="340dp"
                 android:text="📶  Bluetooth Devices"
                 android:textSize="15sp"
@@ -86,14 +92,16 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#0284C7"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#0284C7"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavFuel"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="56dp"
                 android:maxWidth="340dp"
                 android:text="⛽  Fuel Logs"
                 android:textSize="15sp"
@@ -101,14 +109,16 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#059669"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#059669"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavExpenses"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="56dp"
                 android:maxWidth="340dp"
                 android:text="💳  Vehicle Expenses"
                 android:textSize="15sp"
@@ -116,14 +126,16 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#0D9488"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#0D9488"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavReports"
                 android:layout_width="match_parent"
-                android:layout_height="54dp"
+                android:layout_height="56dp"
                 android:maxWidth="340dp"
                 android:text="📊  Reports &amp; Analytics"
                 android:textSize="15sp"
@@ -131,15 +143,17 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#D97706"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#D97706"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="20dp" />
 
             <!-- Settings Button -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnToggleSettings"
                 android:layout_width="match_parent"
-                android:layout_height="52dp"
+                android:layout_height="54dp"
                 android:maxWidth="340dp"
                 android:text="⚙  Settings"
                 android:textSize="15sp"
@@ -147,8 +161,10 @@
                 android:textAllCaps="false"
                 android:gravity="start|center_vertical"
                 android:paddingStart="20dp"
-                android:backgroundTint="#334155"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#334155"
                 android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="16dp" />
         </LinearLayout>
     </ScrollView>
@@ -161,7 +177,7 @@
         android:visibility="gone"
         android:clickable="true"
         android:focusable="true"
-        android:background="#F8FAFC">
+        android:background="?android:attr/colorBackground">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -183,7 +199,8 @@
                     android:layout_height="48dp"
                     android:background="?attr/selectableItemBackgroundBorderless"
                     android:src="@android:drawable/ic_menu_revert"
-                    android:contentDescription="Back" />
+                    android:contentDescription="Back"
+                    app:tint="?attr/colorOnSurface" />
 
                 <TextView
                     android:layout_width="0dp"
@@ -193,104 +210,119 @@
                     android:text="Settings"
                     android:textSize="22sp"
                     android:textStyle="bold"
-                    android:textColor="#0F172A" />
+                    android:textColor="?attr/colorOnSurface" />
             </LinearLayout>
 
-            <!-- Status Card -->
-            <LinearLayout
+            <!-- Status Card: MaterialCardView -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="20dp"
-                android:background="@drawable/bg_card"
-                android:elevation="2dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="?attr/colorOutlineVariant"
+                app:cardBackgroundColor="?attr/colorSurface"
                 android:layout_marginBottom="20dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Service Status"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#64748B" />
-
-                <TextView
-                    android:id="@+id/tvStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:text="Service stopped"
-                    android:textSize="16sp"
-                    android:textStyle="bold"
-                    android:textColor="#0F172A" />
-
-                <View
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="1dp"
-                    android:background="#E2E8F0"
-                    android:layout_marginVertical="12dp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="API Key"
-                    android:textSize="14sp"
-                    android:textStyle="bold"
-                    android:textColor="#64748B" />
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-                <TextView
-                    android:id="@+id/tvApiKeyStatus"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
-                    android:text="Checking API key..."
-                    android:textSize="14sp"
-                    android:textColor="#334155" />
-            </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Service Status"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/tvStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Service stopped"
+                        android:textSize="16sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:layout_marginVertical="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="API Key"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/tvApiKeyStatus"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Checking API key..."
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurface" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Actions -->
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStart"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:text="Start Location Logging"
                 android:textSize="15sp"
                 android:textAllCaps="false"
-                android:backgroundTint="#059669"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#059669"
                 android:textColor="#FFFFFF"
+                app:elevation="1dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnStop"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:text="Stop Logging"
                 android:textSize="15sp"
                 android:textAllCaps="false"
-                android:backgroundTint="#DC2626"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#DC2626"
                 android:textColor="#FFFFFF"
+                app:elevation="1dp"
                 android:layout_marginBottom="12dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnUpdateApiKey"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
                 android:text="Update API Key"
                 android:textSize="15sp"
                 android:textAllCaps="false"
-                android:backgroundTint="#4F46E5"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#4F46E5"
                 android:textColor="#FFFFFF"
+                app:elevation="1dp"
                 android:layout_marginBottom="24dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnReturnMain"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
                 android:text="Back to Main Page"
                 android:textSize="14sp"
                 android:textAllCaps="false"
-                style="?android:attr/borderlessButtonStyle"
-                android:textColor="#64748B" />
+                style="@style/Widget.Material3.Button.TextButton"
+                app:cornerRadius="14dp"
+                android:textColor="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
     </ScrollView>
 
