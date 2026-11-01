@@ -27,7 +27,7 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var googleSignInClient: GoogleSignInClient
 
     companion object {
-        private const val GOOGLE_SERVER_CLIENT_ID = "689121156650-flna9n8v9ugmg8bdbr4s3nemkg4qmsvu.apps.googleusercontent.com"
+        private const val GOOGLE_SERVER_CLIENT_ID = "672380589477-0usnnr8k3dmapojesfd831ef2oq6ghkq.apps.googleusercontent.com"
     }
 
     private val googleSignInLauncher = registerForActivityResult(
