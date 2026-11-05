@@ -205,6 +205,74 @@ class ApiClient(private val context: Context) {
         resolvedKey
     }
 
+    suspend fun ensureDeviceRegistered(authToken: String? = null): Boolean = withContext(Dispatchers.IO) {
+        val deviceId = LocationLoggingService.getDeviceAndroidId(context)
+        if (deviceId.isEmpty() || deviceId == "UNKNOWN_ID") return@withContext false
+
+        val apiKey = ensureApiKey(authToken)
+        val token = (authToken ?: db.settingDao().getSetting("auth_token")?.value)?.trim() ?: ""
+        if (apiKey.isEmpty() && token.isEmpty()) return@withContext false
+
+        // 1. Check if already in user's devices list via GET /api/user/devices
+        try {
+            val getBuilder = Request.Builder().url("$baseUrl/user/devices").get()
+            if (apiKey.isNotEmpty()) getBuilder.header("X-API-Key", apiKey)
+            if (token.isNotEmpty()) {
+                getBuilder.header("Authorization", "Bearer $token")
+                getBuilder.header("Cookie", "auth_token=$token")
+            }
+            client.newCall(getBuilder.build()).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val bodyStr = resp.body?.string() ?: ""
+                    val json = JSONObject(bodyStr)
+                    val devicesArr = json.optJSONArray("devices")
+                    if (devicesArr != null) {
+                        for (i in 0 until devicesArr.length()) {
+                            val item = devicesArr.optJSONObject(i) ?: continue
+                            val existingId = item.optString("DEVICE_ID", item.optString("deviceId", "")).trim()
+                            if (existingId == deviceId) {
+                                return@withContext true
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. Register the Android device in the user's device list via POST /api/user/devices
+        try {
+            val manufacturer = android.os.Build.MANUFACTURER?.replaceFirstChar { it.uppercase(Locale.US) } ?: ""
+            val model = android.os.Build.MODEL ?: "Android Device"
+            val description = if (model.startsWith(manufacturer, ignoreCase = true) || manufacturer.isEmpty()) {
+                model
+            } else {
+                "$manufacturer $model"
+            }
+
+            val payload = JSONObject().apply {
+                put("deviceId", deviceId)
+                put("description", description)
+            }.toString()
+
+            val postBuilder = Request.Builder()
+                .url("$baseUrl/user/devices")
+                .post(payload.toRequestBody(jsonMediaType))
+            if (apiKey.isNotEmpty()) postBuilder.header("X-API-Key", apiKey)
+            if (token.isNotEmpty()) {
+                postBuilder.header("Authorization", "Bearer $token")
+                postBuilder.header("Cookie", "auth_token=$token")
+            }
+
+            client.newCall(postBuilder.build()).execute().use { resp ->
+                if (resp.isSuccessful || resp.code == 409) {
+                    return@withContext true
+                }
+            }
+        } catch (_: Exception) {}
+
+        false
+    }
+
     private suspend fun <T> executeRequest(
         requestBuilder: Request.Builder,
         parser: (String) -> T

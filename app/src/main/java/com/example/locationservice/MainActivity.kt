@@ -155,6 +155,7 @@ class MainActivity : AppCompatActivity() {
             val username = db.settingDao().getSetting("username")?.value
             var unitSys = db.settingDao().getSetting("unit_system")?.value?.uppercase() ?: "METRIC"
             if (!apiKey.isNullOrEmpty()) {
+                apiClient.ensureDeviceRegistered()
                 apiClient.getUserSettings().onSuccess { serverUnit ->
                     unitSys = serverUnit
                 }

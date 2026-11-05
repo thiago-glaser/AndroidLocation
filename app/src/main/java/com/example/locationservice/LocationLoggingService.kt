@@ -236,6 +236,7 @@ class LocationLoggingService : Service() {
 
         periodicJob = scope.launch {
             // Initial fetch & flush
+            ApiClient(this@LocationLoggingService).ensureDeviceRegistered()
             fetchBluetoothDevices()
             sendQueuedSessionEvents()
             sendQueuedLocations()
@@ -258,7 +259,8 @@ class LocationLoggingService : Service() {
 
                     // Refresh bluetooth devices if interval exceeded
                     if (System.currentTimeMillis() - lastBluetoothFetchTime > BLUETOOTH_REFRESH_INTERVAL_MS) {
-                        fetchBluetoothDevices()
+                        ApiClient(this@LocationLoggingService).ensureDeviceRegistered()
+            fetchBluetoothDevices()
                     }
 
                     sendQueuedLocations()
