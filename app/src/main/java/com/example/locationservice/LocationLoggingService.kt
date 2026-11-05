@@ -150,7 +150,7 @@ class LocationLoggingService : Service() {
     }
 
     private suspend fun fetchBluetoothDevices() {
-        val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+        val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
         if (apiKey.isNullOrEmpty()) {
             Log.w("LocationService", "API key is not set. Cannot fetch bluetooth devices.")
             return
@@ -382,7 +382,7 @@ class LocationLoggingService : Service() {
         scope.launch {
             var url = ""
             try {
-                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
                 if (apiKey.isNullOrEmpty()) {
                     Log.w("LocationService", "API key is not set. Cannot send location data.")
                     return@launch
@@ -443,7 +443,7 @@ class LocationLoggingService : Service() {
         scope.launch {
             var url = ""
             try {
-                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
                 if (apiKey.isNullOrEmpty()) {
                     Log.w("LocationService", "API key is not set. Cannot send session events.")
                     return@launch
@@ -508,7 +508,7 @@ class LocationLoggingService : Service() {
         scope.launch {
             var url = ""
             try {
-                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value
+                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
                 if (apiKey.isNullOrEmpty()) {
                     Log.w("LocationService", "API key is not set. Cannot send new bluetooth devices.")
                     return@launch

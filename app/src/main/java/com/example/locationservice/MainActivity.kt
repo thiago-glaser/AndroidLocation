@@ -151,7 +151,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshApiKeyStatus() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val apiKey = db.settingDao().getSetting("api_key")?.value
+            val apiKey = db.settingDao().getSetting("api_key")?.value?.takeIf { it.isNotEmpty() } ?: apiClient.ensureApiKey()
             val username = db.settingDao().getSetting("username")?.value
             var unitSys = db.settingDao().getSetting("unit_system")?.value?.uppercase() ?: "METRIC"
             if (!apiKey.isNullOrEmpty()) {
@@ -398,7 +398,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkLoginState() {
         lifecycleScope.launch(Dispatchers.IO) {
-            val apiKey = db.settingDao().getSetting("api_key")?.value
+            val apiKey = db.settingDao().getSetting("api_key")?.value?.takeIf { it.isNotEmpty() } ?: apiClient.ensureApiKey()
             val authToken = db.settingDao().getSetting("auth_token")?.value
             if (apiKey.isNullOrEmpty() && authToken.isNullOrEmpty()) {
                 withContext(Dispatchers.Main) {

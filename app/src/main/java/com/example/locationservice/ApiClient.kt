@@ -130,8 +130,79 @@ class ApiClient(private val context: Context) {
 
     private suspend fun getApiKey(): String {
         return withContext(Dispatchers.IO) {
-            db.settingDao().getSetting("api_key")?.value ?: ""
+            db.settingDao().getSetting("api_key")?.value?.takeIf { it.isNotBlank() } ?: ensureApiKey()
         }
+    }
+
+    suspend fun ensureApiKey(authToken: String? = null, forceRefresh: Boolean = false): String = withContext(Dispatchers.IO) {
+        if (!forceRefresh) {
+            val existing = db.settingDao().getSetting("api_key")?.value?.trim() ?: ""
+            if (existing.isNotEmpty()) return@withContext existing
+        }
+
+        val token = (authToken ?: db.settingDao().getSetting("auth_token")?.value)?.trim() ?: ""
+        if (token.isEmpty()) return@withContext ""
+
+        var resolvedKey = ""
+
+        // 1. Try loading existing active API key from /api/auth/api-keys or /api/auth/me
+        try {
+            val getReq = Request.Builder()
+                .url("$baseUrl/auth/api-keys")
+                .header("Authorization", "Bearer $token")
+                .header("Cookie", "auth_token=$token")
+                .get()
+                .build()
+            client.newCall(getReq).execute().use { resp ->
+                if (resp.isSuccessful) {
+                    val bodyStr = resp.body?.string() ?: ""
+                    val json = JSONObject(bodyStr)
+                    resolvedKey = json.optString("apiKey", "").trim()
+                    if (resolvedKey.isEmpty()) {
+                        val arr = json.optJSONArray("apiKeys")
+                        if (arr != null) {
+                            for (i in 0 until arr.length()) {
+                                val item = arr.optJSONObject(i) ?: continue
+                                val isActive = item.optInt("IS_ACTIVE", 1) == 1
+                                val kv = item.optString("KEY_VALUE", item.optString("keyValue", "")).trim()
+                                if (isActive && kv.isNotEmpty()) {
+                                    resolvedKey = kv
+                                    break
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+
+        // 2. If not found in GET, create a new API key via POST /api/auth/api-keys
+        if (resolvedKey.isEmpty()) {
+            try {
+                val payload = JSONObject().apply {
+                    put("description", "Android Mobile App")
+                }.toString()
+                val postReq = Request.Builder()
+                    .url("$baseUrl/auth/api-keys")
+                    .header("Authorization", "Bearer $token")
+                    .header("Cookie", "auth_token=$token")
+                    .post(payload.toRequestBody(jsonMediaType))
+                    .build()
+                client.newCall(postReq).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val bodyStr = resp.body?.string() ?: ""
+                        val json = JSONObject(bodyStr)
+                        resolvedKey = json.optString("apiKey", "").trim()
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        if (resolvedKey.isNotEmpty()) {
+            db.settingDao().insert(Setting("api_key", resolvedKey))
+        }
+
+        resolvedKey
     }
 
     private suspend fun <T> executeRequest(
@@ -245,6 +316,10 @@ class ApiClient(private val context: Context) {
                 val bodyStr = response.body?.string() ?: ""
                 val json = try { JSONObject(bodyStr) } catch (_: Exception) { null }
                 if (response.isSuccessful && json?.optBoolean("success", false) == true) {
+                    val newApiKey = json.optString("apiKey", "").trim()
+                    if (newApiKey.isNotEmpty()) {
+                        db.settingDao().insert(Setting("api_key", newApiKey))
+                    }
                     Result.success(
                         json.optString(
                             "message",
@@ -277,6 +352,10 @@ class ApiClient(private val context: Context) {
                 val bodyStr = response.body?.string() ?: ""
                 val json = try { JSONObject(bodyStr) } catch (_: Exception) { null }
                 if (response.isSuccessful && json?.optBoolean("success", false) == true) {
+                    val newApiKey = json.optString("apiKey", "").trim()
+                    if (newApiKey.isNotEmpty()) {
+                        db.settingDao().insert(Setting("api_key", newApiKey))
+                    }
                     Result.success("If an account exists with this email, you will receive a password reset link shortly.")
                 } else {
                     val errMsg = json?.optString("error")?.takeIf { it.isNotEmpty() }
@@ -304,6 +383,10 @@ class ApiClient(private val context: Context) {
                 val bodyStr = response.body?.string() ?: ""
                 val json = try { JSONObject(bodyStr) } catch (_: Exception) { null }
                 if (response.isSuccessful && json?.optBoolean("success", false) == true) {
+                    val newApiKey = json.optString("apiKey", "").trim()
+                    if (newApiKey.isNotEmpty()) {
+                        db.settingDao().insert(Setting("api_key", newApiKey))
+                    }
                     Result.success("If an account is associated with the provided email, we are sending your username to your inbox right now.")
                 } else {
                     val errMsg = json?.optString("error")?.takeIf { it.isNotEmpty() }

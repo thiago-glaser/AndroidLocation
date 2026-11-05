@@ -324,11 +324,16 @@ class LoginActivity : AppCompatActivity() {
 
     private suspend fun saveSessionAndProceed(res: LoginResponse) {
         withContext(Dispatchers.IO) {
-            if (!res.apiKey.isNullOrEmpty()) {
-                db.settingDao().insert(Setting("api_key", res.apiKey))
-            }
             if (!res.token.isNullOrEmpty()) {
                 db.settingDao().insert(Setting("auth_token", res.token))
+            }
+            if (!res.apiKey.isNullOrEmpty()) {
+                db.settingDao().insert(Setting("api_key", res.apiKey))
+            } else {
+                val existingKey = db.settingDao().getSetting("api_key")?.value
+                if (existingKey.isNullOrEmpty()) {
+                    apiClient.ensureApiKey(res.token)
+                }
             }
             val username = res.user?.username ?: ""
             if (username.isNotEmpty()) {
