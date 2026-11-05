@@ -228,6 +228,94 @@ class ApiClient(private val context: Context) {
         }
     }
 
+    suspend fun registerAccount(username: String, email: String, password: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("username", username)
+                put("email", email)
+                put("password", password)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/auth/register")
+                .post(payload.toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyStr = response.body?.string() ?: ""
+                val json = try { JSONObject(bodyStr) } catch (_: Exception) { null }
+                if (response.isSuccessful && json?.optBoolean("success", false) == true) {
+                    Result.success(
+                        json.optString(
+                            "message",
+                            "Registration successful! Please check your email to verify your account before logging in."
+                        )
+                    )
+                } else {
+                    val errMsg = json?.optString("error")?.takeIf { it.isNotEmpty() }
+                        ?: "Registration failed (${response.code})"
+                    Result.failure(Exception(errMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun forgotPassword(email: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("email", email)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/auth/forgot-password")
+                .post(payload.toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyStr = response.body?.string() ?: ""
+                val json = try { JSONObject(bodyStr) } catch (_: Exception) { null }
+                if (response.isSuccessful && json?.optBoolean("success", false) == true) {
+                    Result.success("If an account exists with this email, you will receive a password reset link shortly.")
+                } else {
+                    val errMsg = json?.optString("error")?.takeIf { it.isNotEmpty() }
+                        ?: "Failed to send reset link (${response.code})"
+                    Result.failure(Exception(errMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun forgotUsername(email: String): Result<String> = withContext(Dispatchers.IO) {
+        try {
+            val payload = JSONObject().apply {
+                put("email", email)
+            }.toString()
+
+            val request = Request.Builder()
+                .url("$baseUrl/auth/forgot-username")
+                .post(payload.toRequestBody(jsonMediaType))
+                .build()
+
+            client.newCall(request).execute().use { response ->
+                val bodyStr = response.body?.string() ?: ""
+                val json = try { JSONObject(bodyStr) } catch (_: Exception) { null }
+                if (response.isSuccessful && json?.optBoolean("success", false) == true) {
+                    Result.success("If an account is associated with the provided email, we are sending your username to your inbox right now.")
+                } else {
+                    val errMsg = json?.optString("error")?.takeIf { it.isNotEmpty() }
+                        ?: "Failed to process request (${response.code})"
+                    Result.failure(Exception(errMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // --- CARS ---
     suspend fun getCars(): Result<List<CarItem>> {
         val req = Request.Builder().url("$baseUrl/user/cars").get()
