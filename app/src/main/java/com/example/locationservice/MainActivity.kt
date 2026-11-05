@@ -27,6 +27,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private lateinit var db: LocationDatabase
+    private lateinit var apiClient: ApiClient
 
     private val backgroundLocationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -65,6 +66,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         db = LocationDatabase.getDatabase(this)
+        apiClient = ApiClient(this)
 
         checkLoginState()
         checkAndRequestPermissionsWithDisclosure()
@@ -138,6 +140,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnStart.setOnClickListener { checkAndRequestPermissionsWithDisclosure() }
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
+        binding.btnChangeUnits.setOnClickListener { showChangeUnitSystemDialog() }
         binding.btnSignOut.setOnClickListener { confirmSignOut() }
     }
 
@@ -150,6 +153,15 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch(Dispatchers.IO) {
             val apiKey = db.settingDao().getSetting("api_key")?.value
             val username = db.settingDao().getSetting("username")?.value
+            var unitSys = db.settingDao().getSetting("unit_system")?.value?.uppercase() ?: "METRIC"
+            if (!apiKey.isNullOrEmpty()) {
+                apiClient.getUserSettings().onSuccess { serverUnit ->
+                    unitSys = serverUnit
+                }
+            }
+            withContext(Dispatchers.Main) {
+                binding.tvUnitSystem.text = if (unitSys == "IMPERIAL") "Imperial (mi, gal, MPG)" else "Metric (km, L, km/L)"
+            }
             withContext(Dispatchers.Main) {
                 binding.tvAccountUser.text = if (!username.isNullOrEmpty()) username else if (!apiKey.isNullOrEmpty()) "Configured Key" else "Not logged in"
                 if (!apiKey.isNullOrEmpty()) {
@@ -325,6 +337,32 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun showChangeUnitSystemDialog() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val currentUnit = apiClient.getUnitSystem()
+            val options = arrayOf("Metric (km, L, km/L)", "Imperial (mi, gal, MPG)")
+            val checkedItem = if (currentUnit == "IMPERIAL") 1 else 0
+
+            withContext(Dispatchers.Main) {
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle("Select Unit System")
+                    .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                        val selectedUnit = if (which == 1) "IMPERIAL" else "METRIC"
+                        dialog.dismiss()
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            apiClient.updateUserSettings(selectedUnit)
+                            withContext(Dispatchers.Main) {
+                                binding.tvUnitSystem.text = if (selectedUnit == "IMPERIAL") "Imperial (mi, gal, MPG)" else "Metric (km, L, km/L)"
+                                Toast.makeText(this@MainActivity, "Unit system set to $selectedUnit", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    .setNegativeButton("Cancel", null)
+                    .show()
+            }
+        }
     }
 
     private fun showUpdateApiKeyDialog() {

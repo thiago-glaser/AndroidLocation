@@ -28,6 +28,7 @@ class FuelActivity : AppCompatActivity() {
     private lateinit var binding: ActivityFuelBinding
     private lateinit var apiClient: ApiClient
     private var carsList = listOf<CarItem>()
+    private var isImperial = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,6 +50,7 @@ class FuelActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             val carsResult = apiClient.getCars()
+            isImperial = apiClient.isImperialUnits()
             carsList = carsResult.getOrDefault(emptyList())
 
             val result = apiClient.getFuel()
@@ -117,7 +119,7 @@ class FuelActivity : AppCompatActivity() {
 
         val tvStats = TextView(this).apply {
             val costStr = String.format(Locale.US, "$%.2f", item.totalValue ?: 0.0)
-            val litStr = String.format(Locale.US, "%.2f L", item.liters ?: 0.0)
+            val litStr = UnitConverter.formatVolume(item.liters ?: 0.0, isImperial)
             text = "Total: $costStr | Volume: $litStr"
             textSize = 14f
             setTextColor(Color.parseColor("#059669"))
@@ -130,9 +132,9 @@ class FuelActivity : AppCompatActivity() {
 
         if ((item.totalKilometers ?: 0.0) > 0.0) {
             val tvEfficiency = TextView(this).apply {
-                val km = String.format(Locale.US, "%.2f km", item.totalKilometers)
-                val kml = String.format(Locale.US, "%.2f km/L", item.kilometerPerLiter ?: 0.0)
-                val pkm = String.format(Locale.US, "$%.4f/km", item.pricePerKilometer ?: 0.0)
+                val km = UnitConverter.formatDistance(item.totalKilometers ?: 0.0, isImperial)
+                val kml = UnitConverter.formatEfficiency(item.kilometerPerLiter ?: 0.0, isImperial)
+                val pkm = UnitConverter.formatPricePerDistance(item.pricePerKilometer ?: 0.0, isImperial, 4)
                 text = "Traveled: $km • $kml • $pkm"
                 textSize = 12f
                 setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
@@ -206,7 +208,7 @@ class FuelActivity : AppCompatActivity() {
         }
 
         val litersInput = EditText(this).apply {
-            hint = "Volume in Liters (e.g. 42.0)"
+            hint = if (isImperial) "Volume in Gallons (e.g. 11.0)" else "Volume in Liters (e.g. 42.0)"
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
 
@@ -233,7 +235,7 @@ class FuelActivity : AppCompatActivity() {
         layout.addView(carSpinner)
         layout.addView(TextView(this).apply { text = "Total Cost ($):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(totalCostInput)
-        layout.addView(TextView(this).apply { text = "Liters (L):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
+        layout.addView(TextView(this).apply { text = if (isImperial) "Gallons (gal):" else "Liters (L):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(litersInput)
         layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
         layout.addView(dateInput)
@@ -260,7 +262,7 @@ class FuelActivity : AppCompatActivity() {
                         carId = selectedCar.id,
                         timestampUtc = utcDate,
                         totalValue = cost,
-                        liters = liters
+                        liters = UnitConverter.displayToLiters(liters, isImperial)
                     )
                     res.onSuccess {
                         Toast.makeText(this@FuelActivity, "Fuel entry saved", Toast.LENGTH_SHORT).show()

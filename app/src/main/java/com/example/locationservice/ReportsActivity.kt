@@ -34,6 +34,7 @@ class ReportsActivity : AppCompatActivity() {
     // Cached report data
     private var currentReportsSummary: ReportsSummary? = null
     private var currentFuelSummary: FuelSummary? = null
+    private var isImperial = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -235,6 +236,7 @@ class ReportsActivity : AppCompatActivity() {
 
             result.onSuccess { summary ->
                 currentReportsSummary = summary
+                isImperial = apiClient.isImperialUnits()
                 displaySummaryMetrics(summary)
                 displayBreakdown(summary, selectedType)
 
@@ -250,7 +252,7 @@ class ReportsActivity : AppCompatActivity() {
     }
 
     private fun displaySummaryMetrics(summary: ReportsSummary) {
-        binding.tvTotalDistance.text = String.format(Locale.US, "%.2f KM", summary.totalDistanceKm)
+        binding.tvTotalDistance.text = UnitConverter.formatDistance(summary.totalDistanceKm, isImperial, 2, true)
         binding.tvTotalDuration.text = formatDuration(summary.totalDurationHours)
         binding.tvTotalTrips.text = summary.totalTrips.toString()
         binding.tvTotalCost.text = String.format(Locale.US, "$%.2f%s", summary.totalCost, if (summary.hasProjected) "*" else "")
@@ -281,8 +283,8 @@ class ReportsActivity : AppCompatActivity() {
         binding.barDistPersonal.layoutParams = distPersonalParams
         binding.barDistBusiness.layoutParams = distBusinessParams
 
-        binding.tvPersonalDistLegend.text = String.format(Locale.US, "🏠 Personal: %.1f km (%d%%)", pDist, pDistPct)
-        binding.tvBusinessDistLegend.text = String.format(Locale.US, "💼 Business: %.1f km (%d%%)", bDist, bDistPct)
+        binding.tvPersonalDistLegend.text = String.format(Locale.US, "🏠 Personal: %s (%d%%)", UnitConverter.formatDistance(pDist, isImperial, 1), pDistPct)
+        binding.tvBusinessDistLegend.text = String.format(Locale.US, "💼 Business: %s (%d%%)", UnitConverter.formatDistance(bDist, isImperial, 1), bDistPct)
 
         // Time distribution
         val totalDur = summary.totalDurationHours
@@ -442,7 +444,7 @@ class ReportsActivity : AppCompatActivity() {
             statsRow.addView(tvTypeBadge)
 
             val tvDistance = TextView(this).apply {
-                text = String.format(Locale.US, "  •  %.2f km", session.distance ?: 0.0)
+                text = "  •  " + UnitConverter.formatDistance(session.distance ?: 0.0, isImperial)
                 textSize = 12f
                 setTextColor(Color.parseColor("#2563EB"))
                 paint.isFakeBoldText = true
@@ -664,7 +666,7 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvDist = TextView(this).apply {
-                text = String.format(Locale.US, "%.2f KM", monthDist)
+                text = UnitConverter.formatDistance(monthDist, isImperial, 2, true)
                 textSize = 14f
                 setTextColor(Color.parseColor("#2563EB"))
                 paint.isFakeBoldText = true
@@ -721,14 +723,14 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvPLegend = TextView(this).apply {
-                text = String.format(Locale.US, "🏠 Personal: %.2f km ($%.2f)", pDist, pCost)
+                text = String.format(Locale.US, "🏠 Personal: %s ($%.2f)", UnitConverter.formatDistance(pDist, isImperial), pCost)
                 textSize = 11f
                 setTextColor(Color.parseColor("#1D4ED8"))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
             val tvBLegend = TextView(this).apply {
-                text = String.format(Locale.US, "💼 Business: %.2f km ($%.2f)", bDist, bCost)
+                text = String.format(Locale.US, "💼 Business: %s ($%.2f)", UnitConverter.formatDistance(bDist, isImperial), bCost)
                 textSize = 11f
                 setTextColor(Color.parseColor("#B45309"))
                 gravity = Gravity.END
@@ -755,6 +757,7 @@ class ReportsActivity : AppCompatActivity() {
 
             result.onSuccess { summary ->
                 currentFuelSummary = summary
+                isImperial = apiClient.isImperialUnits()
                 displayFuelSummary(summary)
             }.onFailure { err ->
                 Toast.makeText(this@ReportsActivity, "Error: ${err.message}", Toast.LENGTH_LONG).show()
@@ -764,9 +767,10 @@ class ReportsActivity : AppCompatActivity() {
 
     private fun displayFuelSummary(summary: FuelSummary) {
         binding.tvFuelTotalCost.text = String.format(Locale.US, "$%.2f", summary.totalCost)
-        binding.tvFuelTotalLiters.text = String.format(Locale.US, "%.2f L", summary.totalLiters)
-        binding.tvFuelAvgEconomy.text = String.format(Locale.US, "%.2f km/L", summary.avgKmPerLiter)
-        binding.tvFuelAvgPrice.text = String.format(Locale.US, "$%.2f/L ($%.3f/km)", summary.avgPricePerLiter, summary.avgPricePerKm)
+        binding.tvFuelTotalLiters.text = UnitConverter.formatVolume(summary.totalLiters, isImperial)
+        binding.tvFuelAvgEconomy.text = UnitConverter.formatEfficiency(summary.avgKmPerLiter, isImperial)
+        binding.tvFuelAvgPriceLabel.text = if (isImperial) "AVG PRICE / GAL" else "AVG PRICE / L"
+        binding.tvFuelAvgPrice.text = String.format(Locale.US, "$%.2f/%s ($%.3f/%s)", UnitConverter.pricePerLiterToDisplay(summary.avgPricePerLiter, isImperial), UnitConverter.volumeUnit(isImperial), UnitConverter.pricePerKmToDisplay(summary.avgPricePerKm, isImperial), UnitConverter.distanceUnit(isImperial))
 
         binding.layoutFuelList.removeAllViews()
 
@@ -838,7 +842,7 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvLiters = TextView(this).apply {
-                text = String.format(Locale.US, "%.2f L", log.liters ?: 0.0)
+                text = UnitConverter.formatVolume(log.liters ?: 0.0, isImperial)
                 textSize = 12f
                 setTextColor(Color.parseColor("#2563EB"))
                 paint.isFakeBoldText = true
@@ -847,7 +851,7 @@ class ReportsActivity : AppCompatActivity() {
 
             val tvKm = TextView(this).apply {
                 val km = log.totalKilometers ?: 0.0
-                text = if (km > 0) String.format(Locale.US, "%.1f km", km) else "-"
+                text = if (km > 0) UnitConverter.formatDistance(km, isImperial, 1) else "-"
                 textSize = 12f
                 setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
@@ -855,7 +859,7 @@ class ReportsActivity : AppCompatActivity() {
 
             val tvEff = TextView(this).apply {
                 val eff = log.kilometerPerLiter ?: 0.0
-                text = if (eff > 0) String.format(Locale.US, "%.2f km/L", eff) else "-"
+                text = if (eff > 0) UnitConverter.formatEfficiency(eff, isImperial) else "-"
                 textSize = 12f
                 setTextColor(Color.parseColor("#D97706"))
                 paint.isFakeBoldText = true
@@ -864,7 +868,7 @@ class ReportsActivity : AppCompatActivity() {
 
             val tvPriceKm = TextView(this).apply {
                 val pkm = log.pricePerKilometer ?: 0.0
-                text = if (pkm > 0) String.format(Locale.US, "$%.3f/km", pkm) else "$-"
+                text = if (pkm > 0) UnitConverter.formatPricePerDistance(pkm, isImperial, 3) else "$-"
                 textSize = 12f
                 setTextColor(Color.parseColor("#059669"))
                 paint.isFakeBoldText = true
@@ -894,14 +898,14 @@ class ReportsActivity : AppCompatActivity() {
         sb.appendLine("Vehicle: $carName")
         sb.appendLine("Period: $monthName, $yearName")
         sb.appendLine()
-        sb.appendLine("• Total Distance: ${String.format(Locale.US, "%.2f km", summary.totalDistanceKm)}")
+        sb.appendLine("• Total Distance: ${UnitConverter.formatDistance(summary.totalDistanceKm, isImperial)}")
         sb.appendLine("• Total Duration: ${formatDuration(summary.totalDurationHours)}")
         sb.appendLine("• Total Trips: ${summary.totalTrips}")
         sb.appendLine("• Total Cost: $${String.format(Locale.US, "%.2f", summary.totalCost)}")
         sb.appendLine()
         sb.appendLine("📊 Category Breakdown:")
-        sb.appendLine("• Personal: ${String.format(Locale.US, "%.2f km ($%.2f)", summary.personalDistanceKm, summary.personalCost)}")
-        sb.appendLine("• Business: ${String.format(Locale.US, "%.2f km ($%.2f)", summary.businessDistanceKm, summary.businessCost)}")
+        sb.appendLine("• Personal: ${UnitConverter.formatDistance(summary.personalDistanceKm, isImperial)} ($${String.format(Locale.US, "%.2f", summary.personalCost)})")
+        sb.appendLine("• Business: ${UnitConverter.formatDistance(summary.businessDistanceKm, isImperial)} ($${String.format(Locale.US, "%.2f", summary.businessCost)})")
 
         if (summary.otherExpenses.isNotEmpty()) {
             sb.appendLine()

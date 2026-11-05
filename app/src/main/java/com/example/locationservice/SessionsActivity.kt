@@ -33,6 +33,7 @@ class SessionsActivity : AppCompatActivity() {
     private var carsList = listOf<CarItem>()
     private var currentPage = 1
     private var totalPages = 1
+    private var isImperial = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -134,6 +135,7 @@ class SessionsActivity : AppCompatActivity() {
         val selectedYear = binding.spinnerYearFilter.selectedItem?.toString()
 
         lifecycleScope.launch {
+            isImperial = apiClient.isImperialUnits()
             val result = apiClient.getSessions(
                 page = currentPage,
                 limit = 20,
@@ -252,7 +254,7 @@ class SessionsActivity : AppCompatActivity() {
         }
 
         val tvStats = TextView(this).apply {
-            val dist = String.format(Locale.US, "%.2f km", session.distance ?: 0.0)
+            val dist = UnitConverter.formatDistance(session.distance ?: 0.0, isImperial)
             val cost = String.format(Locale.US, "$%.2f", session.cost ?: 0.0)
             text = "Distance: $dist | Cost: $cost"
             textSize = 14f

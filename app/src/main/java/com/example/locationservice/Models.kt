@@ -147,7 +147,8 @@ data class AuthUser(
     val id: String?,
     val username: String?,
     val email: String?,
-    val avatar: String?
+    val avatar: String?,
+    val unitSystem: String? = null
 )
 
 data class LoginResponse(
@@ -156,5 +157,16 @@ data class LoginResponse(
     val token: String?,
     val apiKey: String?,
     val user: AuthUser?,
+    val unitSystem: String? = null,
+    val error: String?
+)
+
+data class UserSettingsData(
+    val unitSystem: String?
+)
+
+data class UserSettingsResponse(
+    val success: Boolean,
+    val settings: UserSettingsData?,
     val error: String?
 )

@@ -292,6 +292,29 @@
                         android:text="Not logged in"
                         android:textSize="14sp"
                         android:textColor="?attr/colorOnSurface" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:layout_marginVertical="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Unit System"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/tvUnitSystem"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Metric (km, L, km/L)"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurface" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
@@ -318,6 +341,19 @@
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
                 app:backgroundTint="#DC2626"
+                android:textColor="#FFFFFF"
+                app:elevation="1dp"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChangeUnits"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Change Unit System (Metric / Imperial)"
+                android:textSize="15sp"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#0284C7"
                 android:textColor="#FFFFFF"
                 app:elevation="1dp"
                 android:layout_marginBottom="12dp" />

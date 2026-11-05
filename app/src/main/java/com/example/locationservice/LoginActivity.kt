@@ -140,6 +140,8 @@ class LoginActivity : AppCompatActivity() {
             if (username.isNotEmpty()) {
                 db.settingDao().insert(Setting("username", username))
             }
+            val unitSystem = (res.unitSystem ?: res.user?.unitSystem ?: "METRIC").uppercase()
+            db.settingDao().insert(Setting("unit_system", if (unitSystem == "IMPERIAL") "IMPERIAL" else "METRIC"))
         }
 
         withContext(Dispatchers.Main) {

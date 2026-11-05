@@ -81,6 +81,53 @@ class ApiClient(private val context: Context) {
     private val baseUrl = "https://travel-access.ddns.net/api"
     private val db = LocationDatabase.getDatabase(context)
 
+    suspend fun getUnitSystem(): String {
+        return withContext(Dispatchers.IO) {
+            val saved = db.settingDao().getSetting("unit_system")?.value?.uppercase(Locale.US)
+            if (saved == "IMPERIAL") "IMPERIAL" else "METRIC"
+        }
+    }
+
+    suspend fun isImperialUnits(): Boolean {
+        return getUnitSystem() == "IMPERIAL"
+    }
+
+    suspend fun getUserSettings(): Result<String> {
+        val req = Request.Builder()
+            .url("$baseUrl/user/settings")
+            .get()
+        return executeRequest(req) { json ->
+            val res = gson.fromJson(json, UserSettingsResponse::class.java)
+            if (res.success) {
+                val unit = if (res.settings?.unitSystem?.uppercase(Locale.US) == "IMPERIAL") "IMPERIAL" else "METRIC"
+                kotlinx.coroutines.runBlocking(Dispatchers.IO) {
+                    db.settingDao().insert(Setting("unit_system", unit))
+                }
+                unit
+            } else {
+                throw Exception(res.error ?: "Failed to fetch user settings")
+            }
+        }
+    }
+
+    suspend fun updateUserSettings(unitSystem: String): Result<Boolean> {
+        val normalized = if (unitSystem.uppercase(Locale.US) == "IMPERIAL") "IMPERIAL" else "METRIC"
+        withContext(Dispatchers.IO) {
+            db.settingDao().insert(Setting("unit_system", normalized))
+        }
+        val payload = JSONObject().apply {
+            put("unitSystem", normalized)
+        }
+        val body = payload.toString().toRequestBody(jsonMediaType)
+        val req = Request.Builder()
+            .url("$baseUrl/user/settings")
+            .put(body)
+        return executeRequest(req) { json ->
+            val res = gson.fromJson(json, UserSettingsResponse::class.java)
+            if (res.success) true else throw Exception(res.error ?: "Failed to update settings")
+        }
+    }
+
     private suspend fun getApiKey(): String {
         return withContext(Dispatchers.IO) {
             db.settingDao().getSetting("api_key")?.value ?: ""

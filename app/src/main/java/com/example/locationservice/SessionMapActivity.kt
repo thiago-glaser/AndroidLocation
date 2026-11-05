@@ -171,7 +171,8 @@ class SessionMapActivity : AppCompatActivity() {
                 fallbackDistanceKm
             }
 
-            binding.chipDistance.text = String.format(Locale.US, "🛣️ %.2f km", distanceKm)
+            val isImperial = apiClient.isImperialUnits()
+            binding.chipDistance.text = "🛣️ ${UnitConverter.formatDistance(distanceKm, isImperial)}"
             binding.chipPoints.text = "📍 ${filteredPoints.size} pts"
             binding.chipDuration.text = calculateDurationString(startTime, effectiveEndTime)
             binding.chipSource.apply {
@@ -180,7 +181,7 @@ class SessionMapActivity : AppCompatActivity() {
             }
 
             // 4. Render OpenStreetMap with Leaflet
-            renderOpenStreetMap(filteredPoints)
+            renderOpenStreetMap(filteredPoints, isImperial)
         }
     }
 
@@ -249,7 +250,7 @@ class SessionMapActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderOpenStreetMap(points: List<MapPoint>) {
+    private fun renderOpenStreetMap(points: List<MapPoint>, isImperial: Boolean = false) {
         val jsonArray = JSONArray()
         points.forEach { p ->
             jsonArray.put(JSONObject().apply {
@@ -260,6 +261,8 @@ class SessionMapActivity : AppCompatActivity() {
             })
         }
 
+        val altUnitJs = if (isImperial) "ft" else "m"
+        val altFactorJs = if (isImperial) "3.28084" else "1.0"
         val htmlContent = """
 <!DOCTYPE html>
 <html>
@@ -350,7 +353,7 @@ class SessionMapActivity : AppCompatActivity() {
                         color: '#FFFFFF',
                         weight: 1,
                         fillOpacity: 0.9
-                    }).addTo(map).bindPopup('<b>Point #' + (i + 1) + '</b><br>Time: ' + (p.date || '') + (p.altitude ? '<br>Alt: ' + Math.round(p.altitude) + 'm' : ''));
+                    }).addTo(map).bindPopup('<b>Point #' + (i + 1) + '</b><br>Time: ' + (p.date || '') + (p.altitude ? '<br>Alt: ' + Math.round(p.altitude * $altFactorJs) + '$altUnitJs' : ''));
                 }
             });
 
