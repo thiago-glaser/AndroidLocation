@@ -21,8 +21,8 @@ android {
         applicationId = "com.travelaccess.locationservice"
         minSdk = 32
         targetSdk = 36
-        versionCode = 9
-        versionName = "1.0.8"
+        versionCode = 10
+        versionName = "1.0.9"
     }
 
     signingConfigs {
@@ -68,7 +68,4 @@ dependencies {
     implementation("androidx.room:room-ktx:2.8.4")
     kapt("androidx.room:room-compiler:2.8.4")
     implementation("com.google.code.gson:gson:2.11.0")
-    // Android Auto / Android for Cars App Library
-    implementation("androidx.car.app:app:1.4.0")
-    implementation("androidx.car.app:app-projected:1.4.0")
 }

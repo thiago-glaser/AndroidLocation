@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
         if (!granted) {
             Toast.makeText(
                 this,
-                "Tip: Set Location permission to 'Allow all the time' for uninterrupted background & Android Auto logging.",
+                "Tip: Set Location permission to 'Allow all the time' for uninterrupted background logging.",
                 Toast.LENGTH_LONG
             ).show()
         }
@@ -227,7 +227,7 @@ class MainActivity : AppCompatActivity() {
                 "Travel Access collects location data to enable:\n\n" +
                 "• Automated driving trip logging and route tracking\n" +
                 "• Accurate vehicle mileage calculation for business and personal expense reports\n" +
-                "• Hands-free trip detection when connected to vehicle Bluetooth or Android Auto\n\n" +
+                "• Hands-free trip detection when connected to vehicle Bluetooth\n\n" +
                 "Location data is collected while the app is active and continues in the background (even when the app is closed, not in use, or the screen is off) while a driving trip is ongoing.\n\n" +
                 "Your location data is stored securely on your device and sent only to your configured private server. It is never sold, shared with third parties, or used for advertising."
             )
@@ -251,7 +251,7 @@ class MainActivity : AppCompatActivity() {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("Background Location Permission")
                     .setMessage(
-                        "To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off or while using Android Auto, Travel Access requires background location access.\n\n" +
+                        "To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off, Travel Access requires background location access.\n\n" +
                         "On the next screen, please select \"Allow all the time\" to ensure continuous trip logging."
                     )
                     .setPositiveButton("Continue") { _, _ ->
