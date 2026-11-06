@@ -1,6 +1,8 @@
 package com.example.locationservice
 
 import android.Manifest
+import android.app.AlarmManager
+import android.os.SystemClock
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -70,6 +72,32 @@ class LocationLoggingService : Service() {
             }
         }
 
+        private const val WATCHDOG_INTERVAL_MS = 15 * 60 * 1000L // 15 minutes
+        private const val WATCHDOG_REQUEST_CODE = 9988
+
+        fun scheduleWatchdogAlarm(context: Context, delayMs: Long = WATCHDOG_INTERVAL_MS) {
+            try {
+                val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return
+                val intent = Intent(context, ServiceWatchdogReceiver::class.java)
+                val pendingIntent = PendingIntent.getBroadcast(
+                    context,
+                    WATCHDOG_REQUEST_CODE,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+
+                val triggerAt = SystemClock.elapsedRealtime() + delayMs
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    alarmManager.setAndAllowWhileIdle(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pendingIntent)
+                } else {
+                    alarmManager.set(AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, pendingIntent)
+                }
+                Log.d("LocationService", "Watchdog alarm scheduled in ${delayMs / 1000}s")
+            } catch (e: Exception) {
+                Log.w("LocationService", "Failed to schedule watchdog alarm", e)
+            }
+        }
+
         fun ensureServiceRunning(context: Context) {
             val hasFine = ContextCompat.checkSelfPermission(
                 context,
@@ -92,6 +120,7 @@ class LocationLoggingService : Service() {
                 } else {
                     context.startService(serviceIntent)
                 }
+                scheduleWatchdogAlarm(context)
             } catch (e: Exception) {
                 Log.w("LocationService", "Could not start LocationLoggingService", e)
             }
@@ -110,11 +139,58 @@ class LocationLoggingService : Service() {
     private var periodicJob: Job? = null
     private var lastBluetoothFetchTime = 0L
 
+    private fun tryStartForeground() {
+        try {
+            val notification = buildNotification()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                var fgsType = 0
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    val hasFine = ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+                    val hasBg = ContextCompat.checkSelfPermission(
+                        this, Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasBg || hasFine) {
+                        fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                    }
+                    fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                    fgsType = fgsType or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                } else {
+                    fgsType = ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
+                }
+
+                try {
+                    startForeground(NOTIFICATION_ID, notification, fgsType)
+                    Log.d("LocationService", "startForeground succeeded with fgsType=$fgsType")
+                } catch (e: SecurityException) {
+                    Log.w("LocationService", "Starting with location type failed, falling back to dataSync+connectedDevice", e)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            notification,
+                            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+                        )
+                    } else {
+                        startForeground(NOTIFICATION_ID, notification)
+                    }
+                }
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Exception) {
+            Log.e("LocationService", "Fatal error in tryStartForeground", e)
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
+        Log.d("LocationService", "onCreate: initializing LocationLoggingService")
+        createSessionEventNotificationChannel()
+        tryStartForeground()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         db = LocationDatabase.getDatabase(this)
-        createSessionEventNotificationChannel()
         acquireWakeLock()
     }
 
@@ -200,32 +276,20 @@ class LocationLoggingService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d("LocationService", "onStartCommand: Starting foreground")
+        Log.d("LocationService", "onStartCommand: Ensuring foreground running (flags=$flags, startId=$startId)")
         if (!::fusedLocationClient.isInitialized) {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         }
 
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    buildNotification(),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification())
-            }
-        } catch (e: Exception) {
-            Log.e("LocationService", "Failed to start foreground service", e)
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
+        tryStartForeground()
         acquireWakeLock()
         startLocationUpdates()
         startPeriodicSending()
+        scheduleWatchdogAlarm(this)
         return START_STICKY
     }
+
+
 
     private fun startPeriodicSending() {
         if (periodicJob?.isActive == true) {
@@ -322,10 +386,11 @@ class LocationLoggingService : Service() {
         try {
             fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
             locationCallback = callback
-            Log.d("LocationService", "Location updates requested")
+            Log.d("LocationService", "Location updates requested successfully")
         } catch (e: SecurityException) {
-            Log.e("LocationService", "Permission denied", e)
-            stopSelf()
+            Log.w("LocationService", "Location updates permission temporarily denied or waiting for foreground/background state", e)
+        } catch (e: Exception) {
+            Log.e("LocationService", "Failed to request location updates", e)
         }
     }
 
@@ -588,10 +653,12 @@ class LocationLoggingService : Service() {
     }
 
     override fun onDestroy() {
+        Log.w("LocationService", "onDestroy: LocationLoggingService stopped. Rescheduling watchdog resurrection...")
         locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
         locationCallback = null
         releaseWakeLock()
         scope.cancel()
+        scheduleWatchdogAlarm(this, 3000L)
         super.onDestroy()
     }
 

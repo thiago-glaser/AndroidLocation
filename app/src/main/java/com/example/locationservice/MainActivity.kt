@@ -193,6 +193,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 startService(intent)
             }
+            LocationLoggingService.scheduleWatchdogAlarm(this)
             updateStatusText("Service started. Logging every few seconds.")
             requestIgnoreBatteryOptimizations()
         } else {
