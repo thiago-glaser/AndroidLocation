@@ -1,25 +1,37 @@
 package com.example.locationservice
 
 import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.net.Uri
 import android.os.Bundle
-import androidx.core.content.ContextCompat
+import android.provider.OpenableColumns
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.EditText
+import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.Spinner
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityFuelBinding
+import com.example.locationservice.databinding.DialogAddFuelBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
+import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
@@ -29,6 +41,35 @@ class FuelActivity : AppCompatActivity() {
     private lateinit var apiClient: ApiClient
     private var carsList = listOf<CarItem>()
     private var isImperial = false
+
+    // State for attached receipt in the Add Fuel dialog
+    private var attachedReceiptBytes: ByteArray? = null
+    private var attachedReceiptFileName: String? = null
+    private var attachedReceiptMime: String? = null
+    private var attachedReceiptBitmap: Bitmap? = null
+    private var currentDialogBinding: DialogAddFuelBinding? = null
+
+    private val takePhotoLauncher = registerForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        if (bitmap != null) {
+            val stream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
+            attachedReceiptBytes = stream.toByteArray()
+            attachedReceiptFileName = "receipt_${System.currentTimeMillis()}.jpg"
+            attachedReceiptMime = "image/jpeg"
+            attachedReceiptBitmap = bitmap
+            updateReceiptPreviewInDialog()
+        }
+    }
+
+    private val pickFileLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            loadReceiptFromUri(uri)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -147,11 +188,24 @@ class FuelActivity : AppCompatActivity() {
             gravity = Gravity.END
         }
 
+        if (item.hasReceipt == true) {
+            val btnReceipt = Button(this).apply {
+                text = "Receipt"
+                textSize = 11f
+                setTextColor(Color.parseColor("#059669"))
+                setBackgroundColor(Color.TRANSPARENT)
+                setPadding(8, 0, 8, 0)
+                setOnClickListener { showReceiptDialog(item) }
+            }
+            actionsCol.addView(btnReceipt)
+        }
+
         val btnCalculate = Button(this).apply {
             text = "Calculate"
             textSize = 11f
             setTextColor(Color.parseColor("#2563EB"))
             setBackgroundColor(Color.TRANSPARENT)
+            setPadding(8, 0, 8, 0)
             setOnClickListener { calculateFuelEfficiency(item) }
         }
 
@@ -160,6 +214,7 @@ class FuelActivity : AppCompatActivity() {
             textSize = 11f
             setTextColor(Color.parseColor("#EF4444"))
             setBackgroundColor(Color.TRANSPARENT)
+            setPadding(8, 0, 8, 0)
             setOnClickListener { confirmDeleteFuel(item) }
         }
 
@@ -192,88 +247,246 @@ class FuelActivity : AppCompatActivity() {
             return
         }
 
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(50, 40, 50, 10)
-        }
+        // Reset attached receipt state
+        attachedReceiptBytes = null
+        attachedReceiptFileName = null
+        attachedReceiptMime = null
+        attachedReceiptBitmap = null
 
-        val carSpinner = Spinner(this).apply {
-            val names = carsList.map { it.description ?: it.licensePlate ?: "Car #${it.id}" }
-            adapter = ArrayAdapter(this@FuelActivity, android.R.layout.simple_spinner_dropdown_item, names)
-        }
+        val dialogBinding = DialogAddFuelBinding.inflate(layoutInflater)
+        currentDialogBinding = dialogBinding
 
-        val totalCostInput = EditText(this).apply {
-            hint = "Total Cost in $ (e.g. 65.50)"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
+        // Populate cars spinner
+        val names = carsList.map { it.description ?: it.licensePlate ?: "Car #${it.id}" }
+        dialogBinding.spinnerVehicle.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
 
-        val litersInput = EditText(this).apply {
-            hint = if (isImperial) "Volume in Gallons (e.g. 11.0)" else "Volume in Liters (e.g. 42.0)"
-            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
-        }
+        // Volume label according to unit preference
+        dialogBinding.tilVolume.hint = if (isImperial) "Volume in Gallons (gal)" else "Volume in Liters (L)"
 
+        // Date and Time selection
         val calendar = Calendar.getInstance()
-        val dateDisplayFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val dateInput = EditText(this).apply {
-            setText(dateDisplayFmt.format(calendar.time))
-            isFocusable = false
-            setOnClickListener {
-                DatePickerDialog(
-                    this@FuelActivity,
-                    { _, year, month, dayOfMonth ->
-                        calendar.set(year, month, dayOfMonth)
-                        setText(dateDisplayFmt.format(calendar.time))
-                    },
-                    calendar.get(Calendar.YEAR),
-                    calendar.get(Calendar.MONTH),
-                    calendar.get(Calendar.DAY_OF_MONTH)
-                ).show()
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+        val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+
+        dialogBinding.etDate.setText(dateFormat.format(calendar.time))
+        dialogBinding.etTime.setText(timeFormat.format(calendar.time))
+
+        dialogBinding.etDate.setOnClickListener {
+            DatePickerDialog(
+                this,
+                { _, year, month, dayOfMonth ->
+                    calendar.set(Calendar.YEAR, year)
+                    calendar.set(Calendar.MONTH, month)
+                    calendar.set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                    dialogBinding.etDate.setText(dateFormat.format(calendar.time))
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            ).show()
+        }
+
+        dialogBinding.etTime.setOnClickListener {
+            val is24 = android.text.format.DateFormat.is24HourFormat(this)
+            TimePickerDialog(
+                this,
+                { _, hourOfDay, minute ->
+                    calendar.set(Calendar.HOUR_OF_DAY, hourOfDay)
+                    calendar.set(Calendar.MINUTE, minute)
+                    calendar.set(Calendar.SECOND, 0)
+                    dialogBinding.etTime.setText(timeFormat.format(calendar.time))
+                },
+                calendar.get(Calendar.HOUR_OF_DAY),
+                calendar.get(Calendar.MINUTE),
+                is24
+            ).show()
+        }
+
+        dialogBinding.btnSetNow.setOnClickListener {
+            calendar.time = Date()
+            dialogBinding.etDate.setText(dateFormat.format(calendar.time))
+            dialogBinding.etTime.setText(timeFormat.format(calendar.time))
+        }
+
+        // Receipt photo / file attachments
+        dialogBinding.btnTakePhoto.setOnClickListener {
+            takePhotoLauncher.launch(null)
+        }
+
+        dialogBinding.btnChooseFile.setOnClickListener {
+            pickFileLauncher.launch("*/*")
+        }
+
+        dialogBinding.btnRemoveReceipt.setOnClickListener {
+            attachedReceiptBytes = null
+            attachedReceiptFileName = null
+            attachedReceiptMime = null
+            attachedReceiptBitmap = null
+            updateReceiptPreviewInDialog()
+        }
+
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Log Fuel Fill-Up")
+            .setView(dialogBinding.root)
+            .setPositiveButton("Save", null) // Overridden below to validate inputs
+            .setNegativeButton("Cancel") { _, _ ->
+                currentDialogBinding = null
+            }
+            .setOnDismissListener {
+                currentDialogBinding = null
+            }
+            .create()
+
+        dialog.show()
+
+        // Override positive button click to validate inputs without closing on error
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val costStr = dialogBinding.etTotalCost.text.toString().trim()
+            val volumeStr = dialogBinding.etVolume.text.toString().trim()
+
+            val cost = costStr.toDoubleOrNull()
+            val volume = volumeStr.toDoubleOrNull()
+
+            if (cost == null || cost <= 0.0) {
+                dialogBinding.etTotalCost.error = "Please enter a valid cost"
+                dialogBinding.etTotalCost.requestFocus()
+                return@setOnClickListener
+            }
+
+            if (volume == null || volume <= 0.0) {
+                dialogBinding.etVolume.error = "Please enter a valid volume"
+                dialogBinding.etVolume.requestFocus()
+                return@setOnClickListener
+            }
+
+            val selectedCar = carsList[dialogBinding.spinnerVehicle.selectedItemPosition]
+            val utcDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(calendar.time)
+
+            val receiptBytesToUpload = attachedReceiptBytes
+            val receiptFileNameToUpload = attachedReceiptFileName
+            val receiptMimeToUpload = attachedReceiptMime
+
+            dialog.dismiss()
+            currentDialogBinding = null
+
+            binding.progressBar.visibility = View.VISIBLE
+            lifecycleScope.launch {
+                val res = apiClient.addFuel(
+                    carId = selectedCar.id,
+                    timestampUtc = utcDate,
+                    totalValue = cost,
+                    liters = UnitConverter.displayToLiters(volume, isImperial),
+                    receiptBytes = receiptBytesToUpload,
+                    receiptFileName = receiptFileNameToUpload,
+                    receiptMime = receiptMimeToUpload
+                )
+                binding.progressBar.visibility = View.GONE
+                res.onSuccess {
+                    Toast.makeText(this@FuelActivity, "Fuel entry saved successfully", Toast.LENGTH_SHORT).show()
+                    loadFuel()
+                }.onFailure { err ->
+                    Toast.makeText(this@FuelActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
+    }
 
-        layout.addView(TextView(this).apply { text = "Vehicle:"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) })
-        layout.addView(carSpinner)
-        layout.addView(TextView(this).apply { text = "Total Cost ($):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
-        layout.addView(totalCostInput)
-        layout.addView(TextView(this).apply { text = if (isImperial) "Gallons (gal):" else "Liters (L):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
-        layout.addView(litersInput)
-        layout.addView(TextView(this).apply { text = "Date (Tap to change):"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)); setPadding(0, 12, 0, 0) })
-        layout.addView(dateInput)
+    private fun loadReceiptFromUri(uri: Uri) {
+        try {
+            contentResolver.openInputStream(uri)?.use { stream ->
+                val bytes = stream.readBytes()
+                attachedReceiptBytes = bytes
+                attachedReceiptMime = contentResolver.getType(uri) ?: "image/jpeg"
 
-        MaterialAlertDialogBuilder(this)
-            .setTitle("Log Fuel Fill-Up")
-            .setView(layout)
-            .setPositiveButton("Save") { _, _ ->
-                val cost = totalCostInput.text.toString().toDoubleOrNull() ?: 0.0
-                val liters = litersInput.text.toString().toDoubleOrNull() ?: 0.0
-
-                if (cost <= 0.0 || liters <= 0.0) {
-                    Toast.makeText(this, "Please enter valid cost and volume", Toast.LENGTH_SHORT).show()
-                    return@setPositiveButton
-                }
-
-                val selectedCar = carsList[carSpinner.selectedItemPosition]
-                val utcDate = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                    timeZone = TimeZone.getTimeZone("UTC")
-                }.format(calendar.time)
-
-                lifecycleScope.launch {
-                    val res = apiClient.addFuel(
-                        carId = selectedCar.id,
-                        timestampUtc = utcDate,
-                        totalValue = cost,
-                        liters = UnitConverter.displayToLiters(liters, isImperial)
-                    )
-                    res.onSuccess {
-                        Toast.makeText(this@FuelActivity, "Fuel entry saved", Toast.LENGTH_SHORT).show()
-                        loadFuel()
-                    }.onFailure { err ->
-                        Toast.makeText(this@FuelActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
+                var displayName = "receipt_${System.currentTimeMillis()}"
+                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIdx >= 0 && cursor.moveToFirst()) {
+                        displayName = cursor.getString(nameIdx) ?: displayName
                     }
                 }
+                attachedReceiptFileName = displayName
+
+                if (attachedReceiptMime?.startsWith("image/") == true) {
+                    attachedReceiptBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                } else {
+                    attachedReceiptBitmap = null
+                }
+
+                updateReceiptPreviewInDialog()
             }
-            .setNegativeButton("Cancel", null)
-            .show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Failed to read file: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun updateReceiptPreviewInDialog() {
+        val db = currentDialogBinding ?: return
+        if (attachedReceiptBytes != null) {
+            db.layoutReceiptPreview.visibility = View.VISIBLE
+            db.tvReceiptName.text = attachedReceiptFileName ?: "receipt"
+            val kb = (attachedReceiptBytes!!.size / 1024).coerceAtLeast(1)
+            db.tvReceiptSize.text = "$kb KB • Ready to upload"
+
+            if (attachedReceiptBitmap != null) {
+                db.ivReceiptThumb.setImageBitmap(attachedReceiptBitmap)
+            } else if (attachedReceiptMime == "application/pdf") {
+                db.ivReceiptThumb.setImageResource(android.R.drawable.ic_menu_agenda)
+            } else {
+                db.ivReceiptThumb.setImageResource(android.R.drawable.ic_menu_gallery)
+            }
+        } else {
+            db.layoutReceiptPreview.visibility = View.GONE
+        }
+    }
+
+    private fun showReceiptDialog(item: FuelItem) {
+        binding.progressBar.visibility = View.VISIBLE
+        lifecycleScope.launch {
+            val res = apiClient.getFuelReceipt(item.id)
+            binding.progressBar.visibility = View.GONE
+            res.onSuccess { (bytes, mime) ->
+                if (mime?.startsWith("image/") == true) {
+                    val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                    if (bitmap != null) {
+                        val iv = ImageView(this@FuelActivity).apply {
+                            setImageBitmap(bitmap)
+                            adjustViewBounds = true
+                            scaleType = ImageView.ScaleType.FIT_CENTER
+                            setPadding(20, 20, 20, 20)
+                        }
+                        val scroll = ScrollView(this@FuelActivity).apply {
+                            addView(iv)
+                        }
+                        MaterialAlertDialogBuilder(this@FuelActivity)
+                            .setTitle("Fuel Receipt")
+                            .setView(scroll)
+                            .setPositiveButton("Close", null)
+                            .show()
+                        return@launch
+                    }
+                }
+
+                // If PDF or other file type: Save to cache and launch external viewer via FileProvider
+                try {
+                    val ext = if (mime == "application/pdf") "pdf" else "jpg"
+                    val file = File(cacheDir, "fuel_receipt_${item.id}.$ext")
+                    file.writeBytes(bytes)
+                    val uri = FileProvider.getUriForFile(this@FuelActivity, "$packageName.fileprovider", file)
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, mime ?: "application/octet-stream")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    startActivity(Intent.createChooser(intent, "Open Fuel Receipt"))
+                } catch (e: Exception) {
+                    Toast.makeText(this@FuelActivity, "Cannot open receipt: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }.onFailure { err ->
+                Toast.makeText(this@FuelActivity, "Failed to load receipt: ${err.message}", Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun confirmDeleteFuel(item: FuelItem) {

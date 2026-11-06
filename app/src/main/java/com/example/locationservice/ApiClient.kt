@@ -8,6 +8,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -638,17 +639,54 @@ class ApiClient(private val context: Context) {
         }
     }
 
-    suspend fun addFuel(carId: String, timestampUtc: String, totalValue: Double, liters: Double): Result<Boolean> {
-        val formBody = MultipartBody.Builder()
+    suspend fun addFuel(
+        carId: String,
+        timestampUtc: String,
+        totalValue: Double,
+        liters: Double,
+        receiptBytes: ByteArray? = null,
+        receiptFileName: String? = null,
+        receiptMime: String? = null
+    ): Result<Boolean> {
+        val formBodyBuilder = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart("carId", carId)
             .addFormDataPart("timestampIso", timestampUtc)
             .addFormDataPart("totalValue", totalValue.toString())
             .addFormDataPart("liters", liters.toString())
-            .build()
-        val req = Request.Builder().url("$baseUrl/user/fuel").post(formBody)
+
+        if (receiptBytes != null && receiptBytes.isNotEmpty()) {
+            val mediaType = (receiptMime ?: "image/jpeg").toMediaTypeOrNull()
+            val filename = receiptFileName ?: "receipt.jpg"
+            formBodyBuilder.addFormDataPart("receipt", filename, receiptBytes.toRequestBody(mediaType))
+        }
+
+        val req = Request.Builder().url("$baseUrl/user/fuel").post(formBodyBuilder.build())
         return executeRequest(req) { body ->
             gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
+    suspend fun getFuelReceipt(fuelId: String): Result<Pair<ByteArray, String?>> = withContext(Dispatchers.IO) {
+        val apiKey = ensureApiKey()
+        val token = db.settingDao().getSetting("auth_token")?.value?.trim() ?: ""
+        val reqBuilder = Request.Builder().url("$baseUrl/user/fuel/$fuelId/receipt").get()
+        if (apiKey.isNotEmpty()) reqBuilder.header("X-API-Key", apiKey)
+        if (token.isNotEmpty()) {
+            reqBuilder.header("Authorization", "Bearer $token")
+            reqBuilder.header("Cookie", "auth_token=$token")
+        }
+        try {
+            client.newCall(reqBuilder.build()).execute().use { resp ->
+                if (!resp.isSuccessful) {
+                    return@withContext Result.failure(Exception("HTTP ${resp.code}: ${resp.message}"))
+                }
+                val mime = resp.header("Content-Type") ?: "image/jpeg"
+                val bytes = resp.body?.bytes() ?: return@withContext Result.failure(Exception("Empty receipt"))
+                Result.success(Pair(bytes, mime))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
         }
     }
 
