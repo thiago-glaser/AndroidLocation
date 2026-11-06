@@ -515,6 +515,20 @@ class ApiClient(private val context: Context) {
         }
     }
 
+    suspend fun deleteBluetooth(id: String): Result<Boolean> {
+        val req = Request.Builder().url("$baseUrl/user/bluetooth?id=$id").delete()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
+    suspend fun cleanUnknownBluetooth(): Result<Boolean> {
+        val req = Request.Builder().url("$baseUrl/user/bluetooth?cleanUnknown=true").delete()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
     // --- SESSIONS ---
     suspend fun getSessions(
         page: Int = 1,

@@ -1,8 +1,14 @@
 package com.example.locationservice
 
+import android.Manifest
+import android.bluetooth.BluetoothManager
+import android.content.Context
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Typeface
+import android.os.Build
 import android.os.Bundle
-import androidx.core.content.ContextCompat
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -11,17 +17,27 @@ import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityBluetoothBinding
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class BluetoothActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityBluetoothBinding
     private lateinit var apiClient: ApiClient
     private var carsList = listOf<CarItem>()
+    private var allDevices = listOf<BluetoothItem>()
+
+    private val bluetoothPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        renderDevices()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,8 +48,37 @@ class BluetoothActivity : AppCompatActivity() {
 
         binding.btnBack.setOnClickListener { finish() }
         binding.btnRefresh.setOnClickListener { loadDevices() }
+        binding.switchOnlyPaired.setOnCheckedChangeListener { _, _ -> renderDevices() }
+        binding.btnCleanUnknown.setOnClickListener { confirmCleanUnknownDevices() }
 
+        checkBluetoothPermissions()
         loadDevices()
+    }
+
+    private fun checkBluetoothPermissions() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                bluetoothPermissionLauncher.launch(Manifest.permission.BLUETOOTH_CONNECT)
+            }
+        }
+    }
+
+    private fun getPhoneBondedAddresses(): Set<String> {
+        return try {
+            val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            val adapter = bluetoothManager?.adapter ?: return emptySet()
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                    return emptySet()
+                }
+            }
+
+            adapter.bondedDevices?.mapNotNull { it.address?.trim()?.uppercase(Locale.ROOT) }?.toSet() ?: emptySet()
+        } catch (e: Exception) {
+            Log.e("BluetoothActivity", "Failed to get bonded devices", e)
+            emptySet()
+        }
     }
 
     private fun loadDevices() {
@@ -50,19 +95,54 @@ class BluetoothActivity : AppCompatActivity() {
             binding.progressBar.visibility = View.GONE
 
             result.onSuccess { devices ->
-                if (devices.isEmpty()) {
-                    binding.tvEmptyState.visibility = View.VISIBLE
-                } else {
-                    devices.forEach { device ->
-                        addDeviceView(device)
-                    }
-                }
+                allDevices = devices
+                renderDevices()
             }.onFailure { err ->
                 Toast.makeText(this@BluetoothActivity, "Error: ${err.message}", Toast.LENGTH_LONG).show()
                 binding.tvEmptyState.apply {
                     text = "Failed to load Bluetooth devices: ${err.message}"
                     visibility = View.VISIBLE
                 }
+            }
+        }
+    }
+
+    private fun renderDevices() {
+        binding.containerDevices.removeAllViews()
+        val onlyPaired = binding.switchOnlyPaired.isChecked
+        val bondedAddresses = getPhoneBondedAddresses()
+
+        val filtered = if (onlyPaired) {
+            allDevices.filter { device ->
+                val addr = device.address?.trim()?.uppercase(Locale.ROOT) ?: ""
+                val name = device.name?.trim() ?: ""
+                val isUnknown = name.isEmpty() || name.equals("Unknown Device", ignoreCase = true)
+
+                val isBonded = bondedAddresses.isNotEmpty() && bondedAddresses.contains(addr)
+                val isAssigned = !device.carId.isNullOrEmpty()
+
+                if (bondedAddresses.isNotEmpty()) {
+                    isBonded || isAssigned
+                } else {
+                    // Fallback if permission not yet granted: hide unassigned unknown devices
+                    !isUnknown || isAssigned
+                }
+            }
+        } else {
+            allDevices
+        }
+
+        if (filtered.isEmpty()) {
+            binding.tvEmptyState.text = if (onlyPaired) {
+                "No paired Bluetooth devices found for this phone.\n\nOnly devices bonded in your phone's Bluetooth settings (or linked to a car) are displayed."
+            } else {
+                "No Bluetooth devices found."
+            }
+            binding.tvEmptyState.visibility = View.VISIBLE
+        } else {
+            binding.tvEmptyState.visibility = View.GONE
+            filtered.forEach { device ->
+                addDeviceView(device)
             }
         }
     }
@@ -88,10 +168,10 @@ class BluetoothActivity : AppCompatActivity() {
         }
 
         val tvName = TextView(this).apply {
-            text = device.name ?: "Unknown Device"
+            text = device.name?.takeIf { it.isNotBlank() } ?: "Unknown Device"
             textSize = 16f
             setTextColor(ContextCompat.getColor(context, R.color.text_primary))
-            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTypeface(null, Typeface.BOLD)
         }
 
         val tvAddress = TextView(this).apply {
@@ -110,23 +190,41 @@ class BluetoothActivity : AppCompatActivity() {
             textSize = 13f
             setTextColor(if (device.carId.isNullOrEmpty()) Color.parseColor("#EF4444") else Color.parseColor("#059669"))
             setPadding(0, 4, 0, 0)
-            setTypeface(null, android.graphics.Typeface.BOLD)
+            setTypeface(null, Typeface.BOLD)
         }
 
         textLayout.addView(tvName)
         textLayout.addView(tvAddress)
         textLayout.addView(tvCar)
 
+        val buttonsLayout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+        }
+
         val btnAssign = Button(this).apply {
             text = "Assign Car"
             textSize = 12f
             setTextColor(Color.parseColor("#4F46E5"))
             setBackgroundColor(Color.TRANSPARENT)
+            setPadding(12, 0, 12, 0)
             setOnClickListener { showAssignCarDialog(device) }
         }
 
+        val btnDelete = Button(this).apply {
+            text = "Delete"
+            textSize = 12f
+            setTextColor(Color.parseColor("#DC2626"))
+            setBackgroundColor(Color.TRANSPARENT)
+            setPadding(12, 0, 12, 0)
+            setOnClickListener { confirmDeleteDevice(device) }
+        }
+
+        buttonsLayout.addView(btnAssign)
+        buttonsLayout.addView(btnDelete)
+
         card.addView(textLayout)
-        card.addView(btnAssign)
+        card.addView(buttonsLayout)
 
         binding.containerDevices.addView(card)
     }
@@ -146,7 +244,6 @@ class BluetoothActivity : AppCompatActivity() {
             adapter = ArrayAdapter(this@BluetoothActivity, android.R.layout.simple_spinner_dropdown_item, options)
         }
 
-        // Set initial selection
         if (!device.carId.isNullOrEmpty()) {
             val idx = carsList.indexOfFirst { it.id == device.carId }
             if (idx >= 0) {
@@ -181,6 +278,45 @@ class BluetoothActivity : AppCompatActivity() {
                         loadDevices()
                     }.onFailure { err ->
                         Toast.makeText(this@BluetoothActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun confirmDeleteDevice(device: BluetoothItem) {
+        val displayName = device.name?.takeIf { it.isNotBlank() } ?: "Unknown Device"
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete Bluetooth Device")
+            .setMessage("Are you sure you want to delete '$displayName' (${device.address ?: "N/A"})?")
+            .setPositiveButton("Delete") { _, _ ->
+                lifecycleScope.launch {
+                    val res = apiClient.deleteBluetooth(device.id)
+                    res.onSuccess {
+                        Toast.makeText(this@BluetoothActivity, "Device deleted", Toast.LENGTH_SHORT).show()
+                        loadDevices()
+                    }.onFailure { err ->
+                        Toast.makeText(this@BluetoothActivity, "Failed to delete: ${err.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun confirmCleanUnknownDevices() {
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Delete Unknown Devices")
+            .setMessage("Are you sure you want to delete all unassigned unknown Bluetooth devices from your account?")
+            .setPositiveButton("Delete All") { _, _ ->
+                lifecycleScope.launch {
+                    val res = apiClient.cleanUnknownBluetooth()
+                    res.onSuccess {
+                        Toast.makeText(this@BluetoothActivity, "Unknown devices cleaned", Toast.LENGTH_SHORT).show()
+                        loadDevices()
+                    }.onFailure { err ->
+                        Toast.makeText(this@BluetoothActivity, "Failed to clean: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }

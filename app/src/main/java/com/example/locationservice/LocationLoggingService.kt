@@ -522,6 +522,12 @@ class LocationLoggingService : Service() {
                 }
 
                 for (device in devices) {
+                    if (device.name.isNullOrBlank() || device.name.equals("Unknown Device", ignoreCase = true) || device.address.isNullOrBlank()) {
+                        Log.d("LocationService", "Skipping and discarding invalid/unknown queued bluetooth device (${device.address})")
+                        db.queuedBluetoothDeviceDao().markAsSent(listOf(device.id), System.currentTimeMillis())
+                        continue
+                    }
+
                     val json = JSONObject()
                         .put("name", device.name)
                         .put("address", device.address)

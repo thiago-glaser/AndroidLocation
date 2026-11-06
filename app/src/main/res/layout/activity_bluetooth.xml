@@ -48,6 +48,39 @@
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
+    <!-- Subheader Filter & Clean Actions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:background="@color/surface_header">
+
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchOnlyPaired"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Paired with phone only"
+            android:textSize="13sp"
+            android:checked="true"
+            android:textColor="@color/text_primary" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnCleanUnknown"
+            android:layout_width="wrap_content"
+            android:layout_height="38dp"
+            android:text="Delete Unknown"
+            android:textSize="12sp"
+            android:textAllCaps="false"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:textColor="#DC2626"
+            app:strokeColor="#DC2626"
+            app:cornerRadius="8dp" />
+    </LinearLayout>
+
     <ProgressBar
         android:id="@+id/progressBar"
         android:layout_width="wrap_content"
@@ -60,7 +93,7 @@
         android:id="@+id/tvEmptyState"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="No Bluetooth devices found. Devices are auto-detected when paired in your car."
+        android:text="No Bluetooth devices found."
         android:gravity="center"
         android:textColor="@color/text_secondary"
         android:padding="32dp"

@@ -28,8 +28,26 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         }
 
         val device: BluetoothDevice? = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-        val deviceName = device?.name ?: "Unknown Device"
-        val deviceAddress = device?.address ?: "Unknown Address"
+        if (device == null) {
+            pendingResult.finish()
+            return
+        }
+
+        // Only process devices that are actually paired (bonded) with this phone!
+        if (device.bondState != BluetoothDevice.BOND_BONDED) {
+            Log.d("BluetoothReceiver", "Ignoring Bluetooth event: device is not bonded (${device.address})")
+            pendingResult.finish()
+            return
+        }
+
+        val deviceName = device.name?.trim() ?: ""
+        val deviceAddress = device.address?.trim() ?: ""
+
+        if (deviceName.isEmpty() || deviceName.equals("Unknown Device", ignoreCase = true) || deviceAddress.isEmpty()) {
+            Log.d("BluetoothReceiver", "Ignoring Bluetooth device with unknown name or address: $deviceAddress")
+            pendingResult.finish()
+            return
+        }
 
         val actionMessage = when (intent.action) {
             BluetoothDevice.ACTION_ACL_CONNECTED -> "connected"
@@ -59,9 +77,9 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                 db.sessionEventDao().insert(sessionEvent)
                 Log.d("BluetoothReceiver", "Successfully queued session event.")
 
-                // Logic for discovery of new unknown devices (Optional, kept for backward compatibility if needed)
+                // Logic for discovery of new paired devices
                 val bluetoothDevices = db.bluetoothDeviceDao().getAll()
-                val matchingDevice = bluetoothDevices.find { it.address == deviceAddress }
+                val matchingDevice = bluetoothDevices.find { it.address.equals(deviceAddress, ignoreCase = true) }
                 val queuedDevice = db.queuedBluetoothDeviceDao().findByAddress(deviceAddress)
                 if (matchingDevice == null && queuedDevice == null && actionMessage == "connected") {
                     val newDevice = QueuedBluetoothDevice(
@@ -71,7 +89,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                         carId = ""
                     )
                     db.queuedBluetoothDeviceDao().insert(newDevice)
-                    Log.d("BluetoothReceiver", "New unknown bluetooth device queued for sending to server.")
+                    Log.d("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $deviceName")
                 }
 
                 // Ensure LocationLoggingService is running and flushes session event
