@@ -1167,4 +1167,16 @@ class ApiClient(private val context: Context) {
             gson.fromJson(body, GpsDataResponse::class.java).data ?: emptyList()
         }
     }
+
+    suspend fun deleteLocationData(range: String, deviceId: String? = null): Result<Int> {
+        var url = "$baseUrl/LocationData?range=$range"
+        if (!deviceId.isNullOrEmpty()) {
+            url += "&deviceId=$deviceId"
+        }
+        val req = Request.Builder().url(url).delete()
+        return executeRequest(req) { body ->
+            val json = JSONObject(body)
+            json.optInt("deletedCount", 0)
+        }
+    }
 }

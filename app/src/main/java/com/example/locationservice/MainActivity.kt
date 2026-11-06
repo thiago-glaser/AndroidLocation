@@ -16,6 +16,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import android.content.DialogInterface
+import android.graphics.Color
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityMainBinding
@@ -141,6 +143,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
         binding.btnChangeUnits.setOnClickListener { showChangeUnitSystemDialog() }
+        binding.btnCleanLocationData.setOnClickListener { showCleanLocationDataDialog() }
         binding.btnSignOut.setOnClickListener { confirmSignOut() }
     }
 
@@ -339,6 +342,91 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    private fun showCleanLocationDataDialog() {
+        val options = arrayOf(
+            "Keep last month",
+            "Keep last three months",
+            "Keep last six months",
+            "Keep last year",
+            "Delete everything"
+        )
+        val rangeKeys = arrayOf(
+            "keep_1_month",
+            "keep_3_months",
+            "keep_6_months",
+            "keep_1_year",
+            "delete_all"
+        )
+        var selectedIndex = 1 // Default to Keep last three months
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Clean Server Location Data")
+            .setSingleChoiceItems(options, selectedIndex) { _, which ->
+                selectedIndex = which
+            }
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Next") { _, _ ->
+                val chosenOption = options[selectedIndex]
+                val chosenKey = rangeKeys[selectedIndex]
+                showConfirmCleanLocationDialog(chosenOption, chosenKey)
+            }
+            .show()
+    }
+
+    private fun showConfirmCleanLocationDialog(optionLabel: String, rangeKey: String) {
+        val dialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Confirm Location Data Removal")
+            .setMessage("Are you sure you want to remove location data from the server with the following option?\n\n$optionLabel\n\nWarning: This action is permanent and cannot be undone.")
+            .setNegativeButton("No (Cancel)") { d, _ ->
+                d.dismiss()
+            }
+            .setPositiveButton("Yes, Delete") { _, _ ->
+                executeCleanLocationData(optionLabel, rangeKey)
+            }
+            .create()
+
+        dialog.setOnShowListener {
+            // Emphasize 'No' as default focused action
+            dialog.getButton(DialogInterface.BUTTON_NEGATIVE)?.apply {
+                requestFocus()
+                setTextColor(Color.parseColor("#4F46E5"))
+            }
+            dialog.getButton(DialogInterface.BUTTON_POSITIVE)?.apply {
+                setTextColor(Color.parseColor("#DC2626"))
+            }
+        }
+
+        dialog.show()
+    }
+
+    private fun executeCleanLocationData(optionLabel: String, rangeKey: String) {
+        val progressDialog = MaterialAlertDialogBuilder(this)
+            .setTitle("Cleaning Location Data")
+            .setMessage("Processing deletion request on server...")
+            .setCancelable(false)
+            .show()
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = apiClient.deleteLocationData(rangeKey)
+            withContext(Dispatchers.Main) {
+                progressDialog.dismiss()
+                result.onSuccess { count ->
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Success")
+                        .setMessage("Successfully removed $count location record(s) from the server.")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }.onFailure { err ->
+                    MaterialAlertDialogBuilder(this@MainActivity)
+                        .setTitle("Error")
+                        .setMessage(err.message ?: "Failed to clean location data from server.")
+                        .setPositiveButton("OK", null)
+                        .show()
+                }
+            }
+        }
     }
 
     private fun showChangeUnitSystemDialog() {
