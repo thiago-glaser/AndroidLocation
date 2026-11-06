@@ -30,9 +30,11 @@ class BootReceiver : BroadcastReceiver() {
 
         val pendingResult = goAsync()
         try {
-            Log.d("BootReceiver", "Starting LocationLoggingService and scheduling watchdog after $action")
+            Log.d("BootReceiver", "Starting LocationLoggingService and scheduling fast watchdog after $action")
+            // Immediate start
             LocationLoggingService.ensureServiceRunning(context.applicationContext)
-            LocationLoggingService.scheduleWatchdogAlarm(context.applicationContext)
+            // Staggered 2-second safety-net alarm to ensure resurrection even if package installer was finalizing
+            LocationLoggingService.scheduleWatchdogAlarm(context.applicationContext, 2000L)
         } catch (e: Exception) {
             Log.e("BootReceiver", "Failed to start service after $action", e)
         } finally {
