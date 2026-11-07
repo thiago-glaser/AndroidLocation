@@ -51,7 +51,7 @@ class LocationLoggingService : Service() {
         private const val CHANNEL_ID = "location_logging_channel"
         private const val SESSION_EVENT_CHANNEL_ID = "session_event_channel"
         private const val UPDATE_INTERVAL_MS = 7_500L
-        private const val SEND_BATCH_INTERVAL_MS = 30 * 1000L // Fixed 30 seconds interval (independent of session state)
+        private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // Fixed 5 minutes interval (independent of session state)
         private const val BLUETOOTH_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L // 12 hours
         private val SENT_DATA_RETENTION_DAYS = 60L
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
