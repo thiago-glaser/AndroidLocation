@@ -14,7 +14,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Vehicle"
+            android:text="@string/common_vehicle"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary" />
@@ -38,7 +38,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="Date &amp; Time"
+                android:text="@string/common_date_and_time"
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary" />
@@ -47,7 +47,7 @@
                 android:id="@+id/btnSetNow"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Set to Now"
+                android:text="@string/fuel_btn_now"
                 android:textSize="12sp"
                 android:textStyle="bold"
                 android:textColor="#2563EB"
@@ -81,7 +81,7 @@
                     android:focusable="false"
                     android:clickable="true"
                     android:cursorVisible="false"
-                    android:hint="Date"
+                    android:hint="@string/common_date"
                     android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
 
@@ -104,7 +104,7 @@
                     android:focusable="false"
                     android:clickable="true"
                     android:cursorVisible="false"
-                    android:hint="Time"
+                    android:hint="@string/common_time"
                     android:textSize="14sp" />
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
@@ -125,7 +125,7 @@
                 android:id="@+id/etTotalCost"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Total Cost"
+                android:hint="@string/fuel_hint_total_cost"
                 android:inputType="numberDecimal"
                 android:textSize="14sp" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -146,7 +146,7 @@
                 android:id="@+id/etVolume"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:hint="Volume"
+                android:hint="@string/fuel_hint_volume_l"
                 android:inputType="numberDecimal"
                 android:textSize="14sp" />
         </com.google.android.material.textfield.TextInputLayout>
@@ -156,7 +156,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Receipt (Photo / Document)"
+            android:text="@string/fuel_receipt_section"
             android:textSize="13sp"
             android:textStyle="bold"
             android:textColor="@color/text_primary" />
@@ -173,7 +173,7 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
-                android:text="Take Photo"
+                android:text="@string/fuel_receipt_take_photo"
                 android:textSize="12sp"
                 android:textAllCaps="false"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -187,7 +187,7 @@
                 android:layout_height="40dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
-                android:text="Choose File"
+                android:text="@string/fuel_receipt_choose_file"
                 android:textSize="12sp"
                 android:textAllCaps="false"
                 style="@style/Widget.MaterialComponents.Button.OutlinedButton"
@@ -239,7 +239,7 @@
                     android:id="@+id/tvReceiptSize"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="Ready to upload"
+                    android:text="@string/fuel_receipt_ready"
                     android:textSize="11sp"
                     android:textColor="@color/text_secondary" />
             </LinearLayout>
@@ -248,7 +248,7 @@
                 android:id="@+id/btnRemoveReceipt"
                 android:layout_width="wrap_content"
                 android:layout_height="36dp"
-                android:text="Remove"
+                android:text="@string/common_remove"
                 android:textSize="11sp"
                 android:textColor="#DC2626"
                 style="@style/Widget.MaterialComponents.Button.TextButton" />

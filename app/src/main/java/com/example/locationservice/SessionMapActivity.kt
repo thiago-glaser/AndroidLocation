@@ -58,7 +58,7 @@ class SessionMapActivity : AppCompatActivity() {
         } else {
             binding.progressBar.visibility = View.GONE
             binding.tvEmptyState.visibility = View.VISIBLE
-            binding.tvEmptyState.text = "Invalid session time range."
+            binding.tvEmptyState.text = getString(R.string.trips_invalid_range)
         }
     }
 
@@ -156,7 +156,7 @@ class SessionMapActivity : AppCompatActivity() {
 
             if (rawPoints.isEmpty()) {
                 binding.tvEmptyState.visibility = View.VISIBLE
-                binding.chipSource.text = if (isLocalSource) "Local DB" else "Cloud Sync"
+                binding.chipSource.text = if (isLocalSource) getString(R.string.trips_local_db) else getString(R.string.trips_cloud_sync)
                 return@launch
             }
 
@@ -176,7 +176,7 @@ class SessionMapActivity : AppCompatActivity() {
             binding.chipPoints.text = "📍 ${filteredPoints.size} pts"
             binding.chipDuration.text = calculateDurationString(startTime, effectiveEndTime)
             binding.chipSource.apply {
-                text = if (isLocalSource) "Local DB" else "Cloud Sync"
+                text = if (isLocalSource) getString(R.string.trips_local_db) else getString(R.string.trips_cloud_sync)
                 setTextColor(if (isLocalSource) Color.parseColor("#059669") else Color.parseColor("#0284C7"))
             }
 

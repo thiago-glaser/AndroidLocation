@@ -119,10 +119,10 @@ class CarsActivity : AppCompatActivity() {
         }
 
         val descInput = EditText(this).apply {
-            hint = "Description (e.g. Trax 2025)"
+            hint = getString(R.string.cars_hint_desc)
         }
         val plateInput = EditText(this).apply {
-            hint = "License Plate (e.g. ABC-1234)"
+            hint = getString(R.string.cars_hint_plate)
         }
 
         layout.addView(TextView(this).apply { text = "Description"; setTextColor(ContextCompat.getColor(context, R.color.text_primary)) })
@@ -131,46 +131,46 @@ class CarsActivity : AppCompatActivity() {
         layout.addView(plateInput)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Add New Car")
+            .setTitle(R.string.cars_dialog_add_title)
             .setView(layout)
-            .setPositiveButton("Add") { _, _ ->
+            .setPositiveButton(R.string.common_add) { _, _ ->
                 val desc = descInput.text.toString().trim()
                 val plate = plateInput.text.toString().trim()
                 if (desc.isEmpty() && plate.isEmpty()) {
-                    Toast.makeText(this, "Please enter description or license plate", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.cars_toast_enter_info), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
                 lifecycleScope.launch {
                     val res = apiClient.addCar(desc, plate)
                     res.onSuccess {
-                        Toast.makeText(this@CarsActivity, "Car added successfully", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@CarsActivity, getString(R.string.cars_toast_added), Toast.LENGTH_SHORT).show()
                         loadCars()
                     }.onFailure { err ->
                         Toast.makeText(this@CarsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun confirmDeleteCar(car: CarItem) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Delete Car")
-            .setMessage("Are you sure you want to delete ${car.description ?: car.licensePlate}?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(R.string.cars_dialog_delete_title)
+            .setMessage(getString(R.string.cars_dialog_delete_msg, car.description ?: car.licensePlate))
+            .setPositiveButton(R.string.common_delete) { _, _ ->
                 lifecycleScope.launch {
                     val res = apiClient.deleteCar(car.id)
                     res.onSuccess {
-                        Toast.makeText(this@CarsActivity, "Car deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@CarsActivity, getString(R.string.cars_toast_deleted), Toast.LENGTH_SHORT).show()
                         loadCars()
                     }.onFailure { err ->
                         Toast.makeText(this@CarsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 }

@@ -549,8 +549,8 @@ class LocationLoggingService : Service() {
                             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                             val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
                                 .setSmallIcon(android.R.drawable.ic_dialog_info)
-                                .setContentTitle("Bluetooth Event Queued")
-                                .setContentText("Address: ${event.bluetoothAddress}")
+                                .setContentTitle(getString(R.string.notif_bt_event_queued))
+                                .setContentText(getString(R.string.notif_bt_address, event.bluetoothAddress))
                                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                                 .setAutoCancel(true)
                                 .build()
@@ -668,8 +668,8 @@ class LocationLoggingService : Service() {
         val pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Location Logger Active")
-            .setContentText("Collecting GPS data every ~8 seconds")
+            .setContentTitle(getString(R.string.notif_logger_active))
+            .setContentText(getString(R.string.notif_collecting_gps))
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

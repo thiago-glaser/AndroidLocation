@@ -16,6 +16,8 @@ import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
 import android.content.DialogInterface
 import android.graphics.Color
 import androidx.core.content.ContextCompat
@@ -54,12 +56,12 @@ class MainActivity : AppCompatActivity() {
         val bluetoothConnectGranted = permissions[Manifest.permission.BLUETOOTH_CONNECT] ?: false
 
         if (fineGranted && fgsLocationGranted && bluetoothScanGranted && bluetoothConnectGranted) {
-            updateStatusText("All required permissions granted → Service starting...")
+            updateStatusText(getString(R.string.main_permissions_granted_starting))
             startLocationService()
             checkBackgroundLocationPermission()
         } else {
-            updateStatusText("Missing critical permission(s)!")
-            Toast.makeText(this, "You must grant location and bluetooth permissions", Toast.LENGTH_LONG).show()
+            updateStatusText(getString(R.string.main_permissions_missing))
+            Toast.makeText(this, getString(R.string.main_permissions_must_grant), Toast.LENGTH_LONG).show()
         }
     }
 
@@ -74,7 +76,7 @@ class MainActivity : AppCompatActivity() {
         checkAndRequestPermissionsWithDisclosure()
 
         if (!isAppLaunchedByUser()) {
-            updateStatusText("Warning: Open the app manually once after install/reboot to enable auto-start!")
+            updateStatusText(getString(R.string.main_warning_open_manually))
             binding.tvStatus.setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark))
         }
 
@@ -143,6 +145,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
         binding.btnChangeUnits.setOnClickListener { showChangeUnitSystemDialog() }
+        binding.btnChangeLanguage.setOnClickListener { showChangeLanguageDialog() }
         binding.btnCleanLocationData.setOnClickListener { showCleanLocationDataDialog() }
         binding.btnSignOut.setOnClickListener { confirmSignOut() }
     }
@@ -163,21 +166,33 @@ class MainActivity : AppCompatActivity() {
                     unitSys = serverUnit
                 }
             }
-            withContext(Dispatchers.Main) {
-                binding.tvUnitSystem.text = if (unitSys == "IMPERIAL") "Imperial (mi, gal, MPG)" else "Metric (km, L, km/L)"
+            val currentAppLocales = AppCompatDelegate.getApplicationLocales()
+            val langText = if (currentAppLocales.isEmpty) {
+                getString(R.string.lang_system_default)
+            } else {
+                val tag = currentAppLocales.toLanguageTags()
+                if (tag.startsWith("pt", ignoreCase = true)) {
+                    getString(R.string.lang_portuguese_br)
+                } else {
+                    getString(R.string.lang_english)
+                }
             }
             withContext(Dispatchers.Main) {
-                binding.tvAccountUser.text = if (!username.isNullOrEmpty()) username else if (!apiKey.isNullOrEmpty()) "Configured Key" else "Not logged in"
+                binding.tvUnitSystem.text = if (unitSys == "IMPERIAL") getString(R.string.main_unit_imperial) else getString(R.string.main_unit_metric)
+                binding.tvLanguage.text = langText
+            }
+            withContext(Dispatchers.Main) {
+                binding.tvAccountUser.text = if (!username.isNullOrEmpty()) username else if (!apiKey.isNullOrEmpty()) getString(R.string.main_account_configured_key) else getString(R.string.main_account_not_logged_in)
                 if (!apiKey.isNullOrEmpty()) {
                     val masked = if (apiKey.length > 8) {
                         "${apiKey.take(4)}••••${apiKey.takeLast(4)}"
                     } else {
                         "••••••••"
                     }
-                    binding.tvApiKeyStatus.text = "Configured ($masked)"
+                    binding.tvApiKeyStatus.text = getString(R.string.main_api_key_configured, masked)
                     binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_dark))
                 } else {
-                    binding.tvApiKeyStatus.text = "Not set (Please click Update API Key)"
+                    binding.tvApiKeyStatus.text = getString(R.string.main_api_key_not_set)
                     binding.tvApiKeyStatus.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_red_dark))
                 }
             }
@@ -197,11 +212,11 @@ class MainActivity : AppCompatActivity() {
                 startService(intent)
             }
             LocationLoggingService.scheduleWatchdogAlarm(this)
-            updateStatusText("Service started. Logging every few seconds.")
+            updateStatusText(getString(R.string.main_service_started_msg))
             requestIgnoreBatteryOptimizations()
         } else {
             Log.e("SERVICE", "Permission DENIED → Cannot start")
-            updateStatusText("ERROR: Location permission missing!")
+            updateStatusText(getString(R.string.main_service_error_location))
             showPermissionDeniedDialog()
         }
     }
@@ -239,20 +254,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun showLocationDisclosureDialog() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Location & Trip Logging Notice")
-            .setMessage(
-                "Travel Access collects location data to enable:\n\n" +
-                "• Automated driving trip logging and route tracking\n" +
-                "• Accurate vehicle mileage calculation for business and personal expense reports\n" +
-                "• Hands-free trip detection when connected to vehicle Bluetooth\n\n" +
-                "Location data is collected while the app is active and continues in the background (even when the app is closed, not in use, or the screen is off) while a driving trip is ongoing.\n\n" +
-                "Your location data is stored securely on your device and sent only to your configured private server. It is never sold, shared with third parties, or used for advertising."
-            )
-            .setPositiveButton("Agree & Continue") { _, _ ->
+            .setTitle(R.string.dialog_disclosure_title)
+            .setMessage(R.string.dialog_disclosure_message)
+            .setPositiveButton(R.string.dialog_disclosure_agree) { _, _ ->
                 requestPermissions()
             }
-            .setNegativeButton("No Thanks") { _, _ ->
-                updateStatusText("Location permissions required for automated trip recording.")
+            .setNegativeButton(R.string.dialog_disclosure_refuse) { _, _ ->
+                updateStatusText(getString(R.string.dialog_disclosure_refuse_status))
             }
             .setCancelable(false)
             .show()
@@ -266,15 +274,12 @@ class MainActivity : AppCompatActivity() {
             ) == PackageManager.PERMISSION_GRANTED
             if (!hasBackground) {
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("Background Location Permission")
-                    .setMessage(
-                        "To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off, Travel Access requires background location access.\n\n" +
-                        "On the next screen, please select \"Allow all the time\" to ensure continuous trip logging."
-                    )
-                    .setPositiveButton("Continue") { _, _ ->
+                    .setTitle(R.string.dialog_bg_location_title)
+                    .setMessage(R.string.dialog_bg_location_message)
+                    .setPositiveButton(R.string.common_next) { _, _ ->
                         backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                     }
-                    .setNegativeButton("Later", null)
+                    .setNegativeButton(R.string.common_cancel, null)
                     .setCancelable(false)
                     .show()
             }
@@ -284,7 +289,7 @@ class MainActivity : AppCompatActivity() {
     private fun stopLocationService() {
         val intent = Intent(this, LocationLoggingService::class.java)
         stopService(intent)
-        updateStatusText("Service stopped")
+        updateStatusText(getString(R.string.main_status_service_stopped))
     }
 
     private fun requestIgnoreBatteryOptimizations() {
@@ -292,9 +297,9 @@ class MainActivity : AppCompatActivity() {
             val powerManager = getSystemService(POWER_SERVICE) as PowerManager
             if (!powerManager.isIgnoringBatteryOptimizations(packageName)) {
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("Battery optimisation")
-                    .setMessage("For reliable auto-start after reboot on Pixel phones, please select \"Unrestricted\" or at least \"Not optimised\" in the next screen.")
-                    .setPositiveButton("Open settings") { _, _ ->
+                    .setTitle(R.string.dialog_battery_title)
+                    .setMessage(R.string.dialog_battery_message)
+                    .setPositiveButton(R.string.dialog_open_settings) { _, _ ->
                         try {
                             val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
                                 data = Uri.parse("package:$packageName")
@@ -305,7 +310,7 @@ class MainActivity : AppCompatActivity() {
                             startActivity(intent)
                         }
                     }
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(R.string.common_cancel, null)
                     .show()
             }
         }
@@ -332,25 +337,54 @@ class MainActivity : AppCompatActivity() {
 
     private fun showPermissionDeniedDialog() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Permission Required")
-            .setMessage("Location and Bluetooth permissions are needed. Please enable it in Settings.")
-            .setPositiveButton("Open Settings") { _, _ ->
+            .setTitle(R.string.dialog_perm_req_title)
+            .setMessage(R.string.dialog_perm_req_message)
+            .setPositiveButton(R.string.dialog_open_settings) { _, _ ->
                 val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                     data = Uri.fromParts("package", packageName, null)
                 }
                 startActivity(intent)
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
+            .show()
+    }
+
+    private fun showChangeLanguageDialog() {
+        val options = arrayOf(
+            getString(R.string.lang_system_default),
+            getString(R.string.lang_english),
+            getString(R.string.lang_portuguese_br)
+        )
+        val currentAppLocales = AppCompatDelegate.getApplicationLocales()
+        val checkedItem = if (currentAppLocales.isEmpty) {
+            0
+        } else {
+            val tag = currentAppLocales.toLanguageTags()
+            if (tag.startsWith("pt", ignoreCase = true)) 2 else 1
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.dialog_select_language)
+            .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                dialog.dismiss()
+                val targetLocales = when (which) {
+                    1 -> LocaleListCompat.forLanguageTags("en")
+                    2 -> LocaleListCompat.forLanguageTags("pt-BR")
+                    else -> LocaleListCompat.getEmptyLocaleList()
+                }
+                AppCompatDelegate.setApplicationLocales(targetLocales)
+            }
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun showCleanLocationDataDialog() {
         val options = arrayOf(
-            "Keep last month",
-            "Keep last three months",
-            "Keep last six months",
-            "Keep last year",
-            "Delete everything"
+            getString(R.string.clean_loc_option_1m),
+            getString(R.string.clean_loc_option_3m),
+            getString(R.string.clean_loc_option_6m),
+            getString(R.string.clean_loc_option_1y),
+            getString(R.string.clean_loc_option_all)
         )
         val rangeKeys = arrayOf(
             "keep_1_month",
@@ -362,12 +396,12 @@ class MainActivity : AppCompatActivity() {
         var selectedIndex = 1 // Default to Keep last three months
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Clean Server Location Data")
+            .setTitle(R.string.clean_loc_title)
             .setSingleChoiceItems(options, selectedIndex) { _, which ->
                 selectedIndex = which
             }
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Next") { _, _ ->
+            .setNegativeButton(R.string.common_cancel, null)
+            .setPositiveButton(R.string.common_next) { _, _ ->
                 val chosenOption = options[selectedIndex]
                 val chosenKey = rangeKeys[selectedIndex]
                 showConfirmCleanLocationDialog(chosenOption, chosenKey)
@@ -377,12 +411,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun showConfirmCleanLocationDialog(optionLabel: String, rangeKey: String) {
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Confirm Location Data Removal")
-            .setMessage("Are you sure you want to remove location data from the server with the following option?\n\n$optionLabel\n\nWarning: This action is permanent and cannot be undone.")
-            .setNegativeButton("No (Cancel)") { d, _ ->
+            .setTitle(R.string.clean_loc_confirm_title)
+            .setMessage(getString(R.string.clean_loc_confirm_message, optionLabel))
+            .setNegativeButton(R.string.clean_loc_btn_no) { d, _ ->
                 d.dismiss()
             }
-            .setPositiveButton("Yes, Delete") { _, _ ->
+            .setPositiveButton(R.string.clean_loc_btn_yes) { _, _ ->
                 executeCleanLocationData(optionLabel, rangeKey)
             }
             .create()
@@ -403,8 +437,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun executeCleanLocationData(optionLabel: String, rangeKey: String) {
         val progressDialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Cleaning Location Data")
-            .setMessage("Processing deletion request on server...")
+            .setTitle(R.string.clean_loc_progress_title)
+            .setMessage(R.string.clean_loc_progress_message)
             .setCancelable(false)
             .show()
 
@@ -414,15 +448,15 @@ class MainActivity : AppCompatActivity() {
                 progressDialog.dismiss()
                 result.onSuccess { count ->
                     MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("Success")
-                        .setMessage("Successfully removed $count location record(s) from the server.")
-                        .setPositiveButton("OK", null)
+                        .setTitle(R.string.common_success)
+                        .setMessage(getString(R.string.clean_loc_success_message, count))
+                        .setPositiveButton(R.string.common_ok, null)
                         .show()
                 }.onFailure { err ->
                     MaterialAlertDialogBuilder(this@MainActivity)
-                        .setTitle("Error")
-                        .setMessage(err.message ?: "Failed to clean location data from server.")
-                        .setPositiveButton("OK", null)
+                        .setTitle(R.string.common_error)
+                        .setMessage(err.message ?: getString(R.string.common_error))
+                        .setPositiveButton(R.string.common_ok, null)
                         .show()
                 }
             }
@@ -432,12 +466,12 @@ class MainActivity : AppCompatActivity() {
     private fun showChangeUnitSystemDialog() {
         lifecycleScope.launch(Dispatchers.IO) {
             val currentUnit = apiClient.getUnitSystem()
-            val options = arrayOf("Metric (km, L, km/L)", "Imperial (mi, gal, MPG)")
+            val options = arrayOf(getString(R.string.main_unit_metric), getString(R.string.main_unit_imperial))
             val checkedItem = if (currentUnit == "IMPERIAL") 1 else 0
 
             withContext(Dispatchers.Main) {
                 MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle("Select Unit System")
+                    .setTitle(R.string.settings_select_unit)
                     .setSingleChoiceItems(options, checkedItem) { dialog, which ->
                         val selectedUnit = if (which == 1) "IMPERIAL" else "METRIC"
                         dialog.dismiss()
@@ -445,11 +479,11 @@ class MainActivity : AppCompatActivity() {
                             apiClient.updateUserSettings(selectedUnit)
                             withContext(Dispatchers.Main) {
                                 binding.tvUnitSystem.text = if (selectedUnit == "IMPERIAL") "Imperial (mi, gal, MPG)" else "Metric (km, L, km/L)"
-                                Toast.makeText(this@MainActivity, "Unit system set to $selectedUnit", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, getString(R.string.settings_unit_set_toast, selectedUnit), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(R.string.common_cancel, null)
                     .show()
             }
         }
@@ -457,7 +491,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showUpdateApiKeyDialog() {
         val editText = EditText(this).apply {
-            hint = "Enter API Key"
+            hint = getString(R.string.settings_api_key_hint)
         }
 
         lifecycleScope.launch(Dispatchers.IO) {
@@ -467,20 +501,20 @@ class MainActivity : AppCompatActivity() {
                 editText.setSelection(editText.text.length)
 
                 MaterialAlertDialogBuilder(this@MainActivity)
-                    .setTitle("Update API Key")
-                    .setMessage("Enter the API key for server synchronization:")
+                    .setTitle(R.string.settings_update_api_key_title)
+                    .setMessage(R.string.settings_update_api_key_msg)
                     .setView(editText)
-                    .setPositiveButton("Save") { _, _ ->
+                    .setPositiveButton(R.string.common_save) { _, _ ->
                         val newApiKey = editText.text.toString().trim()
                         lifecycleScope.launch(Dispatchers.IO) {
                             db.settingDao().insert(Setting("api_key", newApiKey))
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(this@MainActivity, "API Key updated", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@MainActivity, getString(R.string.settings_api_key_updated), Toast.LENGTH_SHORT).show()
                                 refreshApiKeyStatus()
                             }
                         }
                     }
-                    .setNegativeButton("Cancel", null)
+                    .setNegativeButton(R.string.common_cancel, null)
                     .show()
             }
         }
@@ -504,9 +538,9 @@ class MainActivity : AppCompatActivity() {
 
     private fun confirmSignOut() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Log Out")
-            .setMessage("Are you sure you want to log out? Location logging will be stopped.")
-            .setPositiveButton("Log Out") { _, _ ->
+            .setTitle(R.string.settings_logout_title)
+            .setMessage(R.string.settings_logout_message)
+            .setPositiveButton(R.string.main_btn_logout) { _, _ ->
                 lifecycleScope.launch(Dispatchers.IO) {
                     db.settingDao().insert(Setting("api_key", ""))
                     db.settingDao().insert(Setting("auth_token", ""))
@@ -521,7 +555,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 

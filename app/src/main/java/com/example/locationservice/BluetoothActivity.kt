@@ -134,9 +134,9 @@ class BluetoothActivity : AppCompatActivity() {
 
         if (filtered.isEmpty()) {
             binding.tvEmptyState.text = if (onlyPaired) {
-                "No paired Bluetooth devices found for this phone.\n\nOnly devices bonded in your phone's Bluetooth settings (or linked to a car) are displayed."
+                getString(R.string.bt_empty_paired)
             } else {
-                "No Bluetooth devices found."
+                getString(R.string.bt_empty_all)
             }
             binding.tvEmptyState.visibility = View.VISIBLE
         } else {
@@ -259,9 +259,9 @@ class BluetoothActivity : AppCompatActivity() {
         layout.addView(spinner)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Link Car to Bluetooth")
+            .setTitle(R.string.bt_link_car_title)
             .setView(layout)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.common_save) { _, _ ->
                 val selectedPos = spinner.selectedItemPosition
                 val newCarId = if (selectedPos == 0) null else carsList[selectedPos - 1].id
 
@@ -274,53 +274,53 @@ class BluetoothActivity : AppCompatActivity() {
                         description = device.description ?: ""
                     )
                     res.onSuccess {
-                        Toast.makeText(this@BluetoothActivity, "Linked car updated", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@BluetoothActivity, getString(R.string.bt_link_car_success), Toast.LENGTH_SHORT).show()
                         loadDevices()
                     }.onFailure { err ->
                         Toast.makeText(this@BluetoothActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun confirmDeleteDevice(device: BluetoothItem) {
         val displayName = device.name?.takeIf { it.isNotBlank() } ?: "Unknown Device"
         MaterialAlertDialogBuilder(this)
-            .setTitle("Delete Bluetooth Device")
-            .setMessage("Are you sure you want to delete '$displayName' (${device.address ?: "N/A"})?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(R.string.bt_delete_device_title)
+            .setMessage(getString(R.string.bt_delete_device_msg, displayName, device.address ?: "N/A"))
+            .setPositiveButton(R.string.common_delete) { _, _ ->
                 lifecycleScope.launch {
                     val res = apiClient.deleteBluetooth(device.id)
                     res.onSuccess {
-                        Toast.makeText(this@BluetoothActivity, "Device deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@BluetoothActivity, getString(R.string.bt_device_deleted), Toast.LENGTH_SHORT).show()
                         loadDevices()
                     }.onFailure { err ->
                         Toast.makeText(this@BluetoothActivity, "Failed to delete: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun confirmCleanUnknownDevices() {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Delete Unknown Devices")
-            .setMessage("Are you sure you want to delete all unassigned unknown Bluetooth devices from your account?")
-            .setPositiveButton("Delete All") { _, _ ->
+            .setTitle(R.string.bt_delete_unknown_title)
+            .setMessage(getString(R.string.bt_delete_unknown_msg))
+            .setPositiveButton(R.string.bt_btn_delete_unknown) { _, _ ->
                 lifecycleScope.launch {
                     val res = apiClient.cleanUnknownBluetooth()
                     res.onSuccess {
-                        Toast.makeText(this@BluetoothActivity, "Unknown devices cleaned", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@BluetoothActivity, getString(R.string.bt_unknown_cleaned), Toast.LENGTH_SHORT).show()
                         loadDevices()
                     }.onFailure { err ->
                         Toast.makeText(this@BluetoothActivity, "Failed to clean: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 }

@@ -243,7 +243,7 @@ class FuelActivity : AppCompatActivity() {
 
     private fun showAddFuelDialog() {
         if (carsList.isEmpty()) {
-            Toast.makeText(this, "Please register a car first in Manage Cars", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.trips_register_car_first), Toast.LENGTH_LONG).show()
             return
         }
 
@@ -261,7 +261,7 @@ class FuelActivity : AppCompatActivity() {
         dialogBinding.spinnerVehicle.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, names)
 
         // Volume label according to unit preference
-        dialogBinding.tilVolume.hint = if (isImperial) "Volume in Gallons (gal)" else "Volume in Liters (L)"
+        dialogBinding.tilVolume.hint = if (isImperial) getString(R.string.fuel_hint_volume_gal) else getString(R.string.fuel_hint_volume_l)
 
         // Date and Time selection
         val calendar = Calendar.getInstance()
@@ -326,10 +326,10 @@ class FuelActivity : AppCompatActivity() {
         }
 
         val dialog = MaterialAlertDialogBuilder(this)
-            .setTitle("Log Fuel Fill-Up")
+            .setTitle(R.string.fuel_dialog_title)
             .setView(dialogBinding.root)
-            .setPositiveButton("Save", null) // Overridden below to validate inputs
-            .setNegativeButton("Cancel") { _, _ ->
+            .setPositiveButton(R.string.common_save, null) // Overridden below to validate inputs
+            .setNegativeButton(R.string.common_cancel) { _, _ ->
                 currentDialogBinding = null
             }
             .setOnDismissListener {
@@ -384,7 +384,7 @@ class FuelActivity : AppCompatActivity() {
                 )
                 binding.progressBar.visibility = View.GONE
                 res.onSuccess {
-                    Toast.makeText(this@FuelActivity, "Fuel entry saved successfully", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@FuelActivity, getString(R.string.fuel_saved_success), Toast.LENGTH_SHORT).show()
                     loadFuel()
                 }.onFailure { err ->
                     Toast.makeText(this@FuelActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
@@ -461,9 +461,9 @@ class FuelActivity : AppCompatActivity() {
                             addView(iv)
                         }
                         MaterialAlertDialogBuilder(this@FuelActivity)
-                            .setTitle("Fuel Receipt")
+                            .setTitle(R.string.fuel_receipt_dialog_title)
                             .setView(scroll)
-                            .setPositiveButton("Close", null)
+                            .setPositiveButton(R.string.common_close, null)
                             .show()
                         return@launch
                     }
@@ -491,20 +491,20 @@ class FuelActivity : AppCompatActivity() {
 
     private fun confirmDeleteFuel(item: FuelItem) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Delete Fuel Entry")
-            .setMessage("Are you sure you want to delete this fuel record?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(R.string.fuel_delete_title)
+            .setMessage(R.string.fuel_delete_msg)
+            .setPositiveButton(R.string.common_delete) { _, _ ->
                 lifecycleScope.launch {
                     val res = apiClient.deleteFuel(item.id)
                     res.onSuccess {
-                        Toast.makeText(this@FuelActivity, "Deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@FuelActivity, getString(R.string.common_deleted), Toast.LENGTH_SHORT).show()
                         loadFuel()
                     }.onFailure { err ->
                         Toast.makeText(this@FuelActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 }

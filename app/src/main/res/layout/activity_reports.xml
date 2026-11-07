@@ -36,7 +36,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Reports &amp; Analytics"
+                android:text="@string/reports_title"
                 android:textSize="18sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary" />
@@ -44,7 +44,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Mileage, efficiency &amp; costs"
+                android:text="@string/fuel_subtitle"
                 android:textSize="12sp"
                 android:textColor="@color/text_secondary" />
         </LinearLayout>
@@ -86,7 +86,7 @@
                 android:id="@+id/tabTrips"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="🚗 Trips &amp; Summary"
+                android:text="@string/reports_tab_trips"
                 android:textSize="13sp"
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
@@ -99,7 +99,7 @@
                 android:id="@+id/tabMonthly"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="📅 Monthly Summary"
+                android:text="@string/reports_tab_monthly"
                 android:textSize="13sp"
                 android:textColor="@color/text_secondary"
                 android:background="@drawable/bg_pill_inactive"
@@ -111,7 +111,7 @@
                 android:id="@+id/tabFuel"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="⛽ Fuel Economy"
+                android:text="@string/reports_tab_fuel"
                 android:textSize="13sp"
                 android:textColor="@color/text_secondary"
                 android:background="@drawable/bg_pill_inactive"
@@ -250,7 +250,7 @@
                     android:id="@+id/btnResetFilters"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:text="Reset"
+                    android:text="@string/common_reset"
                     android:textSize="12sp"
                     android:textAllCaps="false"
                     android:textColor="@color/text_secondary"
@@ -261,7 +261,7 @@
                     android:id="@+id/btnApplyFilters"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
-                    android:text="Generate"
+                    android:text="@string/common_generate"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:textAllCaps="false"
@@ -320,7 +320,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TOTAL DISTANCE"
+                            android:text="@string/reports_total_distance"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary" />
@@ -351,7 +351,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TOTAL DURATION"
+                            android:text="@string/reports_total_duration"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary" />
@@ -387,7 +387,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TOTAL SESSIONS"
+                            android:text="@string/reports_total_sessions"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary" />
@@ -417,7 +417,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TOTAL COST"
+                            android:text="@string/reports_total_cost"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="#059669" />
@@ -436,7 +436,7 @@
                             android:id="@+id/tvEstimatedWarning"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="⚠ Estimated (fuel logs)"
+                            android:text="@string/reports_cost_disclaimer"
                             android:textSize="9sp"
                             android:textStyle="bold"
                             android:textColor="#D97706"
@@ -460,7 +460,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="TYPE BREAKDOWN (PERSONAL VS. BUSINESS)"
+                    android:text="@string/reports_type_breakdown"
                     android:textSize="11sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_secondary"
@@ -476,7 +476,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Distance Distribution"
+                        android:text="@string/reports_distance_dist"
                         android:textSize="12sp"
                         android:textColor="@color/text_primary"
                         android:textStyle="bold"
@@ -539,7 +539,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Time Traveled"
+                        android:text="@string/reports_time_traveled"
                         android:textSize="12sp"
                         android:textColor="@color/text_primary"
                         android:textStyle="bold"
@@ -601,7 +601,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Estimated Cost Distribution"
+                        android:text="@string/reports_estimated_cost"
                         android:textSize="12sp"
                         android:textColor="@color/text_primary"
                         android:textStyle="bold"
@@ -702,7 +702,7 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="MONTHLY BREAKDOWN"
+                    android:text="@string/reports_monthly_breakdown"
                     android:textSize="12sp"
                     android:textStyle="bold"
                     android:textColor="@color/text_secondary"
@@ -755,7 +755,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TOTAL FUEL COST"
+                            android:text="@string/reports_fuel_total_fuel_cost"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary" />
@@ -784,7 +784,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="TOTAL VOLUME"
+                            android:text="@string/reports_fuel_total_volume"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary" />
@@ -820,7 +820,7 @@
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="AVG ECONOMY"
+                            android:text="@string/reports_fuel_avg_economy"
                             android:textSize="10sp"
                             android:textStyle="bold"
                             android:textColor="@color/text_secondary" />

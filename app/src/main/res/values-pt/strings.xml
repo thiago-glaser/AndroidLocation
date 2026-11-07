@@ -1,0 +1,279 @@
+<resources>
+    <string name="app_name">Travel Access</string>
+
+    <!-- Common -->
+    <string name="common_cancel">Cancelar</string>
+    <string name="common_save">Salvar</string>
+    <string name="common_delete">Excluir</string>
+    <string name="common_add">+ Adicionar</string>
+    <string name="common_close">Fechar</string>
+    <string name="common_ok">OK</string>
+    <string name="common_next">Avançar</string>
+    <string name="common_create">Criar</string>
+    <string name="common_error">Erro</string>
+    <string name="common_success">Sucesso</string>
+    <string name="common_loading">Carregando...</string>
+    <string name="common_processing">Processando...</string>
+    <string name="common_filter">Filtrar</string>
+    <string name="common_reset">Redefinir</string>
+    <string name="common_generate">Gerar</string>
+    <string name="common_prev">&#x2190; Anterior</string>
+    <string name="common_next_page">Próximo &#x2192;</string>
+    <string name="common_page_info">Página %1$d / %2$d</string>
+    <string name="common_vehicle">Veículo</string>
+    <string name="common_date">Data</string>
+    <string name="common_time">Hora</string>
+    <string name="common_date_and_time">Data e Hora</string>
+    <string name="common_year">ANO</string>
+    <string name="common_month">MÊS</string>
+    <string name="common_type">TIPO</string>
+    <string name="common_remove">Remover</string>
+    <string name="common_refresh">Atualizar</string>
+    <string name="common_deleted">Excluído</string>
+    <string name="common_failed">Falha: %1$s</string>
+
+    <!-- Login & Authentication -->
+    <string name="login_subtitle_signin">Entre na sua conta</string>
+    <string name="login_subtitle_signup">Criar uma nova conta</string>
+    <string name="login_subtitle_forgot_password">Recuperar a senha da conta</string>
+    <string name="login_subtitle_forgot_username">Recuperação de Usuário</string>
+    <string name="login_google_signin">Continuar com o Google</string>
+    <string name="login_google_signup">Cadastrar com o Google</string>
+    <string name="login_or">OU</string>
+    <string name="login_email_hint">Endereço de E-mail</string>
+    <string name="login_username_hint">Nome de Usuário</string>
+    <string name="login_password_hint">Senha</string>
+    <string name="login_btn_signin">Entrar</string>
+    <string name="login_btn_signup">Criar Conta</string>
+    <string name="login_btn_send_reset">Enviar Link de Redefinição</string>
+    <string name="login_btn_send_username">Enviar Nome de Usuário</string>
+    <string name="login_forgot_password">Esqueceu sua senha?</string>
+    <string name="login_forgot_username">Esqueceu seu usuário?</string>
+    <string name="login_no_account">Não tem uma conta? Cadastre-se</string>
+    <string name="login_have_account">Já tem uma conta? Entrar</string>
+    <string name="login_back_to_login">Voltar para o Login</string>
+    <string name="login_welcome_msg">Bem-vindo, %1$s!</string>
+    <string name="login_forgot_pass_desc">Digite o endereço de e-mail associado à sua conta e enviaremos um link para redefinir sua senha.</string>
+    <string name="login_forgot_user_desc">Digite o endereço de e-mail associado à sua conta e enviaremos seu nome de usuário para sua caixa de entrada.</string>
+
+    <!-- Main Screen & Dashboard -->
+    <string name="main_header_title">Serviços de Localização</string>
+    <string name="main_btn_trips">&#x1F697;  Viagens e Sessões</string>
+    <string name="main_btn_reports">&#x1F4CA;  Relatórios e Análises</string>
+    <string name="main_btn_cars">&#x1F698;  Gerenciar Carros</string>
+    <string name="main_btn_bluetooth">&#x1F4F6;  Dispositivos Bluetooth</string>
+    <string name="main_btn_fuel">&#x26FD;  Abastecimentos</string>
+    <string name="main_btn_expenses">&#x1F4B3;  Despesas do Veículo</string>
+    <string name="main_btn_settings">&#x2699;  Configurações</string>
+    <string name="main_service_status">Status do Serviço</string>
+    <string name="main_status_tracking_active">Rastreamento em segundo plano ativo</string>
+    <string name="main_status_service_stopped">Serviço parado</string>
+    <string name="main_btn_start">Iniciar Registro de Localização</string>
+    <string name="main_btn_stop">Parar Registro</string>
+    <string name="main_btn_change_units">Alterar Sistema de Unidades (Métrico / Imperial)</string>
+    <string name="main_btn_change_language">Alterar Idioma</string>
+    <string name="main_btn_update_api_key">Atualizar Chave da API</string>
+    <string name="main_btn_clean_location">Limpar Dados de Localização no Servidor</string>
+    <string name="main_btn_logout">Sair da Conta</string>
+    <string name="main_btn_back">Voltar para a Página Principal</string>
+    <string name="main_label_api_key">Chave da API</string>
+    <string name="main_label_account">Conta</string>
+    <string name="main_label_unit_system">Sistema de Unidades</string>
+    <string name="main_label_language">Idioma</string>
+    <string name="main_unit_metric">Métrico (km, L, km/L)</string>
+    <string name="main_unit_imperial">Imperial (mi, gal, MPG)</string>
+    <string name="main_api_key_checking">Verificando chave da API...</string>
+    <string name="main_api_key_configured">Configurada (%1$s)</string>
+    <string name="main_api_key_not_set">Não definida (Clique em Atualizar Chave da API)</string>
+    <string name="main_account_not_logged_in">Não conectado</string>
+    <string name="main_account_configured_key">Chave Configurada</string>
+    <string name="main_permissions_granted_starting">Todas as permissões concedidas &#x2192; Iniciando serviço...</string>
+    <string name="main_permissions_missing">Permissões críticas ausentes!</string>
+    <string name="main_permissions_must_grant">Você deve conceder permissões de localização e bluetooth</string>
+    <string name="main_warning_open_manually">Aviso: Abra o app manualmente uma vez após instalar/reiniciar para ativar o início automático!</string>
+    <string name="main_service_started_msg">Serviço iniciado. Registrando a cada poucos segundos.</string>
+    <string name="main_service_error_location">ERRO: Permissão de localização ausente!</string>
+
+    <!-- Language Selection Dialog -->
+    <string name="dialog_select_language">Selecionar Idioma</string>
+    <string name="lang_system_default">Padrão do Sistema</string>
+    <string name="lang_english">English</string>
+    <string name="lang_portuguese_br">Português (Brasil)</string>
+
+    <!-- Disclosures & Permissions -->
+    <string name="dialog_disclosure_title">Aviso de Localização e Registro de Viagens</string>
+    <string name="dialog_disclosure_message">O Travel Access coleta dados de localização para permitir:
+
+• Registro automatizado de viagens e rastreamento de rotas ao dirigir
+• Cálculo preciso da quilometragem para relatórios de despesas pessoais e de trabalho
+• Detecção automática de viagens ao conectar ao Bluetooth do veículo
+
+Os dados de localização são coletados enquanto o app está ativo e continuam em segundo plano (mesmo com o app fechado ou a tela desligada) enquanto uma viagem estiver em andamento.
+
+Seus dados de localização são armazenados com segurança no seu dispositivo e enviados exclusivamente ao seu servidor privado configurado. Eles nunca são vendidos, compartilhados com terceiros ou usados para anúncios.</string>
+    <string name="dialog_disclosure_agree">Concordar e Continuar</string>
+    <string name="dialog_disclosure_refuse">Não, Obrigado</string>
+    <string name="dialog_disclosure_refuse_status">Permissões de localização são necessárias para o registro automático de viagens.</string>
+    <string name="dialog_bg_location_title">Permissão de Localização em Segundo Plano</string>
+    <string name="dialog_bg_location_message">Para detectar viagens automaticamente ao conectar ao Bluetooth do veículo e registrar rotas completas de GPS com a tela desligada, o Travel Access precisa de acesso à localização em segundo plano.
+
+Na próxima tela, selecione "Permitir o tempo todo" para garantir o registro contínuo.</string>
+    <string name="dialog_battery_title">Otimização de Bateria</string>
+    <string name="dialog_battery_message">Para um reinício automático confiável após reiniciar o telefone, selecione "Sem restrições" ou pelo menos "Não otimizado" na próxima tela.</string>
+    <string name="dialog_open_settings">Abrir configurações</string>
+    <string name="dialog_perm_req_title">Permissão Necessária</string>
+    <string name="dialog_perm_req_message">As permissões de Localização e Bluetooth são necessárias. Por favor, ative-as nas Configurações.</string>
+
+    <!-- Clean Server Location Data -->
+    <string name="clean_loc_title">Limpar Dados de Localização no Servidor</string>
+    <string name="clean_loc_option_1m">Manter último mês</string>
+    <string name="clean_loc_option_3m">Manter últimos três meses</string>
+    <string name="clean_loc_option_6m">Manter últimos seis meses</string>
+    <string name="clean_loc_option_1y">Manter último ano</string>
+    <string name="clean_loc_option_all">Excluir tudo</string>
+    <string name="clean_loc_confirm_title">Confirmar Remoção de Dados de Localização</string>
+    <string name="clean_loc_confirm_message">Tem certeza de que deseja remover os dados de localização do servidor com a seguinte opção?
+
+%1$s
+
+Aviso: Esta ação é permanente e não pode ser desfeita.</string>
+    <string name="clean_loc_btn_no">Não (Cancelar)</string>
+    <string name="clean_loc_btn_yes">Sim, Excluir</string>
+    <string name="clean_loc_progress_title">Limpando Dados de Localização</string>
+    <string name="clean_loc_progress_message">Processando solicitação de exclusão no servidor...</string>
+    <string name="clean_loc_success_message">Foram removidos %1$d registro(s) de localização do servidor com sucesso.</string>
+
+    <!-- Settings Dialogs -->
+    <string name="settings_select_unit">Selecionar Sistema de Unidades</string>
+    <string name="settings_unit_set_toast">Sistema de unidades definido para %1$s</string>
+    <string name="settings_update_api_key_title">Atualizar Chave da API</string>
+    <string name="settings_update_api_key_msg">Digite a chave da API para sincronização com o servidor:</string>
+    <string name="settings_api_key_hint">Digite a Chave da API</string>
+    <string name="settings_api_key_updated">Chave da API atualizada</string>
+    <string name="settings_logout_title">Sair da Conta</string>
+    <string name="settings_logout_message">Tem certeza de que deseja sair? O registro de localização será interrompido.</string>
+
+    <!-- Manage Cars -->
+    <string name="cars_title">Gerenciar Carros</string>
+    <string name="cars_add_btn">+ Adicionar Carro</string>
+    <string name="cars_empty">Nenhum carro encontrado. Clique em \'+ Adicionar Carro\' para cadastrar um.</string>
+    <string name="cars_dialog_add_title">Adicionar Novo Carro</string>
+    <string name="cars_hint_desc">Descrição (ex: Trax 2025)</string>
+    <string name="cars_hint_plate">Placa (ex: ABC-1234)</string>
+    <string name="cars_toast_enter_info">Por favor, digite a descrição ou a placa</string>
+    <string name="cars_toast_added">Carro adicionado com sucesso</string>
+    <string name="cars_dialog_delete_title">Excluir Carro</string>
+    <string name="cars_dialog_delete_msg">Tem certeza de que deseja excluir %1$s?</string>
+    <string name="cars_toast_deleted">Carro excluído</string>
+
+    <!-- Bluetooth Devices -->
+    <string name="bt_title">Dispositivos Bluetooth</string>
+    <string name="bt_paired_only">Apenas pareados com o celular</string>
+    <string name="bt_btn_delete_unknown">Excluir Desconhecidos</string>
+    <string name="bt_empty_paired">Nenhum dispositivo Bluetooth pareado encontrado para sua conta.</string>
+    <string name="bt_empty_all">Nenhum dispositivo Bluetooth encontrado.</string>
+    <string name="bt_link_car_title">Vincular Carro ao Bluetooth</string>
+    <string name="bt_link_car_success">Carro vinculado atualizado</string>
+    <string name="bt_delete_device_title">Excluir Dispositivo Bluetooth</string>
+    <string name="bt_delete_device_msg">Tem certeza de que deseja excluir \'%1$s\' (%2$s)?</string>
+    <string name="bt_device_deleted">Dispositivo excluído</string>
+    <string name="bt_delete_unknown_title">Excluir Dispositivos Desconhecidos</string>
+    <string name="bt_delete_unknown_msg">Tem certeza de que deseja excluir todos os dispositivos Bluetooth desconhecidos não vinculados da sua conta?</string>
+    <string name="bt_unknown_cleaned">Dispositivos desconhecidos limpos</string>
+
+    <!-- Trips & Sessions -->
+    <string name="trips_title">Viagens e Sessões</string>
+    <string name="trips_add_btn">+ Adicionar</string>
+    <string name="trips_empty">Nenhuma viagem registrada encontrada.</string>
+    <string name="trips_filter_empty">Nenhuma viagem encontrada para os filtros selecionados.</string>
+    <string name="trips_type_updated">Tipo de viagem atualizado</string>
+    <string name="trips_ended">Viagem finalizada</string>
+    <string name="trips_delete_title">Excluir Viagem</string>
+    <string name="trips_delete_msg">Tem certeza de que deseja excluir este registro de viagem?</string>
+    <string name="trips_deleted">Viagem excluída</string>
+    <string name="trips_register_car_first">Por favor, cadastre um carro primeiro em Gerenciar Carros</string>
+    <string name="trips_dialog_add_title">Adicionar Viagem / Sessão</string>
+    <string name="trips_hint_start_utc">Início UTC (ex: 2026-10-23T15:00:00.000Z)</string>
+    <string name="trips_hint_end_utc">Fim UTC (Opcional)</string>
+    <string name="trips_start_time_required">A hora de início é obrigatória</string>
+    <string name="trips_added">Sessão adicionada</string>
+    <string name="trips_route_title">Rota da Viagem</string>
+    <string name="trips_invalid_range">Intervalo de tempo de sessão inválido.</string>
+    <string name="trips_no_points">Nenhum ponto de GPS encontrado para esta viagem.</string>
+    <string name="trips_local_db">BD Local</string>
+    <string name="trips_cloud_sync">Nuvem</string>
+
+    <!-- Fuel Logs -->
+    <string name="fuel_title">Abastecimentos</string>
+    <string name="fuel_subtitle">Quilometragem, eficiência e custos</string>
+    <string name="fuel_btn_add">+ Abastecer</string>
+    <string name="fuel_empty">Nenhum registro de abastecimento encontrado. Clique em \'+ Abastecer\' para registrar um abastecimento.</string>
+    <string name="fuel_card_title">REGISTROS DE ABASTECIMENTO</string>
+    <string name="fuel_calc_success">Eficiência de combustível calculada!</string>
+    <string name="fuel_dialog_title">Registrar Abastecimento</string>
+    <string name="fuel_hint_volume_l">Volume em Litros (L)</string>
+    <string name="fuel_hint_volume_gal">Volume em Galões (gal)</string>
+    <string name="fuel_hint_total_cost">Custo Total</string>
+    <string name="fuel_btn_now">Definir para Agora</string>
+    <string name="fuel_receipt_section">Comprovante (Foto / Documento)</string>
+    <string name="fuel_receipt_take_photo">Tirar Foto</string>
+    <string name="fuel_receipt_choose_file">Escolher Arquivo</string>
+    <string name="fuel_receipt_ready">Pronto para enviar</string>
+    <string name="fuel_saved_success">Abastecimento salvo com sucesso</string>
+    <string name="fuel_receipt_dialog_title">Comprovante de Abastecimento</string>
+    <string name="fuel_delete_title">Excluir Abastecimento</string>
+    <string name="fuel_delete_msg">Tem certeza de que deseja excluir este registro de abastecimento?</string>
+
+    <!-- Vehicle Expenses -->
+    <string name="expenses_title">Despesas do Veículo</string>
+    <string name="expenses_btn_add">+ Nova Despesa</string>
+    <string name="expenses_empty">Nenhuma despesa de veículo registrada. Clique em \'+ Nova Despesa\' para adicionar uma.</string>
+    <string name="expenses_dialog_title">Registrar Despesa do Veículo</string>
+    <string name="expenses_hint_amount">Valor em $ (ex: 45.00)</string>
+    <string name="expenses_hint_desc">Descrição (ex: Troca de óleo, Pedágio, Estacionamento)</string>
+    <string name="expenses_hint_new_type">ex: Estacionamento, Pedágios, Seguro</string>
+    <string name="expenses_new_type_title">Novo Tipo de Despesa</string>
+    <string name="expenses_saved">Despesa salva</string>
+    <string name="expenses_type_created">Tipo criado: %1$s</string>
+    <string name="expenses_delete_title">Excluir Despesa</string>
+    <string name="expenses_delete_msg">Tem certeza de que deseja excluir este registro de despesa?</string>
+    <string name="expenses_invalid_amount">Por favor, digite um valor válido</string>
+    <string name="expenses_enter_desc">Por favor, digite uma descrição</string>
+    <string name="expenses_select_type">Por favor, selecione um tipo de despesa válido</string>
+
+    <!-- Reports & Analytics -->
+    <string name="reports_title">Relatórios e Análises</string>
+    <string name="reports_tab_trips">&#x1F697; Viagens e Resumo</string>
+    <string name="reports_tab_fuel">&#x26FD; Eficiência de Combustível</string>
+    <string name="reports_tab_monthly">&#x1F4C5; Resumo Mensal</string>
+    <string name="reports_total_distance">DISTÂNCIA TOTAL</string>
+    <string name="reports_total_duration">DURAÇÃO TOTAL</string>
+    <string name="reports_total_sessions">TOTAL DE VIAGENS</string>
+    <string name="reports_total_cost">CUSTO TOTAL</string>
+    <string name="reports_distance_dist">Distribuição de Distância</string>
+    <string name="reports_time_traveled">Tempo de Viagem</string>
+    <string name="reports_estimated_cost">Distribuição de Custos Estimados</string>
+    <string name="reports_cost_disclaimer">&#x26A0; Estimado (abastecimentos)</string>
+    <string name="reports_type_breakdown">DIVISÃO POR TIPO (PESSOAL VS. TRABALHO)</string>
+    <string name="reports_trip_sessions_header">SESSÕES DE VIAGEM (%1$d)</string>
+    <string name="reports_fuel_total_fuel_cost">CUSTO TOTAL DE COMBUSTÍVEL</string>
+    <string name="reports_fuel_total_volume">VOLUME TOTAL</string>
+    <string name="reports_fuel_avg_economy">CONSUMO MÉDIO</string>
+    <string name="reports_fuel_avg_price_l">PREÇO MÉDIO / L</string>
+    <string name="reports_fuel_avg_price_gal">PREÇO MÉDIO / GAL</string>
+    <string name="reports_monthly_breakdown">DETALHAMENTO MENSAL</string>
+    <string name="reports_no_monthly_data">Nenhum dado de resumo mensal encontrado.</string>
+    <string name="reports_no_refuel_logs">Nenhum registro de abastecimento encontrado.</string>
+    <string name="reports_legend_personal_dist">&#x1F3E0; Pessoal: %1$s (%2$d%%)</string>
+    <string name="reports_legend_business_dist">&#x1F4BC; Trabalho: %1$s (%2$d%%)</string>
+    <string name="reports_legend_personal_time">&#x1F3E0; Pessoal: %1$s (%2$d%%)</string>
+    <string name="reports_legend_business_time">&#x1F4BC; Trabalho: %1$s (%2$d%%)</string>
+    <string name="reports_legend_personal_cost">&#x1F3E0; Pessoal: $%1$.2f</string>
+    <string name="reports_legend_business_cost">&#x1F4BC; Trabalho: $%1$.2f</string>
+
+    <!-- Foreground Notifications -->
+    <string name="notif_logger_active">Registro de Localização Ativo</string>
+    <string name="notif_collecting_gps">Coletando dados de GPS a cada ~8 segundos</string>
+    <string name="notif_bt_event_queued">Evento Bluetooth na Fila</string>
+    <string name="notif_bt_address">Endereço: %1$s</string>
+</resources>

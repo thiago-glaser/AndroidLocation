@@ -31,7 +31,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Location Services"
+                android:text="@string/main_header_title"
                 android:textSize="26sp"
                 android:textStyle="bold"
                 android:textColor="?attr/colorOnSurface" />
@@ -52,7 +52,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:maxWidth="340dp"
-                android:text="🚗  Trips &amp; Sessions"
+                android:text="@string/main_btn_trips"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -69,7 +69,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:maxWidth="340dp"
-                android:text="🚘  Manage Cars"
+                android:text="@string/main_btn_cars"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -86,7 +86,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:maxWidth="340dp"
-                android:text="📶  Bluetooth Devices"
+                android:text="@string/main_btn_bluetooth"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -103,7 +103,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:maxWidth="340dp"
-                android:text="⛽  Fuel Logs"
+                android:text="@string/main_btn_fuel"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -120,7 +120,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:maxWidth="340dp"
-                android:text="💳  Vehicle Expenses"
+                android:text="@string/main_btn_expenses"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -137,7 +137,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
                 android:maxWidth="340dp"
-                android:text="📊  Reports &amp; Analytics"
+                android:text="@string/main_btn_reports"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -155,7 +155,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="54dp"
                 android:maxWidth="340dp"
-                android:text="⚙  Settings"
+                android:text="@string/main_btn_settings"
                 android:textSize="15sp"
                 android:textStyle="bold"
                 android:textAllCaps="false"
@@ -233,7 +233,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Service Status"
+                        android:text="@string/main_service_status"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurfaceVariant" />
@@ -243,7 +243,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Service stopped"
+                        android:text="@string/main_status_service_stopped"
                         android:textSize="16sp"
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurface" />
@@ -257,7 +257,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="API Key"
+                        android:text="@string/main_label_api_key"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurfaceVariant" />
@@ -267,7 +267,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Checking API key..."
+                        android:text="@string/main_api_key_checking"
                         android:textSize="14sp"
                         android:textColor="?attr/colorOnSurface" />
                                     <View
@@ -279,7 +279,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Account"
+                        android:text="@string/main_label_account"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurfaceVariant" />
@@ -289,7 +289,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Not logged in"
+                        android:text="@string/main_account_not_logged_in"
                         android:textSize="14sp"
                         android:textColor="?attr/colorOnSurface" />
 
@@ -302,7 +302,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Unit System"
+                        android:text="@string/main_label_unit_system"
                         android:textSize="13sp"
                         android:textStyle="bold"
                         android:textColor="?attr/colorOnSurfaceVariant" />
@@ -312,7 +312,30 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="Metric (km, L, km/L)"
+                        android:text="@string/main_unit_metric"
+                        android:textSize="14sp"
+                        android:textColor="?attr/colorOnSurface" />
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:layout_marginVertical="12dp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/main_label_language"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="?attr/colorOnSurfaceVariant" />
+
+                    <TextView
+                        android:id="@+id/tvLanguage"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="@string/lang_system_default"
                         android:textSize="14sp"
                         android:textColor="?attr/colorOnSurface" />
                 </LinearLayout>
@@ -323,7 +346,7 @@
                 android:id="@+id/btnStart"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Start Location Logging"
+                android:text="@string/main_btn_start"
                 android:textSize="15sp"
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
@@ -336,7 +359,7 @@
                 android:id="@+id/btnStop"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Stop Logging"
+                android:text="@string/main_btn_stop"
                 android:textSize="15sp"
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
@@ -349,7 +372,7 @@
                 android:id="@+id/btnChangeUnits"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Change Unit System (Metric / Imperial)"
+                android:text="@string/main_btn_change_units"
                 android:textSize="15sp"
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
@@ -359,10 +382,23 @@
                 android:layout_marginBottom="12dp" />
 
             <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnChangeLanguage"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/main_btn_change_language"
+                android:textSize="15sp"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#0D9488"
+                android:textColor="#FFFFFF"
+                app:elevation="1dp"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnUpdateApiKey"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Update API Key"
+                android:text="@string/main_btn_update_api_key"
                 android:textSize="15sp"
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
@@ -375,7 +411,7 @@
                 android:id="@+id/btnCleanLocationData"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Clean Server Location Data"
+                android:text="@string/main_btn_clean_location"
                 android:textSize="15sp"
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
@@ -388,7 +424,7 @@
                 android:id="@+id/btnSignOut"
                 android:layout_width="match_parent"
                 android:layout_height="52dp"
-                android:text="Log Out"
+                android:text="@string/main_btn_logout"
                 android:textSize="15sp"
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
@@ -401,7 +437,7 @@
                 android:id="@+id/btnReturnMain"
                 android:layout_width="match_parent"
                 android:layout_height="48dp"
-                android:text="Back to Main Page"
+                android:text="@string/main_btn_back"
                 android:textSize="14sp"
                 android:textAllCaps="false"
                 style="@style/Widget.Material3.Button.TextButton"

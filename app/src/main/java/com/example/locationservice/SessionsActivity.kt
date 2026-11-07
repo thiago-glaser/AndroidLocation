@@ -158,7 +158,7 @@ class SessionsActivity : AppCompatActivity() {
                 if (pag != null) {
                     currentPage = pag.page
                     totalPages = pag.totalPages.coerceAtLeast(1)
-                    binding.tvPageInfo.text = "Page $currentPage / $totalPages"
+                    binding.tvPageInfo.text = getString(R.string.common_page_info, currentPage, totalPages)
                     updatePaginationButtons()
                 }
             }.onFailure { err ->
@@ -322,7 +322,7 @@ class SessionsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val res = apiClient.toggleSessionType(session.id, nextType)
             res.onSuccess {
-                Toast.makeText(this@SessionsActivity, "Trip type updated", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SessionsActivity, getString(R.string.trips_type_updated), Toast.LENGTH_SHORT).show()
                 loadSessions()
             }.onFailure { err ->
                 Toast.makeText(this@SessionsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
@@ -334,7 +334,7 @@ class SessionsActivity : AppCompatActivity() {
         lifecycleScope.launch {
             val res = apiClient.endSession(session.id, session.deviceId)
             res.onSuccess {
-                Toast.makeText(this@SessionsActivity, "Trip ended", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@SessionsActivity, getString(R.string.trips_ended), Toast.LENGTH_SHORT).show()
                 loadSessions()
             }.onFailure { err ->
                 Toast.makeText(this@SessionsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
@@ -344,26 +344,26 @@ class SessionsActivity : AppCompatActivity() {
 
     private fun confirmDeleteSession(session: SessionItem) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Delete Trip")
-            .setMessage("Are you sure you want to delete this trip record?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(R.string.trips_delete_title)
+            .setMessage(R.string.trips_delete_msg)
+            .setPositiveButton(R.string.common_delete) { _, _ ->
                 lifecycleScope.launch {
                     val res = apiClient.deleteSession(session.id)
                     res.onSuccess {
-                        Toast.makeText(this@SessionsActivity, "Trip deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SessionsActivity, getString(R.string.trips_deleted), Toast.LENGTH_SHORT).show()
                         loadSessions()
                     }.onFailure { err ->
                         Toast.makeText(this@SessionsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun showAddSessionDialog() {
         if (carsList.isEmpty()) {
-            Toast.makeText(this, "Please register a car first in Manage Cars", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.trips_register_car_first), Toast.LENGTH_LONG).show()
             return
         }
 
@@ -392,12 +392,12 @@ class SessionsActivity : AppCompatActivity() {
         }.format(Date())
 
         val startInput = EditText(this).apply {
-            hint = "Start UTC (e.g. 2026-10-23T15:00:00.000Z)"
+            hint = getString(R.string.trips_hint_start_utc)
             setText(utcNow)
         }
 
         val endInput = EditText(this).apply {
-            hint = "End UTC (Optional)"
+            hint = getString(R.string.trips_hint_end_utc)
         }
 
         val deviceId = Settings.Secure.getString(contentResolver, Settings.Secure.ANDROID_ID) ?: "UNKNOWN_ID"
@@ -412,16 +412,16 @@ class SessionsActivity : AppCompatActivity() {
         layout.addView(endInput)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Add Trip / Session")
+            .setTitle(R.string.trips_dialog_add_title)
             .setView(layout)
-            .setPositiveButton("Add") { _, _ ->
+            .setPositiveButton(R.string.common_add) { _, _ ->
                 val selectedCar = carsList[carSpinner.selectedItemPosition]
                 val type = if (typeSpinner.selectedItemPosition == 0) "P" else "B"
                 val start = startInput.text.toString().trim()
                 val end = endInput.text.toString().trim().ifEmpty { null }
 
                 if (start.isEmpty()) {
-                    Toast.makeText(this, "Start time is required", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.trips_start_time_required), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
@@ -434,14 +434,14 @@ class SessionsActivity : AppCompatActivity() {
                         type = type
                     )
                     res.onSuccess {
-                        Toast.makeText(this@SessionsActivity, "Session added", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SessionsActivity, getString(R.string.trips_added), Toast.LENGTH_SHORT).show()
                         loadSessions()
                     }.onFailure { err ->
                         Toast.makeText(this@SessionsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 }

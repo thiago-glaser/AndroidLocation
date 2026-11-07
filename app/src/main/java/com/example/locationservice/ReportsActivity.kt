@@ -283,8 +283,8 @@ class ReportsActivity : AppCompatActivity() {
         binding.barDistPersonal.layoutParams = distPersonalParams
         binding.barDistBusiness.layoutParams = distBusinessParams
 
-        binding.tvPersonalDistLegend.text = String.format(Locale.US, "🏠 Personal: %s (%d%%)", UnitConverter.formatDistance(pDist, isImperial, 1), pDistPct)
-        binding.tvBusinessDistLegend.text = String.format(Locale.US, "💼 Business: %s (%d%%)", UnitConverter.formatDistance(bDist, isImperial, 1), bDistPct)
+        binding.tvPersonalDistLegend.text = getString(R.string.reports_legend_personal_dist, UnitConverter.formatDistance(pDist, isImperial, 1), pDistPct)
+        binding.tvBusinessDistLegend.text = getString(R.string.reports_legend_business_dist, UnitConverter.formatDistance(bDist, isImperial, 1), bDistPct)
 
         // Time distribution
         val totalDur = summary.totalDurationHours
@@ -301,8 +301,8 @@ class ReportsActivity : AppCompatActivity() {
         binding.barTimePersonal.layoutParams = timePersonalParams
         binding.barTimeBusiness.layoutParams = timeBusinessParams
 
-        binding.tvPersonalTimeLegend.text = String.format(Locale.US, "🏠 Personal: %s (%d%%)", formatDuration(pDur), pDurPct)
-        binding.tvBusinessTimeLegend.text = String.format(Locale.US, "💼 Business: %s (%d%%)", formatDuration(bDur), bDurPct)
+        binding.tvPersonalTimeLegend.text = getString(R.string.reports_legend_personal_time, formatDuration(pDur), pDurPct)
+        binding.tvBusinessTimeLegend.text = getString(R.string.reports_legend_business_time, formatDuration(bDur), bDurPct)
 
         // Cost distribution
         val totalCost = summary.totalCost
@@ -316,13 +316,13 @@ class ReportsActivity : AppCompatActivity() {
         binding.barCostPersonal.layoutParams = costPersonalParams
         binding.barCostBusiness.layoutParams = costBusinessParams
 
-        binding.tvPersonalCostLegend.text = String.format(Locale.US, "🏠 Personal: $%.2f", pCost)
-        binding.tvBusinessCostLegend.text = String.format(Locale.US, "💼 Business: $%.2f", bCost)
+        binding.tvPersonalCostLegend.text = getString(R.string.reports_legend_personal_cost, pCost)
+        binding.tvBusinessCostLegend.text = getString(R.string.reports_legend_business_cost, bCost)
     }
 
     private fun displayTripsList(sessions: List<SessionItem>) {
         binding.layoutTripsList.removeAllViews()
-        binding.tvTripsHeader.text = "TRIP SESSIONS (${sessions.size})"
+        binding.tvTripsHeader.text = getString(R.string.reports_trip_sessions_header, sessions.size)
 
         if (sessions.isEmpty()) {
             binding.tvEmptyTrips.visibility = View.VISIBLE
@@ -769,7 +769,7 @@ class ReportsActivity : AppCompatActivity() {
         binding.tvFuelTotalCost.text = String.format(Locale.US, "$%.2f", summary.totalCost)
         binding.tvFuelTotalLiters.text = UnitConverter.formatVolume(summary.totalLiters, isImperial)
         binding.tvFuelAvgEconomy.text = UnitConverter.formatEfficiency(summary.avgKmPerLiter, isImperial)
-        binding.tvFuelAvgPriceLabel.text = if (isImperial) "AVG PRICE / GAL" else "AVG PRICE / L"
+        binding.tvFuelAvgPriceLabel.text = if (isImperial) getString(R.string.reports_fuel_avg_price_gal) else getString(R.string.reports_fuel_avg_price_l)
         binding.tvFuelAvgPrice.text = String.format(Locale.US, "$%.2f/%s ($%.3f/%s)", UnitConverter.pricePerLiterToDisplay(summary.avgPricePerLiter, isImperial), UnitConverter.volumeUnit(isImperial), UnitConverter.pricePerKmToDisplay(summary.avgPricePerKm, isImperial), UnitConverter.distanceUnit(isImperial))
 
         binding.layoutFuelList.removeAllViews()

@@ -89,57 +89,57 @@ class LoginActivity : AppCompatActivity() {
 
         when (mode) {
             AuthMode.LOGIN -> {
-                binding.tvSubtitle.text = "Sign in to your account"
+                binding.tvSubtitle.text = getString(R.string.login_subtitle_signin)
                 binding.tvModeDescription.visibility = View.GONE
                 binding.btnGoogleSignIn.visibility = View.VISIBLE
-                binding.btnGoogleSignIn.text = "Continue with Google"
+                binding.btnGoogleSignIn.text = getString(R.string.login_google_signin)
                 binding.layoutDivider.visibility = View.VISIBLE
                 binding.tilUsername.visibility = View.VISIBLE
                 binding.tilEmail.visibility = View.GONE
                 binding.tilPassword.visibility = View.VISIBLE
-                binding.btnSignIn.text = "Sign In"
-                binding.tvSwitchMode.text = "Don't have an account? Register"
+                binding.btnSignIn.text = getString(R.string.login_btn_signin)
+                binding.tvSwitchMode.text = getString(R.string.login_no_account)
                 binding.tvForgotPassword.visibility = View.VISIBLE
                 binding.tvForgotUsername.visibility = View.VISIBLE
             }
             AuthMode.REGISTER -> {
-                binding.tvSubtitle.text = "Create a new account"
+                binding.tvSubtitle.text = getString(R.string.login_subtitle_signup)
                 binding.tvModeDescription.visibility = View.GONE
                 binding.btnGoogleSignIn.visibility = View.VISIBLE
-                binding.btnGoogleSignIn.text = "Sign up with Google"
+                binding.btnGoogleSignIn.text = getString(R.string.login_google_signup)
                 binding.layoutDivider.visibility = View.VISIBLE
                 binding.tilUsername.visibility = View.VISIBLE
                 binding.tilEmail.visibility = View.VISIBLE
                 binding.tilPassword.visibility = View.VISIBLE
-                binding.btnSignIn.text = "Create Account"
-                binding.tvSwitchMode.text = "Already have an account? Sign In"
+                binding.btnSignIn.text = getString(R.string.login_btn_signup)
+                binding.tvSwitchMode.text = getString(R.string.login_have_account)
                 binding.tvForgotPassword.visibility = View.GONE
                 binding.tvForgotUsername.visibility = View.GONE
             }
             AuthMode.FORGOT_PASSWORD -> {
-                binding.tvSubtitle.text = "Recover your account password"
-                binding.tvModeDescription.text = "Enter the email address associated with your account and we'll send you a link to reset your password."
+                binding.tvSubtitle.text = getString(R.string.login_subtitle_forgot_password)
+                binding.tvModeDescription.text = getString(R.string.login_forgot_pass_desc)
                 binding.tvModeDescription.visibility = View.VISIBLE
                 binding.btnGoogleSignIn.visibility = View.GONE
                 binding.layoutDivider.visibility = View.GONE
                 binding.tilUsername.visibility = View.GONE
                 binding.tilEmail.visibility = View.VISIBLE
                 binding.tilPassword.visibility = View.GONE
-                binding.btnSignIn.text = "Send Reset Link"
-                binding.tvSwitchMode.text = "Back to Login"
+                binding.btnSignIn.text = getString(R.string.login_btn_send_reset)
+                binding.tvSwitchMode.text = getString(R.string.login_back_to_login)
                 binding.tvForgotPassword.visibility = View.GONE
                 binding.tvForgotUsername.visibility = View.GONE
             }
             AuthMode.FORGOT_USERNAME -> {
-                binding.tvSubtitle.text = "Username Recovery"
-                binding.tvModeDescription.text = "Enter the email address associated with your account and we will send your username to your inbox."
+                binding.tvSubtitle.text = getString(R.string.login_subtitle_forgot_username)
+                binding.tvModeDescription.text = getString(R.string.login_forgot_user_desc)
                 binding.tvModeDescription.visibility = View.VISIBLE
                 binding.btnGoogleSignIn.visibility = View.GONE
                 binding.layoutDivider.visibility = View.GONE
                 binding.tilUsername.visibility = View.GONE
                 binding.tilEmail.visibility = View.VISIBLE
                 binding.tilPassword.visibility = View.GONE
-                binding.btnSignIn.text = "Send Username"
+                binding.btnSignIn.text = getString(R.string.login_btn_send_username)
                 binding.tvSwitchMode.text = "Back to Login"
                 binding.tvForgotPassword.visibility = View.GONE
                 binding.tvForgotUsername.visibility = View.GONE
@@ -345,7 +345,7 @@ class LoginActivity : AppCompatActivity() {
         }
 
         withContext(Dispatchers.Main) {
-            Toast.makeText(this@LoginActivity, "Welcome, ${res.user?.username ?: "User"}!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this@LoginActivity, getString(R.string.login_welcome_msg, res.user?.username ?: "User"), Toast.LENGTH_SHORT).show()
             val intent = Intent(this@LoginActivity, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             }

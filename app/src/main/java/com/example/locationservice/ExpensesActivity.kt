@@ -192,7 +192,7 @@ class ExpensesActivity : AppCompatActivity() {
 
     private fun showAddExpenseDialog() {
         if (carsList.isEmpty()) {
-            Toast.makeText(this, "Please register a car first in Manage Cars", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, getString(R.string.trips_register_car_first), Toast.LENGTH_LONG).show()
             return
         }
 
@@ -234,12 +234,12 @@ class ExpensesActivity : AppCompatActivity() {
         }
 
         val amountInput = EditText(this).apply {
-            hint = "Amount in $ (e.g. 45.00)"
+            hint = getString(R.string.expenses_hint_amount)
             inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
         }
 
         val descriptionInput = EditText(this).apply {
-            hint = "Description (e.g. Oil change, Toll, Parking)"
+            hint = getString(R.string.expenses_hint_desc)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
         }
 
@@ -274,25 +274,25 @@ class ExpensesActivity : AppCompatActivity() {
         layout.addView(dateInput)
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("Log Vehicle Expense")
+            .setTitle(R.string.expenses_dialog_title)
             .setView(layout)
-            .setPositiveButton("Save") { _, _ ->
+            .setPositiveButton(R.string.common_save) { _, _ ->
                 val amount = amountInput.text.toString().toDoubleOrNull() ?: 0.0
                 val desc = descriptionInput.text.toString().trim()
 
                 if (amount <= 0.0) {
-                    Toast.makeText(this, "Please enter a valid amount", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.expenses_invalid_amount), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
                 if (desc.isEmpty()) {
-                    Toast.makeText(this, "Please enter a description", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.expenses_enter_desc), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
 
                 val selectedCar = carsList[carSpinner.selectedItemPosition]
                 val selectedTypeIndex = typeSpinner.selectedItemPosition
                 if (selectedTypeIndex >= expenseTypesList.size) {
-                    Toast.makeText(this, "Please select a valid expense type", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, getString(R.string.expenses_select_type), Toast.LENGTH_SHORT).show()
                     return@setPositiveButton
                 }
                 val selectedType = expenseTypesList[selectedTypeIndex]
@@ -310,20 +310,20 @@ class ExpensesActivity : AppCompatActivity() {
                         description = desc
                     )
                     res.onSuccess {
-                        Toast.makeText(this@ExpensesActivity, "Expense saved", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ExpensesActivity, getString(R.string.expenses_saved), Toast.LENGTH_SHORT).show()
                         loadExpenses()
                     }.onFailure { err ->
                         Toast.makeText(this@ExpensesActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun showCreateTypeDialog(onCreated: (ExpenseTypeItem) -> Unit) {
         val input = EditText(this).apply {
-            hint = "e.g. Parking, Tolls, Insurance"
+            hint = getString(R.string.expenses_hint_new_type)
         }
         val layout = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -332,9 +332,9 @@ class ExpensesActivity : AppCompatActivity() {
         }
 
         MaterialAlertDialogBuilder(this)
-            .setTitle("New Expense Type")
+            .setTitle(R.string.expenses_new_type_title)
             .setView(layout)
-            .setPositiveButton("Create") { _, _ ->
+            .setPositiveButton(R.string.common_create) { _, _ ->
                 val name = input.text.toString().trim()
                 if (name.isNotEmpty()) {
                     lifecycleScope.launch {
@@ -347,7 +347,7 @@ class ExpensesActivity : AppCompatActivity() {
                                 val found = freshTypes.firstOrNull { it.name.equals(name, ignoreCase = true) }
                                     ?: ExpenseTypeItem(name, name, null)
                                 onCreated(found)
-                                Toast.makeText(this@ExpensesActivity, "Created type: $name", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(this@ExpensesActivity, getString(R.string.expenses_type_created, name), Toast.LENGTH_SHORT).show()
                             }
                         }.onFailure { err ->
                             Toast.makeText(this@ExpensesActivity, "Failed to create type: ${err.message}", Toast.LENGTH_LONG).show()
@@ -355,26 +355,26 @@ class ExpensesActivity : AppCompatActivity() {
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 
     private fun confirmDeleteExpense(item: ExpenseItem) {
         MaterialAlertDialogBuilder(this)
-            .setTitle("Delete Expense")
-            .setMessage("Are you sure you want to delete this expense record?")
-            .setPositiveButton("Delete") { _, _ ->
+            .setTitle(R.string.expenses_delete_title)
+            .setMessage(R.string.expenses_delete_msg)
+            .setPositiveButton(R.string.common_delete) { _, _ ->
                 lifecycleScope.launch {
                     val res = apiClient.deleteExpense(item.id)
                     res.onSuccess {
-                        Toast.makeText(this@ExpensesActivity, "Deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@ExpensesActivity, getString(R.string.common_deleted), Toast.LENGTH_SHORT).show()
                         loadExpenses()
                     }.onFailure { err ->
                         Toast.makeText(this@ExpensesActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
                     }
                 }
             }
-            .setNegativeButton("Cancel", null)
+            .setNegativeButton(R.string.common_cancel, null)
             .show()
     }
 }
