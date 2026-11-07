@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.util.Log
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -17,6 +16,7 @@ import java.util.Locale
 class BluetoothConnectionReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
+        AppLogger.init(context)
         val pendingResult = goAsync()
         if (ActivityCompat.checkSelfPermission(
                 context,
@@ -35,7 +35,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
 
         // Only process devices that are actually paired (bonded) with this phone!
         if (device.bondState != BluetoothDevice.BOND_BONDED) {
-            Log.d("BluetoothReceiver", "Ignoring Bluetooth event: device is not bonded (${device.address})")
+            AppLogger.d("BluetoothReceiver", "Ignoring Bluetooth event: device is not bonded (${device.address})")
             pendingResult.finish()
             return
         }
@@ -44,7 +44,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         val deviceAddress = device.address?.trim() ?: ""
 
         if (deviceName.isEmpty() || deviceName.equals("Unknown Device", ignoreCase = true) || deviceAddress.isEmpty()) {
-            Log.d("BluetoothReceiver", "Ignoring Bluetooth device with unknown name or address: $deviceAddress")
+            AppLogger.d("BluetoothReceiver", "Ignoring Bluetooth device with unknown name or address: $deviceAddress")
             pendingResult.finish()
             return
         }
@@ -59,7 +59,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
         }
 
         val logMessage = "Device $actionMessage: $deviceName ($deviceAddress)"
-        Log.d("BluetoothReceiver", logMessage)
+        AppLogger.i("BluetoothReceiver", logMessage)
 
         GlobalScope.launch {
             try {
@@ -73,9 +73,9 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }.format(Date())
                 )
-                Log.d("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage)")
+                AppLogger.i("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage)")
                 db.sessionEventDao().insert(sessionEvent)
-                Log.d("BluetoothReceiver", "Successfully queued session event.")
+                AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
 
                 // Logic for discovery of new paired devices
                 val bluetoothDevices = db.bluetoothDeviceDao().getAll()
@@ -89,13 +89,13 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                         carId = ""
                     )
                     db.queuedBluetoothDeviceDao().insert(newDevice)
-                    Log.d("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $deviceName")
+                    AppLogger.i("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $deviceName")
                 }
 
                 // Ensure LocationLoggingService is running and flushes session event
                 LocationLoggingService.ensureServiceRunning(context.applicationContext)
             } catch (e: Exception) {
-                Log.e("BluetoothReceiver", "Failed to process bluetooth event", e)
+                AppLogger.e("BluetoothReceiver", "Failed to process bluetooth event", e)
             } finally {
                 pendingResult.finish()
             }

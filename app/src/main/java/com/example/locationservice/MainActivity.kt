@@ -146,6 +146,9 @@ class MainActivity : AppCompatActivity() {
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
         binding.btnChangeUnits.setOnClickListener { showChangeUnitSystemDialog() }
         binding.btnChangeLanguage.setOnClickListener { showChangeLanguageDialog() }
+        binding.btnOpenLogcat.setOnClickListener {
+            startActivity(Intent(this, LogcatActivity::class.java))
+        }
         binding.btnCleanLocationData.setOnClickListener { showCleanLocationDataDialog() }
         binding.btnSignOut.setOnClickListener { confirmSignOut() }
     }
@@ -166,6 +169,7 @@ class MainActivity : AppCompatActivity() {
                     unitSys = serverUnit
                 }
             }
+            val isAdmin = apiClient.checkIsAdmin()
             val currentAppLocales = AppCompatDelegate.getApplicationLocales()
             val langText = if (currentAppLocales.isEmpty) {
                 getString(R.string.lang_system_default)
@@ -180,6 +184,7 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 binding.tvUnitSystem.text = if (unitSys == "IMPERIAL") getString(R.string.main_unit_imperial) else getString(R.string.main_unit_metric)
                 binding.tvLanguage.text = langText
+                binding.btnOpenLogcat.visibility = if (isAdmin) View.VISIBLE else View.GONE
             }
             withContext(Dispatchers.Main) {
                 binding.tvAccountUser.text = if (!username.isNullOrEmpty()) username else if (!apiKey.isNullOrEmpty()) getString(R.string.main_account_configured_key) else getString(R.string.main_account_not_logged_in)
@@ -205,6 +210,9 @@ class MainActivity : AppCompatActivity() {
             == PackageManager.PERMISSION_GRANTED
         ) {
             Log.d("SERVICE", "Permission OK → Starting foreground service")
+            lifecycleScope.launch(Dispatchers.IO) {
+                db.settingDao().insert(Setting("service_manually_stopped", "false"))
+            }
             val intent = Intent(this, LocationLoggingService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(intent)
@@ -287,6 +295,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopLocationService() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            db.settingDao().insert(Setting("service_manually_stopped", "true"))
+        }
         val intent = Intent(this, LocationLoggingService::class.java)
         stopService(intent)
         updateStatusText(getString(R.string.main_status_service_stopped))
@@ -545,6 +556,8 @@ class MainActivity : AppCompatActivity() {
                     db.settingDao().insert(Setting("api_key", ""))
                     db.settingDao().insert(Setting("auth_token", ""))
                     db.settingDao().insert(Setting("username", ""))
+                    db.settingDao().insert(Setting("is_admin", "false"))
+                    db.settingDao().insert(Setting("service_manually_stopped", "true"))
                     withContext(Dispatchers.Main) {
                         stopLocationService()
                         val intent = Intent(this@MainActivity, LoginActivity::class.java).apply {

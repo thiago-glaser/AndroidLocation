@@ -276,4 +276,24 @@ Warning: This action is permanent and cannot be undone.</string>
     <string name="notif_collecting_gps">Collecting GPS data every ~8 seconds</string>
     <string name="notif_bt_event_queued">Bluetooth Event Queued</string>
     <string name="notif_bt_address">Address: %1$s</string>
+
+    <!-- Admin Logcat Screen -->
+    <string name="main_btn_logcat">&#x1F4DF;  Admin: View Logcat</string>
+    <string name="logcat_title">Diagnostic Logcat</string>
+    <string name="logcat_subtitle_admin">Admin Diagnostics (Persistent + Live)</string>
+    <string name="logcat_search_hint">Search logs (e.g. GPS, HTTP, BootReceiver)...</string>
+    <string name="logcat_auto_refresh">Auto-refresh (2.5s)</string>
+    <string name="logcat_btn_copy">Copy</string>
+    <string name="logcat_btn_share">Share</string>
+    <string name="logcat_btn_clear">Clear</string>
+    <string name="logcat_filter_all">All Logs</string>
+    <string name="logcat_filter_service">Location Service</string>
+    <string name="logcat_filter_boot">Boot / Update / Watchdog</string>
+    <string name="logcat_filter_bluetooth">Bluetooth</string>
+    <string name="logcat_filter_errors">Warnings &amp; Errors</string>
+    <string name="logcat_line_count">Showing %1$d of %2$d lines</string>
+    <string name="logcat_empty">No log entries match the current filter.</string>
+    <string name="logcat_copied_toast">Logs copied to clipboard</string>
+    <string name="logcat_clear_confirm_title">Clear Diagnostic Logs</string>
+    <string name="logcat_clear_confirm_msg">Clear both persistent diagnostic logs and the live logcat buffer?</string>
 </resources>

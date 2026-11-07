@@ -3,13 +3,13 @@ package com.example.locationservice
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.util.Log
 
 class BootReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent?) {
+        AppLogger.init(context)
         val action = intent?.action ?: return
-        Log.d("BootReceiver", "Received broadcast action: $action")
+        AppLogger.i("BootReceiver", "Received broadcast action: $action (data=${intent.dataString})")
 
         val validActions = setOf(
             Intent.ACTION_BOOT_COMPLETED,
@@ -30,13 +30,13 @@ class BootReceiver : BroadcastReceiver() {
 
         val pendingResult = goAsync()
         try {
-            Log.d("BootReceiver", "Starting LocationLoggingService and scheduling fast watchdog after $action")
+            AppLogger.i("BootReceiver", "Starting LocationLoggingService and scheduling fast watchdog after $action")
             // Immediate start
             LocationLoggingService.ensureServiceRunning(context.applicationContext)
-            // Staggered 2-second safety-net alarm to ensure resurrection even if package installer was finalizing
-            LocationLoggingService.scheduleWatchdogAlarm(context.applicationContext, 2000L)
+            // Staggered 3-second exact safety-net alarm to ensure resurrection even if package installer was finalizing
+            LocationLoggingService.scheduleWatchdogAlarm(context.applicationContext, 3000L)
         } catch (e: Exception) {
-            Log.e("BootReceiver", "Failed to start service after $action", e)
+            AppLogger.e("BootReceiver", "Failed to start service after $action", e)
         } finally {
             pendingResult.finish()
         }

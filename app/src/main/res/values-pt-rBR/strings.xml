@@ -276,4 +276,24 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="notif_collecting_gps">Coletando dados de GPS a cada ~8 segundos</string>
     <string name="notif_bt_event_queued">Evento Bluetooth na Fila</string>
     <string name="notif_bt_address">Endereço: %1$s</string>
+
+    <!-- Admin Logcat Screen -->
+    <string name="main_btn_logcat">&#x1F4DF;  Admin: Ver Logcat</string>
+    <string name="logcat_title">Logcat de Diagnóstico</string>
+    <string name="logcat_subtitle_admin">Diagnóstico Admin (Persistente + Tempo Real)</string>
+    <string name="logcat_search_hint">Buscar nos logs (ex: GPS, HTTP, BootReceiver)...</string>
+    <string name="logcat_auto_refresh">Atualizar auto (2,5s)</string>
+    <string name="logcat_btn_copy">Copiar</string>
+    <string name="logcat_btn_share">Compartilhar</string>
+    <string name="logcat_btn_clear">Limpar</string>
+    <string name="logcat_filter_all">Todos os Logs</string>
+    <string name="logcat_filter_service">Serviço de Localização</string>
+    <string name="logcat_filter_boot">Boot / Atualização / Watchdog</string>
+    <string name="logcat_filter_bluetooth">Bluetooth</string>
+    <string name="logcat_filter_errors">Avisos e Erros</string>
+    <string name="logcat_line_count">Exibindo %1$d de %2$d linhas</string>
+    <string name="logcat_empty">Nenhum registro corresponde ao filtro atual.</string>
+    <string name="logcat_copied_toast">Logs copiados para a área de transferência</string>
+    <string name="logcat_clear_confirm_title">Limpar Logs de Diagnóstico</string>
+    <string name="logcat_clear_confirm_msg">Deseja limpar tanto os logs persistentes quanto o buffer do logcat?</string>
 </resources>

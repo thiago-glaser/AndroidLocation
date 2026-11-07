@@ -341,6 +341,10 @@ class LoginActivity : AppCompatActivity() {
             }
             val unitSystem = (res.unitSystem ?: res.user?.unitSystem ?: "METRIC").uppercase()
             db.settingDao().insert(Setting("unit_system", if (unitSystem == "IMPERIAL") "IMPERIAL" else "METRIC"))
+            if (res.user?.isAdmin != null) {
+                db.settingDao().insert(Setting("is_admin", if (res.user.isAdmin) "true" else "false"))
+            }
+            db.settingDao().insert(Setting("service_manually_stopped", "false"))
             apiClient.ensureDeviceRegistered(res.token)
         }
 

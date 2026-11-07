@@ -93,6 +93,60 @@ class ApiClient(private val context: Context) {
         return getUnitSystem() == "IMPERIAL"
     }
 
+    suspend fun checkIsAdmin(): Boolean = withContext(Dispatchers.IO) {
+        val apiKey = ensureApiKey()
+        val token = db.settingDao().getSetting("auth_token")?.value?.trim() ?: ""
+
+        // 1. Query /api/auth/me for authoritative server-side isAdmin status
+        if (apiKey.isNotEmpty() || token.isNotEmpty()) {
+            try {
+                val reqBuilder = Request.Builder().url("$baseUrl/auth/me").get()
+                if (apiKey.isNotEmpty()) reqBuilder.header("X-API-Key", apiKey)
+                if (token.isNotEmpty()) {
+                    reqBuilder.header("Authorization", "Bearer $token")
+                    reqBuilder.header("Cookie", "auth_token=$token")
+                }
+                client.newCall(reqBuilder.build()).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val bodyStr = resp.body?.string() ?: ""
+                        val root = JSONObject(bodyStr)
+                        val userObj = root.optJSONObject("user")
+                        if (userObj != null && userObj.has("isAdmin")) {
+                            val isAdmin = userObj.optBoolean("isAdmin", false) || userObj.optInt("isAdmin", 0) == 1
+                            db.settingDao().insert(Setting("is_admin", if (isAdmin) "true" else "false"))
+                            return@withContext isAdmin
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 2. Fallback: inspect JWT payload if auth_token is present
+        if (token.isNotEmpty()) {
+            try {
+                val parts = token.split(".")
+                if (parts.size >= 2) {
+                    val decoded = String(
+                        android.util.Base64.decode(
+                            parts[1],
+                            android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+                        ),
+                        Charsets.UTF_8
+                    )
+                    val jwtObj = JSONObject(decoded)
+                    if (jwtObj.has("isAdmin")) {
+                        val isAdmin = jwtObj.optBoolean("isAdmin", false) || jwtObj.optInt("isAdmin", 0) == 1
+                        db.settingDao().insert(Setting("is_admin", if (isAdmin) "true" else "false"))
+                        return@withContext isAdmin
+                    }
+                }
+            } catch (_: Exception) {}
+        }
+
+        // 3. Fallback: cached setting in local Room DB
+        db.settingDao().getSetting("is_admin")?.value == "true"
+    }
+
     suspend fun getUserSettings(): Result<String> {
         val req = Request.Builder()
             .url("$baseUrl/user/settings")
