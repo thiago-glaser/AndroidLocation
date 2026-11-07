@@ -51,8 +51,7 @@ class LocationLoggingService : Service() {
         private const val CHANNEL_ID = "location_logging_channel"
         private const val SESSION_EVENT_CHANNEL_ID = "session_event_channel"
         private const val UPDATE_INTERVAL_MS = 7_500L
-        private const val SEND_BATCH_INTERVAL_MS = 2 * 60 * 1000L // 2 minutes
-        private const val SEND_BATCH_INTERVAL_ACTIVE_MS = 30 * 1000L
+        private const val SEND_BATCH_INTERVAL_MS = 30 * 1000L // Fixed 30 seconds interval (independent of session state)
         private const val BLUETOOTH_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L // 12 hours
         private val SENT_DATA_RETENTION_DAYS = 60L
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
@@ -322,13 +321,9 @@ class LocationLoggingService : Service() {
                 delay(pollInterval)
                 timeSinceLastSend += pollInterval
 
-                val latestEvent = db.sessionEventDao().getLatestEvent()
-                val isSessionActive = latestEvent?.eventType == "start"
-                val limit = if (isSessionActive) SEND_BATCH_INTERVAL_ACTIVE_MS else SEND_BATCH_INTERVAL_MS
-
-                if (timeSinceLastSend >= limit) {
+                if (timeSinceLastSend >= SEND_BATCH_INTERVAL_MS) {
                     timeSinceLastSend = 0L
-                    AppLogger.d("LocationService", "Interval reached, sending batch and cleaning up old data.")
+                    AppLogger.d("LocationService", "Fixed interval reached (${SEND_BATCH_INTERVAL_MS / 1000}s), sending batch and cleaning up old data.")
 
                     // Refresh bluetooth devices if interval exceeded
                     if (System.currentTimeMillis() - lastBluetoothFetchTime > BLUETOOTH_REFRESH_INTERVAL_MS) {
