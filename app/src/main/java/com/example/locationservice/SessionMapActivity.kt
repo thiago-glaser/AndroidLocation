@@ -4,20 +4,29 @@ import android.graphics.Color
 import android.location.Location
 import android.os.Bundle
 import android.view.View
-import android.webkit.WebView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivitySessionMapBinding
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CircleOptions
+import com.google.android.gms.maps.model.JointType
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
+import com.google.android.gms.maps.model.MarkerOptions
+import com.google.android.gms.maps.model.PolylineOptions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlin.math.roundToInt
 
 data class MapPoint(
     val lat: Double,
@@ -26,11 +35,15 @@ data class MapPoint(
     val date: String?
 )
 
-class SessionMapActivity : AppCompatActivity() {
+class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var binding: ActivitySessionMapBinding
     private lateinit var db: LocationDatabase
     private lateinit var apiClient: ApiClient
+
+    private var googleMap: GoogleMap? = null
+    private var pendingPoints: List<MapPoint>? = null
+    private var pendingIsImperial: Boolean = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,7 +55,8 @@ class SessionMapActivity : AppCompatActivity() {
 
         binding.btnBack.setOnClickListener { finish() }
 
-        setupWebView()
+        val mapFragment = supportFragmentManager.findFragmentById(R.id.mapFragment) as? SupportMapFragment
+        mapFragment?.getMapAsync(this)
 
         val carTitle = intent.getStringExtra("CAR_TITLE") ?: "Trip Route"
         val startTime = intent.getStringExtra("START_TIME") ?: ""
@@ -62,15 +76,17 @@ class SessionMapActivity : AppCompatActivity() {
         }
     }
 
-    private fun setupWebView() {
-        binding.webViewMap.settings.apply {
-            javaScriptEnabled = true
-            domStorageEnabled = true
-            loadWithOverviewMode = true
-            useWideViewPort = true
-            builtInZoomControls = true
-            displayZoomControls = false
-            userAgentString = "LocationServicesApp/1.0 (Android; TravelAccess)"
+    override fun onMapReady(map: GoogleMap) {
+        googleMap = map
+        map.uiSettings.apply {
+            isZoomControlsEnabled = true
+            isCompassEnabled = true
+            isMapToolbarEnabled = true
+        }
+
+        val pts = pendingPoints
+        if (pts != null) {
+            renderGoogleMap(pts, pendingIsImperial)
         }
     }
 
@@ -180,8 +196,10 @@ class SessionMapActivity : AppCompatActivity() {
                 setTextColor(if (isLocalSource) Color.parseColor("#059669") else Color.parseColor("#0284C7"))
             }
 
-            // 4. Render OpenStreetMap with Leaflet
-            renderOpenStreetMap(filteredPoints, isImperial)
+            // 4. Render native Google Map
+            pendingPoints = filteredPoints
+            pendingIsImperial = isImperial
+            renderGoogleMap(filteredPoints, isImperial)
         }
     }
 
@@ -250,121 +268,90 @@ class SessionMapActivity : AppCompatActivity() {
         }
     }
 
-    private fun renderOpenStreetMap(points: List<MapPoint>, isImperial: Boolean = false) {
-        val jsonArray = JSONArray()
-        points.forEach { p ->
-            jsonArray.put(JSONObject().apply {
-                put("lat", p.lat)
-                put("lng", p.lng)
-                put("altitude", p.altitude)
-                put("date", p.date ?: "")
-            })
-        }
+    private fun renderGoogleMap(points: List<MapPoint>, isImperial: Boolean = false) {
+        val map = googleMap ?: return
+        map.clear()
 
-        val altUnitJs = if (isImperial) "ft" else "m"
-        val altFactorJs = if (isImperial) "3.28084" else "1.0"
-        val htmlContent = """
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <style>
-        html, body, #map {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-        }
-        .leaflet-popup-content-wrapper {
-            border-radius: 8px;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-size: 13px;
-        }
-    </style>
-</head>
-<body>
-    <div id="map"></div>
-    <script>
-        var map = L.map('map', {
-            zoomControl: true,
-            attributionControl: true
-        });
+        if (points.isEmpty()) return
 
-        // OpenStreetMap Layer (OpenStreetMap France - free, open access, no API key, no 418)
-        var osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            subdomains: 'abc',
-            attribution: '&copy; OpenStreetMap France | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(map);
+        val latLngList = mutableListOf<LatLng>()
+        val boundsBuilder = LatLngBounds.Builder()
 
-        // Esri World Street Map (from project commit 7d44de1 - open access, no API key)
-        var esriLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19,
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ, USGS, TomTom'
-        });
+        val altUnit = if (isImperial) "ft" else "m"
+        val altFactor = if (isImperial) 3.28084 else 1.0
 
-        var baseMaps = {
-            "OpenStreetMap": osmLayer,
-            "Esri Streets": esriLayer
-        };
-        L.control.layers(baseMaps).addTo(map);
+        points.forEachIndexed { index, p ->
+            val pos = LatLng(p.lat, p.lng)
+            latLngList.add(pos)
+            boundsBuilder.include(pos)
 
-        var points = $jsonArray;
+            val isStart = index == 0
+            val isEnd = index == points.lastIndex && points.size > 1
 
-        if (points && points.length > 0) {
-            var latlngs = points.map(function(p) { return [p.lat, p.lng]; });
-
-            // Draw route polyline
-            var polyline = L.polyline(latlngs, {
-                color: '#2563EB',
-                weight: 5,
-                opacity: 0.85,
-                lineJoin: 'round'
-            }).addTo(map);
-
-            // Add markers
-            points.forEach(function(p, i) {
-                var isStart = (i === 0);
-                var isEnd = (i === points.length - 1);
-
-                if (isStart) {
-                    L.circleMarker([p.lat, p.lng], {
-                        radius: 8,
-                        fillColor: '#10B981',
-                        color: '#FFFFFF',
-                        weight: 2,
-                        fillOpacity: 1
-                    }).addTo(map).bindPopup('<b>🟢 Trip Start</b><br>' + (p.date || ''));
-                } else if (isEnd) {
-                    L.circleMarker([p.lat, p.lng], {
-                        radius: 8,
-                        fillColor: '#EF4444',
-                        color: '#FFFFFF',
-                        weight: 2,
-                        fillOpacity: 1
-                    }).addTo(map).bindPopup('<b>🔴 Trip End</b><br>' + (p.date || ''));
+            if (isStart) {
+                map.addMarker(
+                    MarkerOptions()
+                        .position(pos)
+                        .title("🟢 Trip Start")
+                        .snippet(p.date ?: "")
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                )
+            } else if (isEnd) {
+                map.addMarker(
+                    MarkerOptions()
+                        .position(pos)
+                        .title("🔴 Trip End")
+                        .snippet(p.date ?: "")
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                )
+            } else {
+                val altText = if (p.altitude != 0.0) {
+                    " • Alt: ${(p.altitude * altFactor).roundToInt()}$altUnit"
                 } else {
-                    L.circleMarker([p.lat, p.lng], {
-                        radius: 4,
-                        fillColor: '#3B82F6',
-                        color: '#FFFFFF',
-                        weight: 1,
-                        fillOpacity: 0.9
-                    }).addTo(map).bindPopup('<b>Point #' + (i + 1) + '</b><br>Time: ' + (p.date || '') + (p.altitude ? '<br>Alt: ' + Math.round(p.altitude * $altFactorJs) + '$altUnitJs' : ''));
+                    ""
                 }
-            });
-
-            // Center and zoom to fit entire route
-            map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
+                map.addCircle(
+                    CircleOptions()
+                        .center(pos)
+                        .radius(6.0)
+                        .fillColor(Color.parseColor("#3B82F6"))
+                        .strokeColor(Color.WHITE)
+                        .strokeWidth(2f)
+                        .clickable(false)
+                )
+                // Add an invisible/small info marker for every 10th intermediate point so route remains fast
+                if (points.size <= 100 || index % 10 == 0) {
+                    map.addMarker(
+                        MarkerOptions()
+                            .position(pos)
+                            .title("Point #${index + 1}")
+                            .snippet("${p.date ?: ""}$altText")
+                            .alpha(0.01f)
+                    )
+                }
+            }
         }
-    </script>
-</body>
-</html>
-        """.trimIndent()
 
-        binding.webViewMap.loadDataWithBaseURL("https://osm.org", htmlContent, "text/html", "UTF-8", null)
+        if (latLngList.size > 1) {
+            map.addPolyline(
+                PolylineOptions()
+                    .addAll(latLngList)
+                    .color(Color.parseColor("#2563EB"))
+                    .width(12f)
+                    .jointType(JointType.ROUND)
+                    .geodesic(true)
+            )
+
+            val bounds = boundsBuilder.build()
+            binding.mapFragment.post {
+                try {
+                    map.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 120))
+                } catch (_: Exception) {
+                    map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngList.first(), 14f))
+                }
+            }
+        } else {
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(latLngList.first(), 15f))
+        }
     }
 }

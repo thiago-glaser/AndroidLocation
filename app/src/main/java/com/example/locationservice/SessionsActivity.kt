@@ -289,7 +289,7 @@ class SessionsActivity : AppCompatActivity() {
 
         // Map route hint
         val tvMapHint = TextView(this).apply {
-            text = "🗺️ Tap card to view route on OpenStreetMap"
+            text = "🗺️ Tap card to view route on Google Maps"
             textSize = 11f
             setTextColor(Color.parseColor("#3B82F6"))
             setPadding(0, 4, 0, 0)
