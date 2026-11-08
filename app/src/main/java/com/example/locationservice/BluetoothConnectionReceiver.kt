@@ -9,11 +9,17 @@ import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class BluetoothConnectionReceiver : BroadcastReceiver() {
+
+    companion object {
+        private val eventMutex = Mutex()
+    }
 
     override fun onReceive(context: Context, intent: Intent) {
         AppLogger.init(context)
@@ -63,33 +69,51 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
 
         GlobalScope.launch {
             try {
-                val db = LocationDatabase.getDatabase(context)
-
-                val sessionEvent = SessionEvent(
-                    deviceId = LocationLoggingService.getDeviceAndroidId(context),
-                    bluetoothAddress = deviceAddress,
-                    eventType = if (actionMessage == "connected") "start" else "end",
-                    timestampUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
+                eventMutex.withLock {
+                    val db = LocationDatabase.getDatabase(context)
+                    val eventType = if (actionMessage == "connected") "start" else "end"
+                    val timestampUtc = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }.format(Date())
-                )
-                AppLogger.i("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage)")
-                db.sessionEventDao().insert(sessionEvent)
-                AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
 
-                // Logic for discovery of new paired devices
-                val bluetoothDevices = db.bluetoothDeviceDao().getAll()
-                val matchingDevice = bluetoothDevices.find { it.address.equals(deviceAddress, ignoreCase = true) }
-                val queuedDevice = db.queuedBluetoothDeviceDao().findByAddress(deviceAddress)
-                if (matchingDevice == null && queuedDevice == null && actionMessage == "connected") {
-                    val newDevice = QueuedBluetoothDevice(
-                        name = deviceName,
-                        address = deviceAddress,
-                        description = "",
-                        carId = ""
+                    // Do not allow more than one session start in the same second for the user/device/car
+                    if (eventType == "start") {
+                        val latestStart = db.sessionEventDao().getLatestStartEvent()
+                        val currentSecond = timestampUtc.take(19) // "yyyy-MM-dd'T'HH:mm:ss"
+                        val latestSecond = latestStart?.timestampUtc?.take(19)
+                        if (latestSecond != null && latestSecond == currentSecond) {
+                            AppLogger.w(
+                                "BluetoothReceiver",
+                                "Ignoring duplicate session start in the same second ($currentSecond) for device/car ($deviceAddress)"
+                            )
+                            return@withLock
+                        }
+                    }
+
+                    val sessionEvent = SessionEvent(
+                        deviceId = LocationLoggingService.getDeviceAndroidId(context),
+                        bluetoothAddress = deviceAddress,
+                        eventType = eventType,
+                        timestampUtc = timestampUtc
                     )
-                    db.queuedBluetoothDeviceDao().insert(newDevice)
-                    AppLogger.i("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $deviceName")
+                    AppLogger.i("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage)")
+                    db.sessionEventDao().insert(sessionEvent)
+                    AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
+
+                    // Logic for discovery of new paired devices
+                    val bluetoothDevices = db.bluetoothDeviceDao().getAll()
+                    val matchingDevice = bluetoothDevices.find { it.address.equals(deviceAddress, ignoreCase = true) }
+                    val queuedDevice = db.queuedBluetoothDeviceDao().findByAddress(deviceAddress)
+                    if (matchingDevice == null && queuedDevice == null && actionMessage == "connected") {
+                        val newDevice = QueuedBluetoothDevice(
+                            name = deviceName,
+                            address = deviceAddress,
+                            description = "",
+                            carId = ""
+                        )
+                        db.queuedBluetoothDeviceDao().insert(newDevice)
+                        AppLogger.i("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $deviceName")
+                    }
                 }
 
                 // Ensure LocationLoggingService is running and flushes session event

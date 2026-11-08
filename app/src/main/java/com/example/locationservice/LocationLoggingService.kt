@@ -540,7 +540,13 @@ class LocationLoggingService : Service() {
         }
     }
 
+    @Volatile
+    private var isSendingSessionEvents = false
+
     private fun sendQueuedSessionEvents() {
+        if (isSendingSessionEvents) return
+        isSendingSessionEvents = true
+
         scope.launch {
             var url = ""
             try {
@@ -555,7 +561,18 @@ class LocationLoggingService : Service() {
                     return@launch
                 }
 
+                val seenStartSeconds = mutableSetOf<String>()
+
                 for (event in events) {
+                    if (event.eventType == "start") {
+                        val secondKey = event.timestampUtc.take(19)
+                        if (!seenStartSeconds.add(secondKey)) {
+                            AppLogger.w("LocationService", "Skipping duplicate start session event in the same second ($secondKey)")
+                            db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
+                            continue
+                        }
+                    }
+
                     val endpoint = when (event.eventType) {
                         "start" -> "start-session"
                         "end" -> "end-session"
@@ -601,6 +618,8 @@ class LocationLoggingService : Service() {
                 AppLogger.e("LocationService", "NETWORK/DB error for session event at $url – will retry later", e)
                 // Stop processing the batch on failure to maintain order
                 return@launch
+            } finally {
+                isSendingSessionEvents = false
             }
         }
     }
