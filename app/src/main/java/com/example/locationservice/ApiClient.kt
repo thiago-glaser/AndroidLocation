@@ -640,6 +640,38 @@ class ApiClient(private val context: Context) {
         }
     }
 
+    suspend fun getLatestSession(): Result<SessionItem?> {
+        val req = Request.Builder().url("$baseUrl/sessions/latest").get()
+        return executeRequest(req) { body ->
+            val root = JSONObject(body)
+            val sessionObj = root.optJSONObject("session")
+            if (sessionObj != null) {
+                gson.fromJson(sessionObj.toString(), SessionItem::class.java)
+            } else {
+                null
+            }
+        }
+    }
+
+    suspend fun startSessionForCar(carId: String): Result<Boolean> {
+        ensureDeviceRegistered()
+        val deviceId = LocationLoggingService.getDeviceAndroidId(context)
+        val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
+
+        val payload = JSONObject().apply {
+            put("car_id", carId)
+            put("device_id", deviceId)
+            put("timestamp_utc", utcNow)
+        }.toString()
+        val req = Request.Builder().url("$baseUrl/Session/start-session").post(payload.toRequestBody(jsonMediaType))
+        return executeRequest(req) { body ->
+            val json = try { JSONObject(body) } catch (_: Exception) { null }
+            json?.optBoolean("success", true) ?: true
+        }
+    }
+
     suspend fun endSession(sessionId: String, deviceId: String?): Result<Boolean> {
         val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
             timeZone = TimeZone.getTimeZone("UTC")
@@ -652,7 +684,11 @@ class ApiClient(private val context: Context) {
         }.toString()
         val req = Request.Builder().url("$baseUrl/Session/end-session").post(payload.toRequestBody(jsonMediaType))
         return executeRequest(req) { body ->
-            gson.fromJson(body, ApiResponse::class.java).success
+            if (body.isBlank()) true
+            else {
+                val json = try { JSONObject(body) } catch (_: Exception) { null }
+                json?.optBoolean("success", true) ?: true
+            }
         }
     }
 

@@ -58,6 +58,12 @@
 
     <!-- Main Screen & Dashboard -->
     <string name="main_header_title">Serviços de Localização</string>
+    <string name="main_btn_start_session">&#x25B6;&#xFE0F;  Iniciar Sessão</string>
+    <string name="main_btn_end_session">&#x23F9;&#xFE0F;  Encerrar Sessão</string>
+    <string name="main_session_active_label">&#x1F7E2; Ativa: %1$s</string>
+    <string name="main_select_car_title">Selecione o Carro para Iniciar a Sessão</string>
+    <string name="main_session_started_toast">Sessão iniciada (%1$s)</string>
+    <string name="main_session_ended_toast">Sessão encerrada</string>
     <string name="main_btn_trips">&#x1F697;  Viagens e Sessões</string>
     <string name="main_btn_reports">&#x1F4CA;  Relatórios e Análises</string>
     <string name="main_btn_cars">&#x1F698;  Gerenciar Carros</string>

@@ -46,6 +46,36 @@
                 android:layout_marginTop="6dp"
                 android:layout_marginBottom="28dp" />
 
+            <!-- Active Session Status + Quick Start / End Session Button -->
+            <TextView
+                android:id="@+id/tvActiveSessionStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:visibility="gone"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:textColor="#059669"
+                android:paddingHorizontal="14dp"
+                android:paddingVertical="6dp"
+                android:layout_marginBottom="8dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnStartEndSession"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:maxWidth="340dp"
+                android:text="@string/main_btn_start_session"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#059669"
+                android:textColor="#FFFFFF"
+                app:elevation="2dp"
+                android:layout_marginBottom="12dp" />
+
             <!-- Feature Navigation Grid / Material Buttons -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnNavSessions"

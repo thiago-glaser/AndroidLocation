@@ -32,6 +32,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var db: LocationDatabase
     private lateinit var apiClient: ApiClient
+    private var activeSession: SessionItem? = null
 
     private val backgroundLocationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -82,11 +83,126 @@ class MainActivity : AppCompatActivity() {
 
         setupFeatureNavigation()
         setupSettingsControls()
-        refreshApiKeyStatus()
+                        refreshApiKeyStatus()
+                        refreshActiveSessionState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        refreshActiveSessionState()
+    }
+
+    private fun refreshActiveSessionState() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val result = apiClient.getLatestSession()
+            withContext(Dispatchers.Main) {
+                result.onSuccess { latest ->
+                    if (latest != null && latest.endTime.isNullOrEmpty()) {
+                        activeSession = latest
+                        val carLabel = latest.description?.takeIf { it.isNotBlank() } ?: getString(R.string.common_vehicle)
+                        binding.tvActiveSessionStatus.text = getString(R.string.main_session_active_label, carLabel)
+                        binding.tvActiveSessionStatus.visibility = View.VISIBLE
+                        binding.btnStartEndSession.text = getString(R.string.main_btn_end_session)
+                        binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#DC2626"))
+                    } else {
+                        activeSession = null
+                        binding.tvActiveSessionStatus.visibility = View.GONE
+                        binding.btnStartEndSession.text = getString(R.string.main_btn_start_session)
+                        binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#059669"))
+                    }
+                }
+            }
+        }
+    }
+
+    private fun handleStartEndSessionClick() {
+        val currentActive = activeSession
+        if (currentActive != null && currentActive.endTime.isNullOrEmpty()) {
+            // End the active session
+            binding.btnStartEndSession.isEnabled = false
+            lifecycleScope.launch(Dispatchers.IO) {
+                val res = apiClient.endSession(currentActive.id, currentActive.deviceId)
+                withContext(Dispatchers.Main) {
+                    binding.btnStartEndSession.isEnabled = true
+                    res.onSuccess {
+                        Toast.makeText(this@MainActivity, getString(R.string.main_session_ended_toast), Toast.LENGTH_SHORT).show()
+                        refreshActiveSessionState()
+                    }.onFailure { err ->
+                        Toast.makeText(this@MainActivity, getString(R.string.common_failed, err.message ?: ""), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        } else {
+            // Start a new session: check cars list
+            binding.btnStartEndSession.isEnabled = false
+            lifecycleScope.launch(Dispatchers.IO) {
+                val carsRes = apiClient.getCars()
+                withContext(Dispatchers.Main) {
+                    binding.btnStartEndSession.isEnabled = true
+                    carsRes.onSuccess { cars ->
+                        when {
+                            cars.isEmpty() -> {
+                                Toast.makeText(this@MainActivity, getString(R.string.trips_register_car_first), Toast.LENGTH_LONG).show()
+                                startActivity(Intent(this@MainActivity, CarsActivity::class.java))
+                            }
+                            cars.size == 1 -> {
+                                startManualSessionForCar(cars[0])
+                            }
+                            else -> {
+                                val labels = cars.map { car ->
+                                    val desc = car.description?.takeIf { it.isNotBlank() }
+                                    val plate = car.licensePlate?.takeIf { it.isNotBlank() }
+                                    when {
+                                        desc != null && plate != null -> "$desc ($plate)"
+                                        desc != null -> desc
+                                        plate != null -> plate
+                                        else -> "Car #${car.id}"
+                                    }
+                                }.toTypedArray()
+
+                                MaterialAlertDialogBuilder(this@MainActivity)
+                                    .setTitle(R.string.main_select_car_title)
+                                    .setItems(labels) { dialog, which ->
+                                        dialog.dismiss()
+                                        startManualSessionForCar(cars[which])
+                                    }
+                                    .setNegativeButton(R.string.common_cancel, null)
+                                    .show()
+                            }
+                        }
+                    }.onFailure { err ->
+                        Toast.makeText(this@MainActivity, getString(R.string.common_failed, err.message ?: ""), Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        }
+    }
+
+    private fun startManualSessionForCar(car: CarItem) {
+        if (hasRequiredPermissions()) {
+            startLocationService()
+        }
+        binding.btnStartEndSession.isEnabled = false
+        val carLabel = car.description?.takeIf { it.isNotBlank() } ?: car.licensePlate?.takeIf { it.isNotBlank() } ?: "Car #${car.id}"
+        lifecycleScope.launch(Dispatchers.IO) {
+            val res = apiClient.startSessionForCar(car.id)
+            withContext(Dispatchers.Main) {
+                binding.btnStartEndSession.isEnabled = true
+                res.onSuccess {
+                    Toast.makeText(this@MainActivity, getString(R.string.main_session_started_toast, carLabel), Toast.LENGTH_SHORT).show()
+                    refreshActiveSessionState()
+                }.onFailure { err ->
+                    Toast.makeText(this@MainActivity, getString(R.string.common_failed, err.message ?: ""), Toast.LENGTH_LONG).show()
+                }
+            }
+        }
     }
 
     private fun setupFeatureNavigation() {
         // Native feature screen launches
+        binding.btnStartEndSession.setOnClickListener {
+            handleStartEndSessionClick()
+        }
         binding.btnNavSessions.setOnClickListener {
             startActivity(Intent(this, SessionsActivity::class.java))
         }
@@ -115,7 +231,8 @@ class MainActivity : AppCompatActivity() {
         binding.btnToggleSettings.setOnClickListener {
             binding.layoutMain.visibility = View.GONE
             binding.settingsLayout.visibility = View.VISIBLE
-            refreshApiKeyStatus()
+                            refreshApiKeyStatus()
+                        refreshActiveSessionState()
         }
 
         // Return from Settings back to Main page
@@ -521,7 +638,8 @@ class MainActivity : AppCompatActivity() {
                             db.settingDao().insert(Setting("api_key", newApiKey))
                             withContext(Dispatchers.Main) {
                                 Toast.makeText(this@MainActivity, getString(R.string.settings_api_key_updated), Toast.LENGTH_SHORT).show()
-                                refreshApiKeyStatus()
+                                                refreshApiKeyStatus()
+                        refreshActiveSessionState()
                             }
                         }
                     }

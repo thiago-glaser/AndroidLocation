@@ -58,6 +58,12 @@
 
     <!-- Main Screen & Dashboard -->
     <string name="main_header_title">Location Services</string>
+    <string name="main_btn_start_session">&#x25B6;&#xFE0F;  Start Session</string>
+    <string name="main_btn_end_session">&#x23F9;&#xFE0F;  End Session</string>
+    <string name="main_session_active_label">&#x1F7E2; Active: %1$s</string>
+    <string name="main_select_car_title">Select Car to Start Session</string>
+    <string name="main_session_started_toast">Session started (%1$s)</string>
+    <string name="main_session_ended_toast">Session ended</string>
     <string name="main_btn_trips">&#x1F697;  Trips &amp; Sessions</string>
     <string name="main_btn_reports">&#x1F4CA;  Reports &amp; Analytics</string>
     <string name="main_btn_cars">&#x1F698;  Manage Cars</string>
