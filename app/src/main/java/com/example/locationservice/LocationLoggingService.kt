@@ -26,6 +26,8 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -56,6 +58,22 @@ class LocationLoggingService : Service() {
         private val SENT_DATA_RETENTION_DAYS = 60L
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
         private const val API_KEY_SETTING = "api_key"
+        const val ACTION_FLUSH_QUEUE = "com.example.locationservice.ACTION_FLUSH_QUEUE"
+
+        fun triggerFlush(context: Context) {
+            try {
+                val intent = Intent(context, LocationLoggingService::class.java).apply {
+                    action = ACTION_FLUSH_QUEUE
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("LocationService", "Failed to trigger queue flush", e)
+            }
+        }
 
         private val _liveTelemetry = MutableStateFlow<LiveGpsTelemetry?>(null)
         val liveTelemetry: StateFlow<LiveGpsTelemetry?> = _liveTelemetry.asStateFlow()
@@ -285,7 +303,7 @@ class LocationLoggingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         AppLogger.init(this)
-        AppLogger.i("LocationService", "onStartCommand: Ensuring foreground running (flags=$flags, startId=$startId)")
+        AppLogger.i("LocationService", "onStartCommand: Ensuring foreground running (flags=$flags, startId=$startId, action=${intent?.action})")
         if (!::fusedLocationClient.isInitialized) {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         }
@@ -295,14 +313,18 @@ class LocationLoggingService : Service() {
         startLocationUpdates()
         startPeriodicSending()
         scheduleWatchdogAlarm(this)
+
+        if (intent?.action == ACTION_FLUSH_QUEUE) {
+            flushQueuedDataInOrder()
+        }
+
         return START_STICKY
     }
 
     private fun startPeriodicSending() {
         if (periodicJob?.isActive == true) {
-            // Already running periodic loop; flush any pending session events and locations
-            sendQueuedSessionEvents()
-            sendQueuedLocations()
+            // Already running periodic loop; flush queued data in order
+            flushQueuedDataInOrder()
             return
         }
 
@@ -310,9 +332,7 @@ class LocationLoggingService : Service() {
             // Initial fetch & flush
             ApiClient(this@LocationLoggingService).ensureDeviceRegistered()
             fetchBluetoothDevices()
-            sendQueuedSessionEvents()
-            sendQueuedLocations()
-            sendQueuedBluetoothDevices()
+            flushQueuedDataInOrder()
 
             var timeSinceLastSend = 0L
             val pollInterval = 5000L // check every 5 seconds
@@ -331,9 +351,7 @@ class LocationLoggingService : Service() {
                         fetchBluetoothDevices()
                     }
 
-                    sendQueuedLocations()
-                    sendQueuedSessionEvents()
-                    sendQueuedBluetoothDevices()
+                    flushQueuedDataInOrder()
                     cleanupOldSentData()
                     cleanupOldSessionEvents()
                 }
@@ -458,7 +476,7 @@ class LocationLoggingService : Service() {
                 // Immediately flush the first GPS point after service start (or if batch interval elapsed)
                 val now = System.currentTimeMillis()
                 if (!hasSentInitialBatch || (now - lastBatchSentTimeMs >= SEND_BATCH_INTERVAL_MS)) {
-                    sendQueuedLocations()
+                    flushQueuedDataInOrder()
                 }
             } catch (e: android.database.sqlite.SQLiteConstraintException) {
                 AppLogger.d("LocationService", "DUPLICATE IGNORED (same timestamp): $utcTime")
@@ -468,58 +486,77 @@ class LocationLoggingService : Service() {
         }
     }
 
-    @Volatile
-    private var isSending = false
+    private val dataSyncMutex = Mutex()
 
-    private fun sendQueuedLocations() {
-        if (isSending) return
-        isSending = true
-
-        val batchSize = 500
-
+    fun flushQueuedDataInOrder() {
         scope.launch {
-            var url = ""
-            try {
-                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
-                if (apiKey.isNullOrEmpty()) {
-                    AppLogger.w("LocationService", "API key is not set. Cannot send location data.")
-                    return@launch
-                }
-
-                val locations = db.locationDao().getUnsentBatch(batchSize)
-                if (locations.isEmpty()) {
-                    AppLogger.d("LocationService", "Queue empty. Nothing to send.")
-                    return@launch
-                }
-
-                val payloadObj = JSONObject().apply {
-                    put("device_id", locations.first().deviceId)
-                    val locArray = JSONArray()
-                    for (loc in locations) {
-                        locArray.put(JSONObject().apply {
-                            put("latitude", loc.latitude)
-                            put("longitude", loc.longitude)
-                            put("altitude", loc.altitude)
-                            put("timestamp_utc", loc.timestampUtc)
-                        })
+            if (dataSyncMutex.isLocked) {
+                AppLogger.d("LocationService", "Queue flush already in progress, waiting for mutex...")
+            }
+            dataSyncMutex.withLock {
+                try {
+                    val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() }
+                        ?: ApiClient(this@LocationLoggingService).ensureApiKey()
+                    if (apiKey.isNullOrEmpty()) {
+                        AppLogger.w("LocationService", "API key is not set. Cannot flush queued data.")
+                        return@withLock
                     }
-                    put("locations", locArray)
+
+                    // 1. Drain all queued locations first
+                    val locationsDrained = drainQueuedLocationsSync(apiKey)
+                    if (!locationsDrained) {
+                        AppLogger.w("LocationService", "Location draining incomplete or failed. Postponing session events to preserve ordering.")
+                        return@withLock
+                    }
+
+                    // 2. Drain all queued session events in chronological order
+                    drainQueuedSessionEventsSync(apiKey)
+
+                    // 3. Drain queued bluetooth devices
+                    drainQueuedBluetoothDevicesSync(apiKey)
+                } catch (e: Exception) {
+                    AppLogger.e("LocationService", "Error in flushQueuedDataInOrder", e)
                 }
-                val batchPayload = payloadObj.toString()
+            }
+        }
+    }
 
-                url = "$API_BASE_URL/LocationData"
-                val request = Request.Builder()
-                    .url(url)
-                    .header("X-API-Key", apiKey)
-                    .post(batchPayload.toRequestBody(JSON))
-                    .build()
+    private suspend fun drainQueuedLocationsSync(apiKey: String): Boolean {
+        val batchSize = 500
+        while (true) {
+            val locations = db.locationDao().getUnsentBatch(batchSize)
+            if (locations.isEmpty()) {
+                AppLogger.d("LocationService", "Location queue empty.")
+                return true
+            }
 
-                AppLogger.d("LocationService", "Sending ${locations.size} location(s) to $url")
+            val payloadObj = JSONObject().apply {
+                put("device_id", locations.first().deviceId)
+                val locArray = JSONArray()
+                for (loc in locations) {
+                    locArray.put(JSONObject().apply {
+                        put("latitude", loc.latitude)
+                        put("longitude", loc.longitude)
+                        put("altitude", loc.altitude)
+                        put("timestamp_utc", loc.timestampUtc)
+                    })
+                }
+                put("locations", locArray)
+            }
+            val batchPayload = payloadObj.toString()
+            val url = "$API_BASE_URL/LocationData"
+            val request = Request.Builder()
+                .url(url)
+                .header("X-API-Key", apiKey)
+                .post(batchPayload.toRequestBody(JSON))
+                .build()
 
+            AppLogger.d("LocationService", "Sending ${locations.size} location(s) to $url")
+
+            val success = try {
                 client.newCall(request).execute().use { response ->
                     val code = response.code
                     AppLogger.d("LocationService", "HTTP Response Code: $code")
-
                     if (response.isSuccessful) {
                         val sentIds = locations.map { it.id }
                         val now = System.currentTimeMillis()
@@ -527,161 +564,152 @@ class LocationLoggingService : Service() {
                         hasSentInitialBatch = true
                         lastBatchSentTimeMs = now
                         AppLogger.i("LocationService", "SUCCESS: Sent & marked batch of ${locations.size} locations.")
+                        true
                     } else {
                         val errorBody = response.body?.string()
-                        AppLogger.w("LocationService", "SERVER ERROR $code at $url: Will retry on next interval. Body: $errorBody")
+                        AppLogger.w("LocationService", "SERVER ERROR $code at $url: Body: $errorBody")
+                        false
                     }
                 }
             } catch (e: Exception) {
-                AppLogger.e("LocationService", "NETWORK/DB error at $url – will retry later", e)
-            } finally {
-                isSending = false
+                AppLogger.e("LocationService", "NETWORK/DB error sending locations to $url", e)
+                false
+            }
+
+            if (!success) {
+                return false
             }
         }
     }
 
-    @Volatile
-    private var isSendingSessionEvents = false
-
-    private fun sendQueuedSessionEvents() {
-        if (isSendingSessionEvents) return
-        isSendingSessionEvents = true
-
-        scope.launch {
-            var url = ""
-            try {
-                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
-                if (apiKey.isNullOrEmpty()) {
-                    AppLogger.w("LocationService", "API key is not set. Cannot send session events.")
-                    return@launch
-                }
-
-                val events = db.sessionEventDao().getUnsentBatch(100)
-                if (events.isEmpty()) {
-                    return@launch
-                }
-
-                val seenStartSeconds = mutableSetOf<String>()
-
-                for (event in events) {
-                    if (event.eventType == "start") {
-                        val secondKey = event.timestampUtc.take(19)
-                        if (!seenStartSeconds.add(secondKey)) {
-                            AppLogger.w("LocationService", "Skipping duplicate start session event in the same second ($secondKey)")
-                            db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
-                            continue
-                        }
-                    }
-
-                    val endpoint = when (event.eventType) {
-                        "start" -> "start-session"
-                        "end" -> "end-session"
-                        else -> "start-session" // Fallback to avoid /event
-                    }
-                    val json = JSONObject().apply {
-                        put("device_id", event.deviceId)
-                        put("bluetooth_address", event.bluetoothAddress)
-                        put("timestamp_utc", event.timestampUtc)
-                    }.toString()
-                    val body = json.toRequestBody(JSON)
-                    url = "$API_BASE_URL/Session/$endpoint"
-                    val request = Request.Builder()
-                        .url(url)
-                        .header("X-API-Key", apiKey)
-                        .post(body)
-                        .build()
-
-                    AppLogger.i("LocationService", "Sending bluetooth event to ${request.url}. Payload: $json")
-
-                    client.newCall(request).execute().use { response ->
-                        if (response.isSuccessful) {
-                            db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
-                            AppLogger.i("LocationService", "Bluetooth event sent for address ${event.bluetoothAddress}")
-                            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                            val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
-                                .setSmallIcon(android.R.drawable.ic_dialog_info)
-                                .setContentTitle(getString(R.string.notif_bt_event_queued))
-                                .setContentText(getString(R.string.notif_bt_address, event.bluetoothAddress))
-                                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                                .setAutoCancel(true)
-                                .build()
-                            notificationManager.notify(event.id.toInt(), notification)
-                        } else {
-                            val errorBody = response.body?.string()
-                            AppLogger.w("LocationService", "SERVER ERROR ${response.code} for session event at $url: Will retry on next interval. Body: $errorBody")
-                            // Stop processing the batch on failure to maintain order
-                            return@launch
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                AppLogger.e("LocationService", "NETWORK/DB error for session event at $url – will retry later", e)
-                // Stop processing the batch on failure to maintain order
-                return@launch
-            } finally {
-                isSendingSessionEvents = false
+    private suspend fun drainQueuedSessionEventsSync(apiKey: String): Boolean {
+        while (true) {
+            val events = db.sessionEventDao().getUnsentBatch(100)
+            if (events.isEmpty()) {
+                return true
             }
-        }
-    }
 
-    private fun sendQueuedBluetoothDevices() {
-        scope.launch {
-            var url = ""
-            try {
-                val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()?.takeIf { it.isNotEmpty() } ?: ApiClient(this@LocationLoggingService).ensureApiKey()
-                if (apiKey.isNullOrEmpty()) {
-                    AppLogger.w("LocationService", "API key is not set. Cannot send new bluetooth devices.")
-                    return@launch
-                }
+            val seenStartSeconds = mutableSetOf<String>()
 
-                val devices = db.queuedBluetoothDeviceDao().getUnsent()
-                if (devices.isEmpty()) {
-                    return@launch
-                }
-
-                for (device in devices) {
-                    if (device.name.isNullOrBlank() || device.name.equals("Unknown Device", ignoreCase = true) || device.address.isNullOrBlank()) {
-                        AppLogger.d("LocationService", "Skipping and discarding invalid/unknown queued bluetooth device (${device.address})")
-                        db.queuedBluetoothDeviceDao().markAsSent(listOf(device.id), System.currentTimeMillis())
+            for (event in events) {
+                if (event.eventType == "start") {
+                    val secondKey = event.timestampUtc.take(19)
+                    if (!seenStartSeconds.add(secondKey)) {
+                        AppLogger.w("LocationService", "Skipping duplicate start session event in the same second ($secondKey)")
+                        db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
                         continue
                     }
+                }
 
-                    val json = JSONObject()
-                        .put("name", device.name)
-                        .put("address", device.address)
-                        .put("description", device.description)
-                        .put("carId", device.carId)
-                        .toString()
+                val endpoint = when (event.eventType) {
+                    "start" -> "start-session"
+                    "end" -> "end-session"
+                    else -> "start-session"
+                }
+                val json = JSONObject().apply {
+                    put("device_id", event.deviceId)
+                    put("bluetooth_address", event.bluetoothAddress)
+                    put("timestamp_utc", event.timestampUtc)
+                    if (!event.carId.isNullOrEmpty()) {
+                        put("car_id", event.carId)
+                    }
+                    if (!event.sessionId.isNullOrEmpty()) {
+                        put("id", event.sessionId)
+                    }
+                }.toString()
+                val body = json.toRequestBody(JSON)
+                val url = "$API_BASE_URL/Session/$endpoint"
+                val request = Request.Builder()
+                    .url(url)
+                    .header("X-API-Key", apiKey)
+                    .post(body)
+                    .build()
 
-                    val body = json.toRequestBody(JSON)
-                    url = "$API_BASE_URL/user/bluetooth"
-                    val request = Request.Builder()
-                        .url(url)
-                        .header("X-API-Key", apiKey)
-                        .post(body)
-                        .build()
+                AppLogger.i("LocationService", "Sending session event (${event.eventType}) to $url. Payload: $json")
 
+                val success = try {
                     client.newCall(request).execute().use { response ->
                         if (response.isSuccessful) {
-                            db.queuedBluetoothDeviceDao().markAsSent(listOf(device.id), System.currentTimeMillis())
-                            val newBluetoothDevice = com.example.locationservice.BluetoothDevice(
-                                name = device.name,
-                                address = device.address,
-                                description = device.description,
-                                carId = device.carId
-                            )
-                            db.bluetoothDeviceDao().insert(newBluetoothDevice)
-                            AppLogger.i("LocationService", "Successfully sent and saved new bluetooth device: ${device.name}")
+                            db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
+                            AppLogger.i("LocationService", "Session event ${event.eventType} sent successfully.")
+                            if (event.bluetoothAddress.isNotBlank()) {
+                                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
+                                    .setSmallIcon(android.R.drawable.ic_dialog_info)
+                                    .setContentTitle(getString(R.string.notif_bt_event_queued))
+                                    .setContentText(getString(R.string.notif_bt_address, event.bluetoothAddress))
+                                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                                    .setAutoCancel(true)
+                                    .build()
+                                notificationManager.notify(event.id.toInt(), notification)
+                            }
+                            true
                         } else {
                             val errorBody = response.body?.string()
-                            AppLogger.w("LocationService", "SERVER ERROR ${response.code} for new bluetooth device at $url: Will retry on next interval. Body: $errorBody")
-                            return@launch
+                            AppLogger.w("LocationService", "SERVER ERROR ${response.code} for session event at $url: Body: $errorBody")
+                            false
                         }
+                    }
+                } catch (e: Exception) {
+                    AppLogger.e("LocationService", "NETWORK/DB error for session event at $url", e)
+                    false
+                }
+
+                if (!success) {
+                    // Stop processing the batch on failure to maintain order
+                    return false
+                }
+            }
+        }
+    }
+
+    private suspend fun drainQueuedBluetoothDevicesSync(apiKey: String) {
+        val devices = db.queuedBluetoothDeviceDao().getUnsent()
+        if (devices.isEmpty()) return
+
+        for (device in devices) {
+            if (device.name.isNullOrBlank() || device.name.equals("Unknown Device", ignoreCase = true) || device.address.isNullOrBlank()) {
+                AppLogger.d("LocationService", "Skipping and discarding invalid/unknown queued bluetooth device (${device.address})")
+                db.queuedBluetoothDeviceDao().markAsSent(listOf(device.id), System.currentTimeMillis())
+                continue
+            }
+
+            val json = JSONObject()
+                .put("name", device.name)
+                .put("address", device.address)
+                .put("description", device.description)
+                .put("carId", device.carId)
+                .toString()
+
+            val body = json.toRequestBody(JSON)
+            val url = "$API_BASE_URL/user/bluetooth"
+            val request = Request.Builder()
+                .url(url)
+                .header("X-API-Key", apiKey)
+                .post(body)
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.isSuccessful) {
+                        db.queuedBluetoothDeviceDao().markAsSent(listOf(device.id), System.currentTimeMillis())
+                        val newBluetoothDevice = com.example.locationservice.BluetoothDevice(
+                            name = device.name,
+                            address = device.address,
+                            description = device.description,
+                            carId = device.carId
+                        )
+                        db.bluetoothDeviceDao().insert(newBluetoothDevice)
+                        AppLogger.i("LocationService", "Successfully sent and saved new bluetooth device: ${device.name}")
+                    } else {
+                        val errorBody = response.body?.string()
+                        AppLogger.w("LocationService", "SERVER ERROR ${response.code} for new bluetooth device at $url: Body: $errorBody")
+                        return
                     }
                 }
             } catch (e: Exception) {
-                AppLogger.e("LocationService", "NETWORK/DB error for new bluetooth device at $url – will retry later", e)
-                return@launch
+                AppLogger.e("LocationService", "NETWORK/DB error for new bluetooth device at $url", e)
+                return
             }
         }
     }

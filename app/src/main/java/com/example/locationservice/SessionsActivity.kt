@@ -20,7 +20,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivitySessionsBinding
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -331,13 +333,26 @@ class SessionsActivity : AppCompatActivity() {
     }
 
     private fun endSession(session: SessionItem) {
-        lifecycleScope.launch {
-            val res = apiClient.endSession(session.id, session.deviceId)
-            res.onSuccess {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(Date())
+
+            val event = SessionEvent(
+                deviceId = session.deviceId?.ifBlank { LocationLoggingService.getDeviceAndroidId(this@SessionsActivity) }
+                    ?: LocationLoggingService.getDeviceAndroidId(this@SessionsActivity),
+                sessionId = session.id,
+                carId = session.carId,
+                eventType = "end",
+                timestampUtc = utcNow
+            )
+            val db = LocationDatabase.getDatabase(this@SessionsActivity)
+            db.sessionEventDao().insert(event)
+            LocationLoggingService.triggerFlush(this@SessionsActivity)
+
+            withContext(Dispatchers.Main) {
                 Toast.makeText(this@SessionsActivity, getString(R.string.trips_ended), Toast.LENGTH_SHORT).show()
                 loadSessions()
-            }.onFailure { err ->
-                Toast.makeText(this@SessionsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
             }
         }
     }

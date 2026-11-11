@@ -7,7 +7,9 @@ import androidx.room.PrimaryKey
 data class SessionEvent(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val deviceId: String,
-    val bluetoothAddress: String,
+    val bluetoothAddress: String = "",
+    val carId: String? = null,
+    val sessionId: String? = null,
     val eventType: String, // "start" or "end"
     val timestampUtc: String,
     var wasSent: Boolean = false,

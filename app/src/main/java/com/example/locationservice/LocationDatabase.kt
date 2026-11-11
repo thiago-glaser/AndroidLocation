@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [QueuedLocation::class, SessionEvent::class, Setting::class, BluetoothDevice::class, QueuedBluetoothDevice::class], version = 9, exportSchema = false)
+@Database(entities = [QueuedLocation::class, SessionEvent::class, Setting::class, BluetoothDevice::class, QueuedBluetoothDevice::class], version = 10, exportSchema = false)
 abstract class LocationDatabase : RoomDatabase() {
     abstract fun locationDao(): LocationDao
     abstract fun sessionEventDao(): SessionEventDao
@@ -17,13 +19,23 @@ abstract class LocationDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: LocationDatabase? = null
 
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE session_events ADD COLUMN carId TEXT DEFAULT NULL")
+                db.execSQL("ALTER TABLE session_events ADD COLUMN sessionId TEXT DEFAULT NULL")
+            }
+        }
+
         fun getDatabase(context: Context): LocationDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     LocationDatabase::class.java,
                     "location_queue.db"
-                ).fallbackToDestructiveMigration().build()
+                )
+                .addMigrations(MIGRATION_9_10)
+                .fallbackToDestructiveMigration()
+                .build()
                 INSTANCE = instance
                 instance
             }
