@@ -98,7 +98,7 @@ class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
             val outDateFmt = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
             val outTimeFmt = SimpleDateFormat("h:mm a", Locale.getDefault())
 
-            val cleanStart = startTime.substringBefore("Z").substringBefore(".")
+            val cleanStart = startTime.trim().replace(" ", "T").substringBefore("Z").substringBefore(".")
             val startDate = inFmt.parse(cleanStart)
 
             if (startDate != null) {
@@ -106,7 +106,7 @@ class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
                 val startTimeStr = outTimeFmt.format(startDate)
 
                 if (!endTime.isNullOrEmpty()) {
-                    val cleanEnd = endTime.substringBefore("Z").substringBefore(".")
+                    val cleanEnd = endTime.trim().replace(" ", "T").substringBefore("Z").substringBefore(".")
                     val endDate = inFmt.parse(cleanEnd)
                     val endTimeStr = if (endDate != null) outTimeFmt.format(endDate) else ""
                     "$dateStr • $startTimeStr - $endTimeStr"
@@ -118,6 +118,33 @@ class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
             }
         } catch (e: Exception) {
             startTime
+        }
+    }
+
+    private fun formatMarkerTimestamp(rawDate: String?): String {
+        if (rawDate.isNullOrBlank()) return ""
+        return try {
+            val cleanStr = rawDate.trim().replace(" ", "T").substringBefore("Z")
+            val normalized = if (cleanStr.contains(".")) {
+                val base = cleanStr.substringBefore(".")
+                val millis = cleanStr.substringAfter(".").take(3).padEnd(3, '0')
+                "$base.$millis"
+            } else {
+                cleanStr
+            }
+
+            val inFmt = SimpleDateFormat(if (normalized.contains(".")) "yyyy-MM-dd'T'HH:mm:ss.SSS" else "yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val date = inFmt.parse(normalized)
+            if (date != null) {
+                val outFmt = SimpleDateFormat("MMM d, yyyy h:mm:ss a", Locale.getDefault())
+                outFmt.format(date)
+            } else {
+                rawDate
+            }
+        } catch (e: Exception) {
+            rawDate
         }
     }
 
@@ -288,12 +315,14 @@ class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
             val isStart = index == 0
             val isEnd = index == points.lastIndex && points.size > 1
 
+            val formattedDate = formatMarkerTimestamp(p.date)
+
             if (isStart) {
                 map.addMarker(
                     MarkerOptions()
                         .position(pos)
                         .title("🟢 Trip Start")
-                        .snippet(p.date ?: "")
+                        .snippet(formattedDate)
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 )
             } else if (isEnd) {
@@ -301,7 +330,7 @@ class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
                     MarkerOptions()
                         .position(pos)
                         .title("🔴 Trip End")
-                        .snippet(p.date ?: "")
+                        .snippet(formattedDate)
                         .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
                 )
             } else {
@@ -325,7 +354,7 @@ class SessionMapActivity : AppCompatActivity(), OnMapReadyCallback {
                         MarkerOptions()
                             .position(pos)
                             .title("Point #${index + 1}")
-                            .snippet("${p.date ?: ""}$altText")
+                            .snippet("$formattedDate$altText")
                             .alpha(0.01f)
                     )
                 }
