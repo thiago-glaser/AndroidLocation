@@ -27,7 +27,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicBoolean
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -323,8 +323,7 @@ class LocationLoggingService : Service() {
 
     private fun startPeriodicSending() {
         if (periodicJob?.isActive == true) {
-            // Already running periodic loop; flush queued data in order
-            flushQueuedDataInOrder()
+            // Already running periodic loop; do not flush or duplicate
             return
         }
 
@@ -334,19 +333,18 @@ class LocationLoggingService : Service() {
             fetchBluetoothDevices()
             flushQueuedDataInOrder()
 
-            var timeSinceLastSend = 0L
             val pollInterval = 5000L // check every 5 seconds
 
             while (isActive) {
                 delay(pollInterval)
-                timeSinceLastSend += pollInterval
+                val now = System.currentTimeMillis()
 
-                if (timeSinceLastSend >= SEND_BATCH_INTERVAL_MS) {
-                    timeSinceLastSend = 0L
+                if (now - lastBatchSentTimeMs >= SEND_BATCH_INTERVAL_MS) {
+                    lastBatchSentTimeMs = now
                     AppLogger.d("LocationService", "Fixed interval reached (${SEND_BATCH_INTERVAL_MS / 1000}s), sending batch and cleaning up old data.")
 
                     // Refresh bluetooth devices if interval exceeded
-                    if (System.currentTimeMillis() - lastBluetoothFetchTime > BLUETOOTH_REFRESH_INTERVAL_MS) {
+                    if (now - lastBluetoothFetchTime > BLUETOOTH_REFRESH_INTERVAL_MS) {
                         ApiClient(this@LocationLoggingService).ensureDeviceRegistered()
                         fetchBluetoothDevices()
                     }
@@ -473,9 +471,9 @@ class LocationLoggingService : Service() {
                 db.locationDao().insert(payload)
                 AppLogger.d("LocationService", "NEW LOCATION QUEUED: $utcTime | ${location.latitude}, ${location.longitude}")
 
-                // Immediately flush the first GPS point after service start (or if batch interval elapsed)
-                val now = System.currentTimeMillis()
-                if (!hasSentInitialBatch || (now - lastBatchSentTimeMs >= SEND_BATCH_INTERVAL_MS)) {
+                // Immediately flush the first GPS point after service start
+                if (!hasSentInitialBatch) {
+                    hasSentInitialBatch = true
                     flushQueuedDataInOrder()
                 }
             } catch (e: android.database.sqlite.SQLiteConstraintException) {
@@ -487,26 +485,29 @@ class LocationLoggingService : Service() {
     }
 
     private val dataSyncMutex = Mutex()
+    private val pendingFlush = AtomicBoolean(false)
 
     fun flushQueuedDataInOrder() {
         scope.launch {
-            if (dataSyncMutex.isLocked) {
-                AppLogger.d("LocationService", "Queue flush already in progress, waiting for mutex...")
+            pendingFlush.set(true)
+            if (!dataSyncMutex.tryLock()) {
+                AppLogger.d("LocationService", "Queue flush already in progress; marked pending.")
+                return@launch
             }
-            dataSyncMutex.withLock {
-                try {
+            try {
+                while (pendingFlush.getAndSet(false)) {
                     val apiKey = db.settingDao().getSetting(API_KEY_SETTING)?.value?.takeIf { it.isNotEmpty() }
                         ?: ApiClient(this@LocationLoggingService).ensureApiKey()
                     if (apiKey.isNullOrEmpty()) {
                         AppLogger.w("LocationService", "API key is not set. Cannot flush queued data.")
-                        return@withLock
+                        return@launch
                     }
 
                     // 1. Drain all queued locations first
                     val locationsDrained = drainQueuedLocationsSync(apiKey)
                     if (!locationsDrained) {
                         AppLogger.w("LocationService", "Location draining incomplete or failed. Postponing session events to preserve ordering.")
-                        return@withLock
+                        return@launch
                     }
 
                     // 2. Drain all queued session events in chronological order
@@ -514,9 +515,11 @@ class LocationLoggingService : Service() {
 
                     // 3. Drain queued bluetooth devices
                     drainQueuedBluetoothDevicesSync(apiKey)
-                } catch (e: Exception) {
-                    AppLogger.e("LocationService", "Error in flushQueuedDataInOrder", e)
                 }
+            } catch (e: Exception) {
+                AppLogger.e("LocationService", "Error in flushQueuedDataInOrder", e)
+            } finally {
+                dataSyncMutex.unlock()
             }
         }
     }
@@ -526,6 +529,9 @@ class LocationLoggingService : Service() {
         while (true) {
             val locations = db.locationDao().getUnsentBatch(batchSize)
             if (locations.isEmpty()) {
+                if (lastBatchSentTimeMs == 0L) {
+                    lastBatchSentTimeMs = System.currentTimeMillis()
+                }
                 AppLogger.d("LocationService", "Location queue empty.")
                 return true
             }

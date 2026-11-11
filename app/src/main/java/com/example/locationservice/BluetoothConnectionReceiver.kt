@@ -118,6 +118,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
 
                 // Ensure LocationLoggingService is running and flushes session event
                 LocationLoggingService.ensureServiceRunning(context.applicationContext)
+                LocationLoggingService.triggerFlush(context.applicationContext)
             } catch (e: Exception) {
                 AppLogger.e("BluetoothReceiver", "Failed to process bluetooth event", e)
             } finally {
