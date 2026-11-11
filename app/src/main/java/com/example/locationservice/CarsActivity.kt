@@ -89,7 +89,7 @@ class CarsActivity : AppCompatActivity() {
         }
 
         val tvPlate = TextView(this).apply {
-            text = "License Plate: " + (car.licensePlate ?: "N/A")
+            text = getString(R.string.cars_license_plate_label, car.licensePlate ?: "N/A")
             textSize = 14f
             setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(0, 4, 0, 0)
@@ -99,7 +99,7 @@ class CarsActivity : AppCompatActivity() {
         textLayout.addView(tvPlate)
 
         val btnDelete = Button(this).apply {
-            text = "Delete"
+            text = getString(R.string.common_delete)
             textSize = 12f
             setTextColor(Color.parseColor("#EF4444"))
             setBackgroundColor(Color.TRANSPARENT)

@@ -161,7 +161,7 @@ class FuelActivity : AppCompatActivity() {
         val tvStats = TextView(this).apply {
             val costStr = String.format(Locale.US, "$%.2f", item.totalValue ?: 0.0)
             val litStr = UnitConverter.formatVolume(item.liters ?: 0.0, isImperial)
-            text = "Total: $costStr | Volume: $litStr"
+            text = getString(R.string.fuel_card_stats, costStr, litStr)
             textSize = 14f
             setTextColor(Color.parseColor("#059669"))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -176,7 +176,7 @@ class FuelActivity : AppCompatActivity() {
                 val km = UnitConverter.formatDistance(item.totalKilometers ?: 0.0, isImperial)
                 val kml = UnitConverter.formatEfficiency(item.kilometerPerLiter ?: 0.0, isImperial)
                 val pkm = UnitConverter.formatPricePerDistance(item.pricePerKilometer ?: 0.0, isImperial, 4)
-                text = "Traveled: $km • $kml • $pkm"
+                text = getString(R.string.fuel_card_traveled, km, kml, pkm)
                 textSize = 12f
                 setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             }
@@ -190,7 +190,7 @@ class FuelActivity : AppCompatActivity() {
 
         if (item.hasReceipt == true) {
             val btnReceipt = Button(this).apply {
-                text = "Receipt"
+                text = getString(R.string.fuel_btn_receipt)
                 textSize = 11f
                 setTextColor(Color.parseColor("#059669"))
                 setBackgroundColor(Color.TRANSPARENT)
@@ -201,7 +201,7 @@ class FuelActivity : AppCompatActivity() {
         }
 
         val btnCalculate = Button(this).apply {
-            text = "Calculate"
+            text = getString(R.string.fuel_btn_calculate)
             textSize = 11f
             setTextColor(Color.parseColor("#2563EB"))
             setBackgroundColor(Color.TRANSPARENT)
@@ -210,7 +210,7 @@ class FuelActivity : AppCompatActivity() {
         }
 
         val btnDelete = Button(this).apply {
-            text = "Delete"
+            text = getString(R.string.common_delete)
             textSize = 11f
             setTextColor(Color.parseColor("#EF4444"))
             setBackgroundColor(Color.TRANSPARENT)

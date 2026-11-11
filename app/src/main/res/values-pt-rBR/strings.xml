@@ -302,4 +302,51 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="logcat_copied_toast">Logs copiados para a área de transferência</string>
     <string name="logcat_clear_confirm_title">Limpar Logs de Diagnóstico</string>
     <string name="logcat_clear_confirm_msg">Deseja limpar tanto os logs persistentes quanto o buffer do logcat?</string>
+
+    <!-- Common Status & Category Strings -->
+    <string name="common_business">Trabalho</string>
+    <string name="common_personal">Pessoal</string>
+    <string name="common_active">Ativa</string>
+    <string name="common_completed">Concluída</string>
+    <string name="common_ongoing">Em andamento</string>
+    <string name="common_date_unknown">Data desconhecida</string>
+    <string name="common_unknown_vehicle">Veículo Desconhecido</string>
+    <string name="settings_title">Configurações</string>
+
+    <!-- Sessions Activity Card Strings -->
+    <string name="sessions_card_start_end">Início: %1$s\nFim: %2$s</string>
+    <string name="sessions_card_stats">Distância: %1$s | Custo: %2$s</string>
+    <string name="sessions_btn_end_trip">Encerrar</string>
+    <string name="sessions_card_map_hint">&#x1F5FA;&#xFE0F; Toque no cartão para ver a rota no Google Maps</string>
+
+    <!-- Reports Filter & Card Strings -->
+    <string name="reports_filter_vehicle">VEÍCULO</string>
+    <string name="reports_filter_year">ANO</string>
+    <string name="reports_filter_month">MÊS</string>
+    <string name="reports_filter_type">TIPO</string>
+    <string name="reports_trip_sessions_header_label">SESSÕES DE VIAGEM</string>
+    <string name="reports_refuel_logs_header">REGISTROS DE ABASTECIMENTO</string>
+    <string name="reports_cost_estimated_suffix"> (~Est)</string>
+    <string name="reports_btn_view_map">&#x1F5FA;&#xFE0F; Ver Rota no Mapa</string>
+    <string name="reports_monthly_trips_count">%1$d viagens</string>
+    <string name="reports_monthly_personal_legend">&#x1F3E0; Pessoal: %1$s ($%2$.2f)</string>
+    <string name="reports_monthly_business_legend">&#x1F4BC; Trabalho: %1$s ($%2$.2f)</string>
+    <string name="reports_expense_allocation_header">ALOCAÇÃO DE DESPESA: %1$s (Total: $%2$.2f)</string>
+    <string name="reports_prop_personal">&#x1F3E0; Prop. Pessoal: $%1$.2f (%2$d%%)</string>
+    <string name="reports_prop_business">&#x1F4BC; Prop. Trabalho: $%1$.2f (%2$d%%)</string>
+
+    <!-- Fuel Activity Card Strings -->
+    <string name="fuel_card_stats">Total: %1$s | Volume: %2$s</string>
+    <string name="fuel_card_traveled">Percorrido: %1$s • %2$s • %3$s</string>
+    <string name="fuel_btn_receipt">Recibo</string>
+    <string name="fuel_btn_calculate">Calcular</string>
+
+    <!-- Expenses & Cars & Bluetooth Card Strings -->
+    <string name="expenses_no_description">Sem descrição</string>
+    <string name="cars_license_plate_label">Placa: %1$s</string>
+    <string name="bluetooth_linked_car_label">Carro Vinculado: %1$s</string>
+    <string name="bluetooth_not_assigned">Não vinculado</string>
+    <string name="bluetooth_unknown_device">Dispositivo Desconhecido</string>
+    <string name="bluetooth_btn_assign">Vincular Carro</string>
+
 </resources>

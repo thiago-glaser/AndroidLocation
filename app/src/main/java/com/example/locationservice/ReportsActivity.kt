@@ -232,7 +232,7 @@ class ReportsActivity : AppCompatActivity() {
             )
             binding.progressBar.visibility = View.GONE
             binding.btnApplyFilters.isEnabled = true
-            binding.btnApplyFilters.text = "Generate"
+            binding.btnApplyFilters.text = getString(R.string.common_generate)
 
             result.onSuccess { summary ->
                 currentReportsSummary = summary
@@ -363,7 +363,7 @@ class ReportsActivity : AppCompatActivity() {
 
             val isCompleted = !session.endTime.isNullOrEmpty()
             val tvStatus = TextView(this).apply {
-                text = if (isCompleted) "Completed" else "Active"
+                text = if (isCompleted) getString(R.string.common_completed) else getString(R.string.common_active)
                 textSize = 10f
                 setTextColor(if (isCompleted) ContextCompat.getColor(context, R.color.text_secondary) else Color.parseColor("#15803D"))
                 background = ContextCompat.getDrawable(
@@ -386,9 +386,9 @@ class ReportsActivity : AppCompatActivity() {
                     val endHourStr = SimpleDateFormat("HH:mm", Locale.getDefault()).format(endDate)
                     "$startStr → $endHourStr"
                 } else {
-                    displayFormat.format(startDate) + " (Ongoing)"
+                    displayFormat.format(startDate) + " (${getString(R.string.common_ongoing)})"
                 }
-            } else "Date unknown"
+            } else getString(R.string.common_date_unknown)
 
             val tvDate = TextView(this).apply {
                 text = dateText
@@ -431,7 +431,7 @@ class ReportsActivity : AppCompatActivity() {
 
             val isBusiness = session.type == "B"
             val tvTypeBadge = TextView(this).apply {
-                text = if (isBusiness) "BUSINESS" else "PERSONAL"
+                text = if (isBusiness) getString(R.string.common_business).uppercase(Locale.getDefault()) else getString(R.string.common_personal).uppercase(Locale.getDefault())
                 textSize = 10f
                 setTextColor(if (isBusiness) Color.parseColor("#B45309") else Color.parseColor("#1D4ED8"))
                 paint.isFakeBoldText = true
@@ -465,7 +465,7 @@ class ReportsActivity : AppCompatActivity() {
 
             val costVal = session.cost ?: 0.0
             val tvCost = TextView(this).apply {
-                text = String.format(Locale.US, "  •  $%.2f%s", costVal, if (session.valueConfirmed == "N") " (~Est)" else "")
+                text = String.format(Locale.US, "  •  $%.2f%s", costVal, if (session.valueConfirmed == "N") getString(R.string.reports_cost_estimated_suffix) else "")
                 textSize = 12f
                 setTextColor(if (session.valueConfirmed == "N") Color.parseColor("#D97706") else Color.parseColor("#059669"))
                 paint.isFakeBoldText = true
@@ -476,7 +476,7 @@ class ReportsActivity : AppCompatActivity() {
 
             // Action Button: View on OpenStreetMap Route Map
             val btnMap = Button(this).apply {
-                text = "🗺️ View Route Map"
+                text = getString(R.string.reports_btn_view_map)
                 textSize = 12f
                 isAllCaps = false
                 setTextColor(Color.parseColor("#2563EB"))
@@ -530,7 +530,7 @@ class ReportsActivity : AppCompatActivity() {
                 }
 
                 val tvExpHeader = TextView(this).apply {
-                    text = String.format(Locale.US, "EXPENSE ALLOCATION: %s (Total: $%.2f)", exp.expenseTypeName.uppercase(Locale.getDefault()), exp.total)
+                    text = String.format(Locale.US, getString(R.string.reports_expense_allocation_header), exp.expenseTypeName.uppercase(Locale.getDefault()), exp.total)
                     textSize = 11f
                     setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
                     paint.isFakeBoldText = true
@@ -548,7 +548,7 @@ class ReportsActivity : AppCompatActivity() {
                 }
 
                 val tvPersonalExp = TextView(this).apply {
-                    text = String.format(Locale.US, "🏠 Prop. Personal: $%.2f (%d%%)", exp.personal, pPct)
+                    text = String.format(Locale.US, getString(R.string.reports_prop_personal), exp.personal, pPct)
                     textSize = 13f
                     setTextColor(Color.parseColor("#4F46E5"))
                     paint.isFakeBoldText = true
@@ -556,7 +556,7 @@ class ReportsActivity : AppCompatActivity() {
                 }
 
                 val tvBusinessExp = TextView(this).apply {
-                    text = String.format(Locale.US, "💼 Prop. Business: $%.2f (%d%%)", exp.business, bPct)
+                    text = String.format(Locale.US, getString(R.string.reports_prop_business), exp.business, bPct)
                     textSize = 13f
                     setTextColor(Color.parseColor("#DB2777"))
                     paint.isFakeBoldText = true
@@ -645,7 +645,7 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvTripsCount = TextView(this).apply {
-                text = "${monthSessions.size} trips"
+                text = getString(R.string.reports_monthly_trips_count, monthSessions.size)
                 textSize = 11f
                 setTextColor(Color.parseColor("#2563EB"))
                 paint.isFakeBoldText = true
@@ -682,7 +682,7 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvCost = TextView(this).apply {
-                text = String.format(Locale.US, "$%.2f%s", monthCost, if (hasProjected) " (~Est)" else "")
+                text = String.format(Locale.US, "$%.2f%s", monthCost, if (hasProjected) getString(R.string.reports_cost_estimated_suffix) else "")
                 textSize = 14f
                 setTextColor(if (hasProjected) Color.parseColor("#D97706") else Color.parseColor("#059669"))
                 paint.isFakeBoldText = true
@@ -723,14 +723,14 @@ class ReportsActivity : AppCompatActivity() {
             }
 
             val tvPLegend = TextView(this).apply {
-                text = String.format(Locale.US, "🏠 Personal: %s ($%.2f)", UnitConverter.formatDistance(pDist, isImperial), pCost)
+                text = String.format(Locale.US, getString(R.string.reports_monthly_personal_legend), UnitConverter.formatDistance(pDist, isImperial), pCost)
                 textSize = 11f
                 setTextColor(Color.parseColor("#1D4ED8"))
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
 
             val tvBLegend = TextView(this).apply {
-                text = String.format(Locale.US, "💼 Business: %s ($%.2f)", UnitConverter.formatDistance(bDist, isImperial), bCost)
+                text = String.format(Locale.US, getString(R.string.reports_monthly_business_legend), UnitConverter.formatDistance(bDist, isImperial), bCost)
                 textSize = 11f
                 setTextColor(Color.parseColor("#B45309"))
                 gravity = Gravity.END

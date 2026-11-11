@@ -168,7 +168,7 @@ class BluetoothActivity : AppCompatActivity() {
         }
 
         val tvName = TextView(this).apply {
-            text = device.name?.takeIf { it.isNotBlank() } ?: "Unknown Device"
+            text = device.name?.takeIf { it.isNotBlank() } ?: getString(R.string.bluetooth_unknown_device)
             textSize = 16f
             setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setTypeface(null, Typeface.BOLD)
@@ -183,10 +183,10 @@ class BluetoothActivity : AppCompatActivity() {
 
         val assignedCarName = device.carDescription
             ?: carsList.find { it.id == device.carId }?.description
-            ?: if (!device.carId.isNullOrEmpty()) "Car #${device.carId}" else "Not assigned"
+            ?: if (!device.carId.isNullOrEmpty()) getString(R.string.common_vehicle) + " #${device.carId}" else getString(R.string.bluetooth_not_assigned)
 
         val tvCar = TextView(this).apply {
-            text = "Linked Car: $assignedCarName"
+            text = getString(R.string.bluetooth_linked_car_label, assignedCarName)
             textSize = 13f
             setTextColor(if (device.carId.isNullOrEmpty()) Color.parseColor("#EF4444") else Color.parseColor("#059669"))
             setPadding(0, 4, 0, 0)
@@ -203,7 +203,7 @@ class BluetoothActivity : AppCompatActivity() {
         }
 
         val btnAssign = Button(this).apply {
-            text = "Assign Car"
+            text = getString(R.string.bluetooth_btn_assign)
             textSize = 12f
             setTextColor(Color.parseColor("#4F46E5"))
             setBackgroundColor(Color.TRANSPARENT)
@@ -212,7 +212,7 @@ class BluetoothActivity : AppCompatActivity() {
         }
 
         val btnDelete = Button(this).apply {
-            text = "Delete"
+            text = getString(R.string.common_delete)
             textSize = 12f
             setTextColor(Color.parseColor("#DC2626"))
             setBackgroundColor(Color.TRANSPARENT)

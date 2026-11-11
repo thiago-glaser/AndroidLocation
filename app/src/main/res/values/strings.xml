@@ -302,4 +302,51 @@ Warning: This action is permanent and cannot be undone.</string>
     <string name="logcat_copied_toast">Logs copied to clipboard</string>
     <string name="logcat_clear_confirm_title">Clear Diagnostic Logs</string>
     <string name="logcat_clear_confirm_msg">Clear both persistent diagnostic logs and the live logcat buffer?</string>
+
+    <!-- Common Status & Category Strings -->
+    <string name="common_business">Business</string>
+    <string name="common_personal">Personal</string>
+    <string name="common_active">Active</string>
+    <string name="common_completed">Completed</string>
+    <string name="common_ongoing">Ongoing</string>
+    <string name="common_date_unknown">Date unknown</string>
+    <string name="common_unknown_vehicle">Unknown Vehicle</string>
+    <string name="settings_title">Settings</string>
+
+    <!-- Sessions Activity Card Strings -->
+    <string name="sessions_card_start_end">Start: %1$s\nEnd: %2$s</string>
+    <string name="sessions_card_stats">Distance: %1$s | Cost: %2$s</string>
+    <string name="sessions_btn_end_trip">End Trip</string>
+    <string name="sessions_card_map_hint">&#x1F5FA;&#xFE0F; Tap card to view route on Google Maps</string>
+
+    <!-- Reports Filter & Card Strings -->
+    <string name="reports_filter_vehicle">VEHICLE</string>
+    <string name="reports_filter_year">YEAR</string>
+    <string name="reports_filter_month">MONTH</string>
+    <string name="reports_filter_type">TYPE</string>
+    <string name="reports_trip_sessions_header_label">TRIP SESSIONS</string>
+    <string name="reports_refuel_logs_header">REFUEL LOGS</string>
+    <string name="reports_cost_estimated_suffix"> (~Est)</string>
+    <string name="reports_btn_view_map">&#x1F5FA;&#xFE0F; View Route Map</string>
+    <string name="reports_monthly_trips_count">%1$d trips</string>
+    <string name="reports_monthly_personal_legend">&#x1F3E0; Personal: %1$s ($%2$.2f)</string>
+    <string name="reports_monthly_business_legend">&#x1F4BC; Business: %1$s ($%2$.2f)</string>
+    <string name="reports_expense_allocation_header">EXPENSE ALLOCATION: %1$s (Total: $%2$.2f)</string>
+    <string name="reports_prop_personal">&#x1F3E0; Prop. Personal: $%1$.2f (%2$d%%)</string>
+    <string name="reports_prop_business">&#x1F4BC; Prop. Business: $%1$.2f (%2$d%%)</string>
+
+    <!-- Fuel Activity Card Strings -->
+    <string name="fuel_card_stats">Total: %1$s | Volume: %2$s</string>
+    <string name="fuel_card_traveled">Traveled: %1$s • %2$s • %3$s</string>
+    <string name="fuel_btn_receipt">Receipt</string>
+    <string name="fuel_btn_calculate">Calculate</string>
+
+    <!-- Expenses & Cars & Bluetooth Card Strings -->
+    <string name="expenses_no_description">No description</string>
+    <string name="cars_license_plate_label">License Plate: %1$s</string>
+    <string name="bluetooth_linked_car_label">Linked Car: %1$s</string>
+    <string name="bluetooth_not_assigned">Not assigned</string>
+    <string name="bluetooth_unknown_device">Unknown Device</string>
+    <string name="bluetooth_btn_assign">Assign Car</string>
+
 </resources>

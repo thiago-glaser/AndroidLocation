@@ -223,7 +223,7 @@ class SessionsActivity : AppCompatActivity() {
 
         val isBusiness = session.type == "B"
         val tvBadge = TextView(this).apply {
-            text = if (isBusiness) "Business" else "Personal"
+            text = if (isBusiness) getString(R.string.common_business) else getString(R.string.common_personal)
             textSize = 12f
             setPadding(20, 8, 20, 8)
             setTextColor(if (isBusiness) Color.parseColor("#B45309") else Color.parseColor("#1D4ED8"))
@@ -243,7 +243,7 @@ class SessionsActivity : AppCompatActivity() {
         val tvTimes = TextView(this).apply {
             val start = parseDate(session.startTime)
             val end = parseDate(session.endTime)
-            text = "Start: $start\nEnd: $end"
+            text = getString(R.string.sessions_card_start_end, start, end)
             textSize = 13f
             setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             setPadding(0, 8, 0, 8)
@@ -258,7 +258,7 @@ class SessionsActivity : AppCompatActivity() {
         val tvStats = TextView(this).apply {
             val dist = UnitConverter.formatDistance(session.distance ?: 0.0, isImperial)
             val cost = String.format(Locale.US, "$%.2f", session.cost ?: 0.0)
-            text = "Distance: $dist | Cost: $cost"
+            text = getString(R.string.sessions_card_stats, dist, cost)
             textSize = 14f
             setTextColor(Color.parseColor("#059669"))
             setTypeface(null, android.graphics.Typeface.BOLD)
@@ -270,7 +270,7 @@ class SessionsActivity : AppCompatActivity() {
         // Active End Session Button
         if (session.endTime.isNullOrEmpty()) {
             val btnEnd = Button(this).apply {
-                text = "End Trip"
+                text = getString(R.string.sessions_btn_end_trip)
                 textSize = 12f
                 setTextColor(Color.parseColor("#DC2626"))
                 setBackgroundColor(Color.TRANSPARENT)
@@ -281,7 +281,7 @@ class SessionsActivity : AppCompatActivity() {
 
         // Delete Button
         val btnDelete = Button(this).apply {
-            text = "Delete"
+            text = getString(R.string.common_delete)
             textSize = 12f
             setTextColor(Color.parseColor("#94A3B8"))
             setBackgroundColor(Color.TRANSPARENT)
@@ -291,7 +291,7 @@ class SessionsActivity : AppCompatActivity() {
 
         // Map route hint
         val tvMapHint = TextView(this).apply {
-            text = "🗺️ Tap card to view route on Google Maps"
+            text = getString(R.string.sessions_card_map_hint)
             textSize = 11f
             setTextColor(Color.parseColor("#3B82F6"))
             setPadding(0, 4, 0, 0)

@@ -127,7 +127,7 @@ class ExpensesActivity : AppCompatActivity() {
 
         // Middle Row: Description
         val tvDescription = TextView(this).apply {
-            text = item.description ?: "No description"
+            text = item.description ?: getString(R.string.expenses_no_description)
             textSize = 14f
             setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             setPadding(0, 10, 0, 8)
@@ -172,7 +172,7 @@ class ExpensesActivity : AppCompatActivity() {
         }
 
         val btnDelete = Button(this).apply {
-            text = "Delete"
+            text = getString(R.string.common_delete)
             textSize = 12f
             setTextColor(Color.parseColor("#EF4444"))
             setBackgroundColor(Color.TRANSPARENT)
