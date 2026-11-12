@@ -54,7 +54,9 @@ class LocationLoggingService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "location_logging_channel"
         private const val SESSION_EVENT_CHANNEL_ID = "session_event_channel"
-        private const val UPDATE_INTERVAL_MS = 7_500L
+        private const val UPDATE_INTERVAL_MS = 15_000L // 15s interval = ~20 locations per 5 minutes
+        private const val MIN_LOG_INTERVAL_MS = 12_500L // Rate-limit / deduplication threshold
+        private const val MAX_ACCURACY_METERS = 25.0f // Only accept high-accuracy GPS fixes
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // Fixed 5 minutes interval (independent of session state)
         private const val BLUETOOTH_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L // 12 hours
         private val SENT_DATA_RETENTION_DAYS = 60L
@@ -382,7 +384,7 @@ class LocationLoggingService : Service() {
         if (locationTimerJob?.isActive == true) return
 
         locationTimerJob = scope.launch {
-            AppLogger.i("LocationService", "Starting 7.5s location evaluation timer (UPDATE_INTERVAL_MS=${UPDATE_INTERVAL_MS}ms)")
+            AppLogger.i("LocationService", "Starting location evaluation timer (UPDATE_INTERVAL_MS=${UPDATE_INTERVAL_MS}ms)")
             while (isActive) {
                 delay(UPDATE_INTERVAL_MS)
 
@@ -396,21 +398,24 @@ class LocationLoggingService : Service() {
                             withContext(Dispatchers.Main) {
                                 stopLocationUpdates()
                             }
-                            AppLogger.d("LocationService", "7.5s Timer: NOT in session (trackingMode=SESSION_ONLY). Paused location providers.")
+                            AppLogger.d("LocationService", "Timer: NOT in session (trackingMode=SESSION_ONLY). Paused location providers.")
                         }
                         continue
                     }
 
-                    // In session: validate true -> ensure providers running and request fix
+                    // In session: validate true -> ensure providers running
                     if (locationCallback == null && nativeLocationListener == null) {
-                        AppLogger.i("LocationService", "7.5s Timer: IN ACTIVE SESSION! Starting location providers.")
+                        AppLogger.i("LocationService", "Timer: IN ACTIVE SESSION! Starting location providers.")
                         withContext(Dispatchers.Main) {
                             startLocationUpdates(forceRestart = false)
                         }
                     }
 
-                    // Ask for location fix
-                    requestImmediateFix("timer_in_session")
+                    // Only ask for on-demand fix if regular stream hasn't produced a fix recently
+                    val timeSinceLastFix = System.currentTimeMillis() - lastHandledFixTimeMs
+                    if (timeSinceLastFix >= UPDATE_INTERVAL_MS) {
+                        requestImmediateFix("timer_in_session")
+                    }
                 } else {
                     // ALL_TIME mode: keep working as is!
                     if (locationCallback == null && nativeLocationListener == null) {
@@ -542,7 +547,31 @@ class LocationLoggingService : Service() {
             return
         }
 
+        if (location.latitude == 0.0 && location.longitude == 0.0) {
+            AppLogger.w("LocationService", "Dropped (0,0) location fix")
+            return
+        }
+
+        // Never accept coarse network provider triangulation (cell-tower/Wi-Fi jumps)
+        val prov = (location.provider ?: "").lowercase(Locale.ROOT)
+        if (prov.contains("network")) {
+            AppLogger.w("LocationService", "Dropped network-provider fix (coarse cell/wifi)")
+            return
+        }
+
+        // Enforce high accuracy: reject any fix with accuracy worse than 25m or missing accuracy
+        if (!location.hasAccuracy() || location.accuracy > MAX_ACCURACY_METERS) {
+            AppLogger.w("LocationService", "Dropped low-accuracy fix (${if (location.hasAccuracy()) "${location.accuracy}m" else "none"} > ${MAX_ACCURACY_METERS}m, provider=$prov)")
+            return
+        }
+
+        // Reject stale fixes older than 30 seconds
         val now = System.currentTimeMillis()
+        if (location.time > 0 && (now - location.time) > 30_000L) {
+            AppLogger.d("LocationService", "Dropped stale location fix (age=${(now - location.time) / 1000}s)")
+            return
+        }
+
         val speedKmh = computeSpeedKmh(location)
         val altMeters = if (location.hasAltitude() && location.altitude != 0.0) {
             location.altitude
@@ -550,21 +579,7 @@ class LocationLoggingService : Service() {
             _liveTelemetry.value?.altitudeMeters ?: 0.0
         }
 
-        // Debounce: if another provider reported within 3.5 seconds and device is stationary (<1.5 km/h)
-        val timeSinceLastFix = now - lastHandledFixTimeMs
-        if (timeSinceLastFix in 1..3500L && speedKmh < 1.5 && lastLocationFix != null) {
-            _liveTelemetry.value = LiveGpsTelemetry(
-                latitude = location.latitude,
-                longitude = location.longitude,
-                speedKmh = 0.0,
-                altitudeMeters = altMeters,
-                timestampMs = location.time
-            )
-            return
-        }
-
-        lastHandledFixTimeMs = now
-        lastLocationFix = location
+        // Always update live telemetry for UI (speedometer, live map/status)
         _liveTelemetry.value = LiveGpsTelemetry(
             latitude = location.latitude,
             longitude = location.longitude,
@@ -573,13 +588,24 @@ class LocationLoggingService : Service() {
             timestampMs = location.time
         )
 
+        // Rate-limiting / deduplication: target ~20 points per 5 min (~1 fix every 13-15s)
+        val timeSinceLastFix = now - lastHandledFixTimeMs
+        if (lastLocationFix != null && timeSinceLastFix < MIN_LOG_INTERVAL_MS) {
+            AppLogger.d("LocationService", "Skipped duplicate/too-frequent fix ($timeSinceLastFix ms < ${MIN_LOG_INTERVAL_MS}ms, provider=$providerName)")
+            return
+        }
+
+        lastHandledFixTimeMs = now
+        lastLocationFix = location
+
         val src = if (providerName.isNotEmpty()) " [$providerName]" else ""
         AppLogger.d(
             "LocationService",
             String.format(
                 Locale.US,
-                "GPS%s: %.7f, %.7f, Alt: %.1fm, Speed: %.1f km/h",
+                "GPS%s (acc=%.1fm): %.7f, %.7f, Alt: %.1fm, Speed: %.1f km/h",
                 src,
+                location.accuracy,
                 location.latitude,
                 location.longitude,
                 altMeters,
@@ -607,8 +633,8 @@ class LocationLoggingService : Service() {
 
         // 1. Google Play Services Fused Location Provider
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
-            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS / 2)
-            .setWaitForAccurateLocation(false)
+            .setMinUpdateIntervalMillis(10_000L)
+            .setWaitForAccurateLocation(true)
             .build()
 
         val callback = object : LocationCallback() {
@@ -628,7 +654,7 @@ class LocationLoggingService : Service() {
             AppLogger.e("LocationService", "Failed to request fused location updates", e)
         }
 
-        // 2. Native Android LocationManager (GPS + Network) as dual-redundant engine
+        // 2. Native Android LocationManager (GPS Provider only, no Network) as dual-redundant engine
         startNativeLocationManagerUpdates()
 
         // 3. Request immediate fix so first point arrives right away
@@ -668,20 +694,8 @@ class LocationLoggingService : Service() {
                 AppLogger.w("LocationService", "Native GPS_PROVIDER is not enabled on device")
             }
 
-            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                lm.requestLocationUpdates(
-                    LocationManager.NETWORK_PROVIDER,
-                    UPDATE_INTERVAL_MS * 2,
-                    0f,
-                    listener,
-                    Looper.getMainLooper()
-                )
-                AppLogger.i("LocationService", "Native NETWORK_PROVIDER updates registered")
-                registeredAny = true
-            }
-
             if (!registeredAny) {
-                AppLogger.w("LocationService", "Neither GPS nor NETWORK provider is enabled on device!")
+                AppLogger.w("LocationService", "Native GPS provider is not enabled on device!")
             }
         } catch (e: SecurityException) {
             AppLogger.w("LocationService", "Native LocationManager permission denied", e)
@@ -725,7 +739,7 @@ class LocationLoggingService : Service() {
                         handleLocationFix(loc, "Immediate")
                     } else {
                         fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
-                            if (lastLoc != null && (System.currentTimeMillis() - lastLoc.time) < 10 * 60 * 1000L) {
+                            if (lastLoc != null && (System.currentTimeMillis() - lastLoc.time) < 30 * 1000L) {
                                 AppLogger.i("LocationService", "Recent lastLocation fix acquired ($reason)")
                                 handleLocationFix(lastLoc, "LastLocation")
                             }

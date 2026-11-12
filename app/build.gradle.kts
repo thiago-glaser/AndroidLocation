@@ -21,8 +21,8 @@ android {
         applicationId = "com.travelaccess.locationservice"
         minSdk = 32
         targetSdk = 36
-        versionCode = 35
-        versionName = "1.0.34"
+        versionCode = 36
+        versionName = "1.0.35"
     }
 
     signingConfigs {
