@@ -13,6 +13,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
 import android.os.Looper
@@ -153,7 +155,15 @@ class LocationLoggingService : Service() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var locationCallback: LocationCallback? = null
+    private var locationManager: LocationManager? = null
+    private var nativeLocationListener: LocationListener? = null
     private var lastLocationFix: Location? = null
+    @Volatile
+    private var lastHandledFixTimeMs = 0L
+    @Volatile
+    private var lastStaleKickTimeMs = 0L
+    @Volatile
+    private var lastRestartTimeMs = 0L
     private var wakeLock: PowerManager.WakeLock? = null
     private val client = OkHttpClient()
     private val JSON = "application/json; charset=utf-8".toMediaType()
@@ -339,7 +349,21 @@ class LocationLoggingService : Service() {
 
         tryStartForeground()
         acquireWakeLock()
-        startLocationUpdates()
+
+        val now = System.currentTimeMillis()
+        val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
+        val isStalled = timeSinceLastFix >= 60_000L
+
+        if (isStalled) {
+            AppLogger.w("LocationService", "onStartCommand: Stalled or new session (timeSinceLastFix=${if (lastHandledFixTimeMs == 0L) "none" else "${timeSinceLastFix / 1000}s"}). Forcing location restart.")
+            startLocationUpdates(forceRestart = true)
+        } else {
+            startLocationUpdates(forceRestart = false)
+        }
+
+        // Always request an immediate fix on start/watchdog wake-up
+        requestImmediateFix("on_start_command")
+
         startPeriodicSending()
         scheduleWatchdogAlarm(this)
 
@@ -368,6 +392,21 @@ class LocationLoggingService : Service() {
                 delay(pollInterval)
                 val now = System.currentTimeMillis()
 
+                // Health check: detect stalled location stream
+                val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
+                if (timeSinceLastFix >= 45_000L && (now - lastStaleKickTimeMs >= 30_000L)) {
+                    lastStaleKickTimeMs = now
+                    AppLogger.w("LocationService", "Watchdog tick: no location fix for ${if (lastHandledFixTimeMs == 0L) "initial" else "${timeSinceLastFix / 1000}s"}. Requesting on-demand fix.")
+                    requestImmediateFix("periodic_stale_kick")
+                }
+                if (timeSinceLastFix >= 120_000L && (now - lastRestartTimeMs >= 120_000L)) {
+                    lastRestartTimeMs = now
+                    AppLogger.w("LocationService", "Watchdog tick: location stream stalled for ${timeSinceLastFix / 1000}s! Restarting providers.")
+                    withContext(Dispatchers.Main) {
+                        startLocationUpdates(forceRestart = true)
+                    }
+                }
+
                 if (now - lastBatchSentTimeMs >= SEND_BATCH_INTERVAL_MS) {
                     lastBatchSentTimeMs = now
                     AppLogger.d("LocationService", "Fixed interval reached (${SEND_BATCH_INTERVAL_MS / 1000}s), sending batch and cleaning up old data.")
@@ -386,7 +425,8 @@ class LocationLoggingService : Service() {
         }
     }
 
-    private fun handleLocationFix(location: Location) {
+    private fun handleLocationFix(location: Location, providerName: String = "") {
+        val now = System.currentTimeMillis()
         val speedKmh = computeSpeedKmh(location)
         val altMeters = if (location.hasAltitude() && location.altitude != 0.0) {
             location.altitude
@@ -394,6 +434,20 @@ class LocationLoggingService : Service() {
             _liveTelemetry.value?.altitudeMeters ?: 0.0
         }
 
+        // Debounce: if another provider reported within 3.5 seconds and device is stationary (<1.5 km/h)
+        val timeSinceLastFix = now - lastHandledFixTimeMs
+        if (timeSinceLastFix in 1..3500L && speedKmh < 1.5 && lastLocationFix != null) {
+            _liveTelemetry.value = LiveGpsTelemetry(
+                latitude = location.latitude,
+                longitude = location.longitude,
+                speedKmh = 0.0,
+                altitudeMeters = altMeters,
+                timestampMs = location.time
+            )
+            return
+        }
+
+        lastHandledFixTimeMs = now
         lastLocationFix = location
         _liveTelemetry.value = LiveGpsTelemetry(
             latitude = location.latitude,
@@ -403,11 +457,13 @@ class LocationLoggingService : Service() {
             timestampMs = location.time
         )
 
+        val src = if (providerName.isNotEmpty()) " [$providerName]" else ""
         AppLogger.d(
             "LocationService",
             String.format(
                 Locale.US,
-                "GPS: %.7f, %.7f, Alt: %.1fm, Speed: %.1f km/h",
+                "GPS%s: %.7f, %.7f, Alt: %.1fm, Speed: %.1f km/h",
+                src,
                 location.latitude,
                 location.longitude,
                 altMeters,
@@ -417,49 +473,147 @@ class LocationLoggingService : Service() {
         queueLocation(location)
     }
 
-    private fun startLocationUpdates() {
-        if (locationCallback != null) {
+    private fun startLocationUpdates(forceRestart: Boolean = false) {
+        if (!forceRestart && (locationCallback != null || nativeLocationListener != null)) {
             AppLogger.d("LocationService", "Location updates already registered")
             return
         }
 
+        if (forceRestart) {
+            AppLogger.i("LocationService", "Force restarting location listeners...")
+            stopLocationUpdates()
+        }
+
+        // 1. Google Play Services Fused Location Provider
         val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, UPDATE_INTERVAL_MS)
-            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS)
-            .setMaxUpdateDelayMillis(UPDATE_INTERVAL_MS * 2)
+            .setMinUpdateIntervalMillis(UPDATE_INTERVAL_MS / 2)
             .setWaitForAccurateLocation(false)
             .build()
 
         val callback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
                 val location = result.lastLocation ?: return
-                handleLocationFix(location)
+                handleLocationFix(location, "Fused")
             }
         }
 
         try {
             fusedLocationClient.requestLocationUpdates(request, callback, Looper.getMainLooper())
             locationCallback = callback
-            AppLogger.i("LocationService", "Location updates requested successfully")
+            AppLogger.i("LocationService", "Fused location updates requested successfully (interval=${UPDATE_INTERVAL_MS}ms)")
+        } catch (e: SecurityException) {
+            AppLogger.w("LocationService", "Fused location updates permission temporarily denied", e)
+        } catch (e: Exception) {
+            AppLogger.e("LocationService", "Failed to request fused location updates", e)
+        }
 
-            // Immediately request a current fix so the first GPS point is sent right away on service startup
+        // 2. Native Android LocationManager (GPS + Network) as dual-redundant engine
+        startNativeLocationManagerUpdates()
+
+        // 3. Request immediate fix so first point arrives right away
+        requestImmediateFix("startup_or_restart")
+    }
+
+    private fun startNativeLocationManagerUpdates() {
+        try {
+            if (locationManager == null) {
+                locationManager = getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            }
+            val lm = locationManager ?: return
+
+            if (nativeLocationListener == null) {
+                nativeLocationListener = LocationListener { location ->
+                    handleLocationFix(location, "Native-" + (location.provider ?: "GPS"))
+                }
+            }
+            val listener = nativeLocationListener ?: return
+
+            try {
+                lm.removeUpdates(listener)
+            } catch (_: Exception) {}
+
+            var registeredAny = false
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                lm.requestLocationUpdates(
+                    LocationManager.GPS_PROVIDER,
+                    UPDATE_INTERVAL_MS,
+                    0f,
+                    listener,
+                    Looper.getMainLooper()
+                )
+                AppLogger.i("LocationService", "Native GPS_PROVIDER updates registered (interval=${UPDATE_INTERVAL_MS}ms)")
+                registeredAny = true
+            } else {
+                AppLogger.w("LocationService", "Native GPS_PROVIDER is not enabled on device")
+            }
+
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                lm.requestLocationUpdates(
+                    LocationManager.NETWORK_PROVIDER,
+                    UPDATE_INTERVAL_MS * 2,
+                    0f,
+                    listener,
+                    Looper.getMainLooper()
+                )
+                AppLogger.i("LocationService", "Native NETWORK_PROVIDER updates registered")
+                registeredAny = true
+            }
+
+            if (!registeredAny) {
+                AppLogger.w("LocationService", "Neither GPS nor NETWORK provider is enabled on device!")
+            }
+        } catch (e: SecurityException) {
+            AppLogger.w("LocationService", "Native LocationManager permission denied", e)
+        } catch (e: Exception) {
+            AppLogger.e("LocationService", "Failed to register native LocationManager updates", e)
+        }
+    }
+
+    private fun stopLocationUpdates() {
+        try {
+            locationCallback?.let {
+                fusedLocationClient.removeLocationUpdates(it)
+                AppLogger.d("LocationService", "Fused location updates removed")
+            }
+        } catch (e: Exception) {
+            AppLogger.w("LocationService", "Error removing fused location updates", e)
+        }
+        locationCallback = null
+
+        try {
+            nativeLocationListener?.let {
+                locationManager?.removeUpdates(it)
+                AppLogger.d("LocationService", "Native location updates removed")
+            }
+        } catch (e: Exception) {
+            AppLogger.w("LocationService", "Error removing native location updates", e)
+        }
+        nativeLocationListener = null
+    }
+
+    private fun requestImmediateFix(reason: String) {
+        try {
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener { loc ->
                     if (loc != null) {
-                        AppLogger.i("LocationService", "Immediate getCurrentLocation fix acquired on startup")
-                        handleLocationFix(loc)
+                        AppLogger.i("LocationService", "Immediate fix acquired ($reason)")
+                        handleLocationFix(loc, "Immediate")
                     } else {
                         fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
                             if (lastLoc != null && (System.currentTimeMillis() - lastLoc.time) < 10 * 60 * 1000L) {
-                                AppLogger.i("LocationService", "Recent lastLocation fix acquired on startup")
-                                handleLocationFix(lastLoc)
+                                AppLogger.i("LocationService", "Recent lastLocation fix acquired ($reason)")
+                                handleLocationFix(lastLoc, "LastLocation")
                             }
                         }
                     }
                 }
+                .addOnFailureListener { e ->
+                    AppLogger.w("LocationService", "Failed to get immediate location fix ($reason)", e)
+                }
         } catch (e: SecurityException) {
-            AppLogger.w("LocationService", "Location updates permission temporarily denied or waiting for foreground/background state", e)
+            AppLogger.w("LocationService", "Permission denied for immediate fix ($reason)", e)
         } catch (e: Exception) {
-            AppLogger.e("LocationService", "Failed to request location updates", e)
+            AppLogger.e("LocationService", "Exception requesting immediate fix ($reason)", e)
         }
     }
 
@@ -767,8 +921,7 @@ class LocationLoggingService : Service() {
 
     override fun onDestroy() {
         AppLogger.w("LocationService", "onDestroy: LocationLoggingService stopped. Rescheduling watchdog resurrection...")
-        locationCallback?.let { fusedLocationClient.removeLocationUpdates(it) }
-        locationCallback = null
+        stopLocationUpdates()
         releaseWakeLock()
         scope.cancel()
         scheduleWatchdogAlarm(this, 3000L)
