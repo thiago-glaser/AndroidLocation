@@ -349,4 +349,10 @@ Warning: This action is permanent and cannot be undone.</string>
     <string name="bluetooth_unknown_device">Unknown Device</string>
     <string name="bluetooth_btn_assign">Assign Car</string>
 
+    <!-- AI Fuel Receipt Parsing Strings -->
+    <string name="fuel_receipt_ai_title">&#x1F4C4; Receipt (Upload to auto-fill with AI)</string>
+    <string name="fuel_receipt_ai_badge">&#x2728; AI Autofill</string>
+    <string name="fuel_ai_scanning">&#x1F916; Scanning receipt with AI...</string>
+    <string name="fuel_ai_scanned_success">&#x2728; Receipt scanned! Fields auto-populated.</string>
+    <string name="fuel_ai_not_detected">Receipt details could not be detected. Please fill manually.</string>
 </resources>

@@ -350,4 +350,10 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="bluetooth_unknown_device">Dispositivo Desconhecido</string>
     <string name="bluetooth_btn_assign">Vincular Carro</string>
 
+    <!-- AI Fuel Receipt Parsing Strings -->
+    <string name="fuel_receipt_ai_title">&#x1F4C4; Comprovante (Envie para preenchimento com IA)</string>
+    <string name="fuel_receipt_ai_badge">&#x2728; IA Automática</string>
+    <string name="fuel_ai_scanning">&#x1F916; Lendo comprovante com IA...</string>
+    <string name="fuel_ai_scanned_success">&#x2728; Comprovante lido! Campos preenchidos.</string>
+    <string name="fuel_ai_not_detected">Detalhes do comprovante não detectados. Preencha manualmente.</string>
 </resources>

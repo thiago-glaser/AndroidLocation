@@ -10,7 +10,167 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <!-- Vehicle Selection -->
+        <!-- 1. Receipt Section (FIRST ITEM with AI Auto-fill) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:elevation="1dp"
+            android:padding="12dp"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="8dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/fuel_receipt_ai_title"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/text_primary" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/fuel_receipt_ai_badge"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:textColor="#059669"
+                    android:background="@drawable/bg_badge"
+                    android:paddingHorizontal="6dp"
+                    android:paddingVertical="2dp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnTakePhoto"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:text="@string/fuel_receipt_take_photo"
+                    android:textSize="12sp"
+                    android:textAllCaps="false"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:icon="@android:drawable/ic_menu_camera"
+                    app:iconSize="18dp"
+                    app:cornerRadius="8dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnChooseFile"
+                    android:layout_width="0dp"
+                    android:layout_height="40dp"
+                    android:layout_weight="1"
+                    android:layout_marginStart="6dp"
+                    android:text="@string/fuel_receipt_choose_file"
+                    android:textSize="12sp"
+                    android:textAllCaps="false"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    app:icon="@android:drawable/ic_menu_gallery"
+                    app:iconSize="18dp"
+                    app:cornerRadius="8dp" />
+            </LinearLayout>
+
+            <!-- AI Scanning Progress Bar / Status -->
+            <LinearLayout
+                android:id="@+id/layoutAiScanning"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_badge_personal"
+                android:padding="8dp"
+                android:visibility="gone">
+
+                <ProgressBar
+                    android:id="@+id/pbAiScanning"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:indeterminate="true"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/tvAiScanningStatus"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/fuel_ai_scanning"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="#1D4ED8" />
+            </LinearLayout>
+
+            <!-- Receipt Preview Container -->
+            <LinearLayout
+                android:id="@+id/layoutReceiptPreview"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="#F8FAFC"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="8dp"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/ivReceiptThumb"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:scaleType="centerCrop"
+                    android:src="@android:drawable/ic_menu_gallery"
+                    android:background="#E2E8F0" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="10dp"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:id="@+id/tvReceiptName"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="receipt.jpg"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/text_primary"
+                        android:singleLine="true"
+                        android:ellipsize="middle" />
+
+                    <TextView
+                        android:id="@+id/tvReceiptSize"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/fuel_receipt_ready"
+                        android:textSize="11sp"
+                        android:textColor="@color/text_secondary" />
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnRemoveReceipt"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:text="@string/common_remove"
+                    android:textSize="11sp"
+                    android:textColor="#DC2626"
+                    style="@style/Widget.MaterialComponents.Button.TextButton" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- 2. Vehicle Selection -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -26,7 +186,7 @@
             android:layout_marginTop="4dp"
             android:background="@drawable/bg_spinner" />
 
-        <!-- Date & Time Row -->
+        <!-- 3. Date & Time Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -109,7 +269,7 @@
             </com.google.android.material.textfield.TextInputLayout>
         </LinearLayout>
 
-        <!-- Total Cost -->
+        <!-- 4. Total Cost -->
         <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -130,7 +290,7 @@
                 android:textSize="14sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Volume (L or Gallons) -->
+        <!-- 5. Volume (L or Gallons) -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/tilVolume"
             android:layout_width="match_parent"
@@ -151,108 +311,5 @@
                 android:textSize="14sp" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Receipt Section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:text="@string/fuel_receipt_section"
-            android:textSize="13sp"
-            android:textStyle="bold"
-            android:textColor="@color/text_primary" />
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:orientation="horizontal">
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnTakePhoto"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:layout_marginEnd="6dp"
-                android:text="@string/fuel_receipt_take_photo"
-                android:textSize="12sp"
-                android:textAllCaps="false"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:icon="@android:drawable/ic_menu_camera"
-                app:iconSize="18dp"
-                app:cornerRadius="8dp" />
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnChooseFile"
-                android:layout_width="0dp"
-                android:layout_height="40dp"
-                android:layout_weight="1"
-                android:layout_marginStart="6dp"
-                android:text="@string/fuel_receipt_choose_file"
-                android:textSize="12sp"
-                android:textAllCaps="false"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                app:icon="@android:drawable/ic_menu_gallery"
-                app:iconSize="18dp"
-                app:cornerRadius="8dp" />
-        </LinearLayout>
-
-        <!-- Receipt Preview Container -->
-        <LinearLayout
-            android:id="@+id/layoutReceiptPreview"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:background="@drawable/bg_card"
-            android:elevation="1dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:padding="10dp"
-            android:visibility="gone">
-
-            <ImageView
-                android:id="@+id/ivReceiptThumb"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:scaleType="centerCrop"
-                android:src="@android:drawable/ic_menu_gallery"
-                android:background="#E2E8F0" />
-
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="10dp"
-                android:orientation="vertical">
-
-                <TextView
-                    android:id="@+id/tvReceiptName"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="receipt.jpg"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    android:textColor="@color/text_primary"
-                    android:singleLine="true"
-                    android:ellipsize="middle" />
-
-                <TextView
-                    android:id="@+id/tvReceiptSize"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:text="@string/fuel_receipt_ready"
-                    android:textSize="11sp"
-                    android:textColor="@color/text_secondary" />
-            </LinearLayout>
-
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btnRemoveReceipt"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:text="@string/common_remove"
-                android:textSize="11sp"
-                android:textColor="#DC2626"
-                style="@style/Widget.MaterialComponents.Button.TextButton" />
-        </LinearLayout>
     </LinearLayout>
 </ScrollView>
-

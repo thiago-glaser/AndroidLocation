@@ -9,6 +9,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.widget.ArrayAdapter
@@ -48,6 +49,7 @@ class FuelActivity : AppCompatActivity() {
     private var attachedReceiptMime: String? = null
     private var attachedReceiptBitmap: Bitmap? = null
     private var currentDialogBinding: DialogAddFuelBinding? = null
+    private var currentDialogCalendar: Calendar? = null
 
     private val takePhotoLauncher = registerForActivityResult(
         ActivityResultContracts.TakePicturePreview()
@@ -55,11 +57,13 @@ class FuelActivity : AppCompatActivity() {
         if (bitmap != null) {
             val stream = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.JPEG, 85, stream)
-            attachedReceiptBytes = stream.toByteArray()
+            val bytes = stream.toByteArray()
+            attachedReceiptBytes = bytes
             attachedReceiptFileName = "receipt_${System.currentTimeMillis()}.jpg"
             attachedReceiptMime = "image/jpeg"
             attachedReceiptBitmap = bitmap
             updateReceiptPreviewInDialog()
+            scanReceiptWithAi(bytes, attachedReceiptFileName, attachedReceiptMime)
         }
     }
 
@@ -265,6 +269,7 @@ class FuelActivity : AppCompatActivity() {
 
         // Date and Time selection
         val calendar = Calendar.getInstance()
+        currentDialogCalendar = calendar
         val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
         val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
 
@@ -322,6 +327,7 @@ class FuelActivity : AppCompatActivity() {
             attachedReceiptFileName = null
             attachedReceiptMime = null
             attachedReceiptBitmap = null
+            dialogBinding.layoutAiScanning.visibility = View.GONE
             updateReceiptPreviewInDialog()
         }
 
@@ -331,9 +337,11 @@ class FuelActivity : AppCompatActivity() {
             .setPositiveButton(R.string.common_save, null) // Overridden below to validate inputs
             .setNegativeButton(R.string.common_cancel) { _, _ ->
                 currentDialogBinding = null
+                currentDialogCalendar = null
             }
             .setOnDismissListener {
                 currentDialogBinding = null
+                currentDialogCalendar = null
             }
             .create()
 
@@ -393,6 +401,68 @@ class FuelActivity : AppCompatActivity() {
         }
     }
 
+    private fun scanReceiptWithAi(bytes: ByteArray, fileName: String?, mime: String?) {
+        val db = currentDialogBinding ?: return
+        db.layoutAiScanning.visibility = View.VISIBLE
+        db.pbAiScanning.visibility = View.VISIBLE
+        db.tvAiScanningStatus.text = getString(R.string.fuel_ai_scanning)
+
+        lifecycleScope.launch {
+            val result: Result<ParsedReceiptData> = apiClient.parseFuelReceipt(bytes, fileName, mime)
+            val activeDb = currentDialogBinding ?: return@launch
+
+            result.onSuccess { parsed: ParsedReceiptData ->
+                if (parsed.isReceipt) {
+                    activeDb.pbAiScanning.visibility = View.GONE
+                    activeDb.tvAiScanningStatus.text = getString(R.string.fuel_ai_scanned_success)
+
+                    // Auto-fill Total Cost
+                    val cost = parsed.totalValue
+                    if (cost != null) {
+                        activeDb.etTotalCost.setText(String.format(Locale.US, "%.2f", cost))
+                    }
+
+                    // Auto-fill Volume
+                    if (isImperial) {
+                        val gal = parsed.gallons ?: parsed.liters?.let { UnitConverter.litersToDisplay(it, true) }
+                        if (gal != null) {
+                            activeDb.etVolume.setText(String.format(Locale.US, "%.3f", gal))
+                        }
+                    } else {
+                        val lit = parsed.liters
+                        if (lit != null) {
+                            activeDb.etVolume.setText(String.format(Locale.US, "%.3f", lit))
+                        }
+                    }
+
+                    // Auto-fill Date and Time
+                    val pDate = parsed.date
+                    if (!pDate.isNullOrEmpty()) {
+                        try {
+                            val timePart = parsed.time ?: "12:00"
+                            val dateTimeStr = "$pDate $timePart"
+                            val parsedDate = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.US).parse(dateTimeStr)
+                            if (parsedDate != null) {
+                                currentDialogCalendar?.time = parsedDate
+                                val df = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                                val tf = SimpleDateFormat("hh:mm a", Locale.getDefault())
+                                activeDb.etDate.setText(df.format(parsedDate))
+                                activeDb.etTime.setText(tf.format(parsedDate))
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    Toast.makeText(this@FuelActivity, getString(R.string.fuel_ai_scanned_success), Toast.LENGTH_SHORT).show()
+                } else {
+                    activeDb.layoutAiScanning.visibility = View.GONE
+                    Toast.makeText(this@FuelActivity, getString(R.string.fuel_ai_not_detected), Toast.LENGTH_SHORT).show()
+                }
+            }.onFailure { err ->
+                Log.w("FuelActivity", "AI receipt scan failed: ${err.message}")
+                activeDb.layoutAiScanning.visibility = View.GONE
+            }
+        }
+    }
+
     private fun loadReceiptFromUri(uri: Uri) {
         try {
             contentResolver.openInputStream(uri)?.use { stream ->
@@ -416,6 +486,7 @@ class FuelActivity : AppCompatActivity() {
                 }
 
                 updateReceiptPreviewInDialog()
+                scanReceiptWithAi(bytes, attachedReceiptFileName, attachedReceiptMime)
             }
         } catch (e: Exception) {
             Toast.makeText(this, "Failed to read file: ${e.message}", Toast.LENGTH_SHORT).show()

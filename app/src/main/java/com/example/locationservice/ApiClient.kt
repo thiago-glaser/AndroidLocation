@@ -74,6 +74,28 @@ data class FuelSummary(
     val fuelLogs: List<FuelItem> = emptyList()
 )
 
+data class ParsedReceiptData(
+    val isReceipt: Boolean = false,
+    val totalValue: Double? = null,
+    val liters: Double? = null,
+    val gallons: Double? = null,
+    val volumeUnit: String? = null,
+    val unitPrice: Double? = null,
+    val date: String? = null,
+    val time: String? = null,
+    val timestampIso: String? = null,
+    val merchant: String? = null,
+    val fuelType: String? = null,
+    val odometer: Double? = null,
+    val confidence: Double = 0.0
+)
+
+data class ParseReceiptResponse(
+    val success: Boolean,
+    val parsed: ParsedReceiptData? = null,
+    val error: String? = null
+)
+
 class ApiClient(private val context: Context) {
 
     private val client = OkHttpClient()
@@ -754,6 +776,29 @@ class ApiClient(private val context: Context) {
         val req = Request.Builder().url("$baseUrl/user/fuel").post(formBodyBuilder.build())
         return executeRequest(req) { body ->
             gson.fromJson(body, ApiResponse::class.java).success
+        }
+    }
+
+    suspend fun parseFuelReceipt(
+        receiptBytes: ByteArray,
+        receiptFileName: String? = null,
+        receiptMime: String? = null
+    ): Result<ParsedReceiptData> {
+        val mediaType = (receiptMime ?: "image/jpeg").toMediaTypeOrNull()
+        val filename = receiptFileName ?: "receipt.jpg"
+        val formBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart("receipt", filename, receiptBytes.toRequestBody(mediaType))
+            .build()
+
+        val req = Request.Builder().url("$baseUrl/user/fuel/parse-receipt").post(formBody)
+        return executeRequest(req) { body ->
+            val resp = gson.fromJson(body, ParseReceiptResponse::class.java)
+            if (resp.success && resp.parsed != null) {
+                resp.parsed
+            } else {
+                throw Exception(resp.error ?: "Failed to parse receipt")
+            }
         }
     }
 
