@@ -283,6 +283,8 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="notif_collecting_gps">Coletando dados de GPS a cada ~8 segundos</string>
     <string name="notif_bt_event_queued">Evento Bluetooth na Fila</string>
     <string name="notif_bt_address">Endereço: %1$s</string>
+    <string name="notif_update_resume_title">Rastreamento de Localização Pausado</string>
+    <string name="notif_update_resume_text">Toque aqui para retomar o rastreamento em segundo plano após a atualização.</string>
 
     <!-- Admin Logcat Screen -->
     <string name="main_btn_logcat">&#x1F4DF;  Admin: Ver Logcat</string>

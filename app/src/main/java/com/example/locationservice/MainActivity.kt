@@ -93,6 +93,10 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        try {
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as? android.app.NotificationManager
+            notificationManager?.cancel(PackageReplacedReceiver.NOTIFICATION_ID_RESUME)
+        } catch (_: Exception) {}
         refreshActiveSessionState()
     }
 

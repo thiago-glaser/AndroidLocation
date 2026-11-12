@@ -9,36 +9,26 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         AppLogger.init(context)
         val action = intent?.action ?: return
-        AppLogger.i("BootReceiver", "Received broadcast action: $action (data=${intent.dataString})")
+        AppLogger.i("BootReceiver", "Received boot broadcast action: $action")
 
-        val validActions = setOf(
+        val validBootActions = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_LOCKED_BOOT_COMPLETED,
-            Intent.ACTION_MY_PACKAGE_REPLACED,
             "android.intent.action.QUICKBOOT_POWERON",
             "com.htc.intent.action.QUICKBOOT_POWERON"
         )
 
-        if (!validActions.contains(action)) {
-            if (action == Intent.ACTION_PACKAGE_REPLACED) {
-                val data = intent.dataString ?: return
-                if (!data.contains(context.packageName)) return
-            } else {
-                return
-            }
+        if (!validBootActions.contains(action)) {
+            AppLogger.w("BootReceiver", "Ignoring non-boot action: $action")
+            return
         }
 
-        val pendingResult = goAsync()
         try {
-            AppLogger.i("BootReceiver", "Starting LocationLoggingService and scheduling fast watchdog after $action")
-            // Immediate start
-            LocationLoggingService.ensureServiceRunning(context.applicationContext)
-            // Staggered 3-second exact safety-net alarm to ensure resurrection even if package installer was finalizing
-            LocationLoggingService.scheduleWatchdogAlarm(context.applicationContext, 3000L)
+            AppLogger.i("BootReceiver", "Starting LocationLoggingService after boot ($action)")
+            LocationLoggingService.ensureServiceRunning(context)
+            LocationLoggingService.scheduleWatchdogAlarm(context, 5000L)
         } catch (e: Exception) {
             AppLogger.e("BootReceiver", "Failed to start service after $action", e)
-        } finally {
-            pendingResult.finish()
         }
     }
 }

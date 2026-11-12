@@ -181,14 +181,41 @@ class LocationLoggingService : Service() {
             return
         }
 
-        // On Android 14/15/16 (targetSdk 36), DATA_SYNC is forbidden from BOOT_COMPLETED / MY_PACKAGE_REPLACED,
-        // and throws ForegroundServiceStartNotAllowedException (extends IllegalStateException, not SecurityException).
-        // Therefore, try individual foreground service types in priority order catching Throwable!
+        val hasFine = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasCoarse = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val hasLocationPerm = hasFine || hasCoarse
+
+        val hasBtConnect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_CONNECT
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+
         val candidateTypes = mutableListOf<Pair<String, Int>>()
-        candidateTypes.add("LOCATION" to ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            candidateTypes.add("CONNECTED_DEVICE" to ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
-            candidateTypes.add("DATA_SYNC" to ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            if (hasLocationPerm && hasBtConnect) {
+                candidateTypes.add(
+                    "LOCATION_AND_CONNECTED_DEVICE" to (ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+                )
+            }
+            if (hasLocationPerm) {
+                candidateTypes.add("LOCATION" to ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
+            }
+            if (hasBtConnect) {
+                candidateTypes.add("CONNECTED_DEVICE" to ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE)
+            }
+        } else {
+            candidateTypes.add("LOCATION" to ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
         }
 
         for ((label, fgsType) in candidateTypes) {
@@ -203,9 +230,11 @@ class LocationLoggingService : Service() {
 
         try {
             startForeground(NOTIFICATION_ID, notification)
-            AppLogger.i("LocationService", "startForeground succeeded with default manifest type")
+            AppLogger.i("LocationService", "startForeground succeeded with fallback call")
         } catch (t: Throwable) {
             AppLogger.e("LocationService", "All startForeground attempts failed", t)
+            PackageReplacedReceiver.showResumeTrackingNotification(this)
+            stopSelf()
         }
     }
 

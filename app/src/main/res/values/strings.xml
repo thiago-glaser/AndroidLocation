@@ -282,6 +282,8 @@ Warning: This action is permanent and cannot be undone.</string>
     <string name="notif_collecting_gps">Collecting GPS data every ~8 seconds</string>
     <string name="notif_bt_event_queued">Bluetooth Event Queued</string>
     <string name="notif_bt_address">Address: %1$s</string>
+    <string name="notif_update_resume_title">Location Tracking Paused</string>
+    <string name="notif_update_resume_text">Tap here to resume background tracking after app update.</string>
 
     <!-- Admin Logcat Screen -->
     <string name="main_btn_logcat">&#x1F4DF;  Admin: View Logcat</string>
