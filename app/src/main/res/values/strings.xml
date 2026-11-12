@@ -276,6 +276,11 @@ Warning: This action is permanent and cannot be undone.</string>
     <string name="reports_legend_business_time">&#x1F4BC; Business: %1$s (%2$d%%)</string>
     <string name="reports_legend_personal_cost">&#x1F3E0; Personal: $%1$.2f</string>
     <string name="reports_legend_business_cost">&#x1F4BC; Business: $%1$.2f</string>
+    <string name="reports_btn_download_pdf">Download PDF</string>
+    <string name="reports_downloading_pdf">Generating and downloading PDF report…</string>
+    <string name="reports_pdf_downloaded">PDF saved: %1$s</string>
+    <string name="reports_pdf_error">Failed to generate PDF: %1$s</string>
+    <string name="reports_pdf_open">Open</string>
 
     <!-- Foreground Notifications -->
     <string name="notif_logger_active">Location Logger Active</string>

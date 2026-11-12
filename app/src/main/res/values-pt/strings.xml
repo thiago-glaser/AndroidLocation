@@ -277,6 +277,11 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="reports_legend_business_time">&#x1F4BC; Trabalho: %1$s (%2$d%%)</string>
     <string name="reports_legend_personal_cost">&#x1F3E0; Pessoal: $%1$.2f</string>
     <string name="reports_legend_business_cost">&#x1F4BC; Trabalho: $%1$.2f</string>
+    <string name="reports_btn_download_pdf">Baixar PDF</string>
+    <string name="reports_downloading_pdf">Gerando e baixando relatório em PDF…</string>
+    <string name="reports_pdf_downloaded">PDF salvo: %1$s</string>
+    <string name="reports_pdf_error">Falha ao gerar PDF: %1$s</string>
+    <string name="reports_pdf_open">Abrir</string>
 
     <!-- Foreground Notifications -->
     <string name="notif_logger_active">Registro de Localização Ativo</string>

@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.locationservice.databinding.ActivityReportsBinding
 import kotlinx.coroutines.launch
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -45,6 +46,7 @@ class ReportsActivity : AppCompatActivity() {
 
         binding.btnBack.setOnClickListener { finish() }
         binding.btnRefresh.setOnClickListener { refreshActiveReport() }
+        binding.btnDownloadPdf.setOnClickListener { downloadCurrentReportPdf() }
         binding.btnShare.setOnClickListener { shareCurrentReport() }
 
         setupTabs()
@@ -929,6 +931,161 @@ class ReportsActivity : AppCompatActivity() {
         val m = floor((hours - h) * 60.0).toLong()
         val s = floor(((hours - h) * 60.0 - m) * 60.0).toLong()
         return "${h}h ${m}m ${s}s"
+    }
+
+    private fun downloadCurrentReportPdf() {
+        val carName = binding.spinnerCarFilter.selectedItem?.toString() ?: "All Cars"
+        val carId = getSelectedCarId()
+        val year = getSelectedYear()
+        val month = if (currentTab == 0) getSelectedMonthNumber() else null
+        val type = getSelectedType()
+        val lang = if (Locale.getDefault().language.lowercase().startsWith("pt")) "pt" else "en"
+
+        binding.progressBar.visibility = View.VISIBLE
+        binding.btnDownloadPdf.isEnabled = false
+        Toast.makeText(this, getString(R.string.reports_downloading_pdf), Toast.LENGTH_SHORT).show()
+
+        lifecycleScope.launch {
+            try {
+                val reportTypeStr = when (currentTab) {
+                    1 -> "monthly"
+                    2 -> "fuel"
+                    else -> "trips"
+                }
+
+                val monthlyItemsList = if (currentTab == 1 && currentReportsSummary != null) {
+                    val monthKeyFormat = SimpleDateFormat("yyyy-MM", Locale.US)
+                    val monthDisplayFormat = SimpleDateFormat("MMMM yyyy", Locale.getDefault())
+                    val grouped = currentReportsSummary!!.sessions.groupBy { session ->
+                        val start = apiClient.parseUtcDate(session.startTime)
+                        if (start != null) monthKeyFormat.format(start) else "Unknown"
+                    }.toSortedMap()
+
+                    grouped.map { (yearMonth, monthSessions) ->
+                        var monthDist = 0.0
+                        var pDist = 0.0
+                        var bDist = 0.0
+                        var monthCost = 0.0
+                        var pCost = 0.0
+                        var bCost = 0.0
+                        var monthDuration = 0.0
+                        var hasProj = false
+
+                        monthSessions.forEach { s ->
+                            val d = s.distance ?: 0.0
+                            val c = s.cost ?: 0.0
+                            val dur = s.timeTraveled ?: 0.0
+                            monthDist += d
+                            monthCost += c
+                            monthDuration += dur
+                            if (s.valueConfirmed == "N") hasProj = true
+                            if (s.type == "B") {
+                                bDist += d
+                                bCost += c
+                            } else {
+                                pDist += d
+                                pCost += c
+                            }
+                        }
+
+                        var displayTitle = yearMonth
+                        if (yearMonth != "Unknown") {
+                            try {
+                                val d = SimpleDateFormat("yyyy-MM", Locale.US).parse(yearMonth)
+                                if (d != null) displayTitle = monthDisplayFormat.format(d)
+                            } catch (_: Exception) {}
+                        }
+
+                        MonthlyReportItem(
+                            yearMonth = yearMonth,
+                            displayMonth = displayTitle,
+                            carDescription = monthSessions.firstOrNull()?.description,
+                            totalDistanceKm = monthDist,
+                            personalDistanceKm = pDist,
+                            businessDistanceKm = bDist,
+                            totalDurationHours = monthDuration,
+                            totalCost = monthCost,
+                            personalCost = pCost,
+                            businessCost = bCost,
+                            tripCount = monthSessions.size,
+                            hasProjected = hasProj
+                        )
+                    }
+                } else null
+
+                val result = apiClient.exportReportPdf(
+                    reportType = reportTypeStr,
+                    carId = carId,
+                    carName = carName,
+                    year = year,
+                    month = month,
+                    type = type,
+                    isImperial = isImperial,
+                    lang = lang,
+                    summary = currentReportsSummary,
+                    fuelSummary = currentFuelSummary,
+                    monthlyItems = monthlyItemsList,
+                    includeReceipts = true
+                )
+
+                binding.progressBar.visibility = View.GONE
+                binding.btnDownloadPdf.isEnabled = true
+
+                result.onSuccess { pdfBytes ->
+                    val dateStr = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                    val prefix = when (currentTab) {
+                        1 -> "Monthly_Report"
+                        2 -> "Fuel_Report"
+                        else -> "Travel_Report"
+                    }
+                    val fileName = "${prefix}_${dateStr}.pdf"
+
+                    val reportsDir = File(cacheDir, "reports")
+                    if (!reportsDir.exists()) reportsDir.mkdirs()
+                    val pdfFile = File(reportsDir, fileName)
+                    pdfFile.writeBytes(pdfBytes)
+
+                    try {
+                        val externalDir = getExternalFilesDir(android.os.Environment.DIRECTORY_DOWNLOADS)
+                        if (externalDir != null) {
+                            val extFile = File(externalDir, fileName)
+                            extFile.writeBytes(pdfBytes)
+                        }
+                    } catch (_: Exception) {}
+
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        this@ReportsActivity,
+                        "${packageName}.fileprovider",
+                        pdfFile
+                    )
+
+                    Toast.makeText(this@ReportsActivity, getString(R.string.reports_pdf_downloaded, fileName), Toast.LENGTH_SHORT).show()
+
+                    val viewIntent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, "application/pdf")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+
+                    try {
+                        startActivity(Intent.createChooser(viewIntent, getString(R.string.reports_pdf_open)))
+                    } catch (e: Exception) {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            this.type = "application/pdf"
+                            putExtra(Intent.EXTRA_STREAM, uri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        startActivity(Intent.createChooser(shareIntent, getString(R.string.reports_btn_download_pdf)))
+                    }
+                }.onFailure { err ->
+                    Toast.makeText(this@ReportsActivity, getString(R.string.reports_pdf_error, err.message ?: "Unknown error"), Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                binding.progressBar.visibility = View.GONE
+                binding.btnDownloadPdf.isEnabled = true
+                Toast.makeText(this@ReportsActivity, getString(R.string.reports_pdf_error, e.message ?: "Unknown error"), Toast.LENGTH_LONG).show()
+            }
+        }
     }
 
     private fun dpToPx(dp: Int): Int {

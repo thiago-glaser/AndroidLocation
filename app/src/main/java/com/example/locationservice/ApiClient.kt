@@ -382,6 +382,42 @@ class ApiClient(private val context: Context) {
         }
     }
 
+    private suspend fun executeByteRequest(
+        requestBuilder: Request.Builder
+    ): Result<ByteArray> = withContext(Dispatchers.IO) {
+        val apiKey = getApiKey()
+        if (apiKey.isEmpty()) {
+            return@withContext Result.failure(Exception("API Key not configured. Please set your API key in Settings."))
+        }
+
+        val request = requestBuilder
+            .header("X-API-Key", apiKey)
+            .build()
+
+        try {
+            client.newCall(request).execute().use { response ->
+                if (response.isSuccessful) {
+                    val bytes = response.body?.bytes()
+                    if (bytes != null) {
+                        Result.success(bytes)
+                    } else {
+                        Result.failure(Exception("Empty response body"))
+                    }
+                } else {
+                    val bodyStr = response.body?.string() ?: ""
+                    val errMsg = try {
+                        JSONObject(bodyStr).optString("error", "HTTP error ${response.code}")
+                    } catch (e: Exception) {
+                        "HTTP error ${response.code}: ${response.message}"
+                    }
+                    Result.failure(Exception(errMsg))
+                }
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     // --- AUTHENTICATION ---
     suspend fun loginWithCredentials(username: String, password: String): Result<LoginResponse> = withContext(Dispatchers.IO) {
         try {
@@ -1289,6 +1325,150 @@ class ApiClient(private val context: Context) {
                 fuelLogs = filtered
             )
         }
+    }
+
+    suspend fun exportReportPdf(
+        reportType: String,
+        carId: String? = null,
+        carName: String? = null,
+        year: String? = null,
+        month: String? = null,
+        type: String? = null,
+        isImperial: Boolean = false,
+        lang: String = "en",
+        summary: ReportsSummary? = null,
+        fuelSummary: FuelSummary? = null,
+        monthlyItems: List<MonthlyReportItem>? = null,
+        includeReceipts: Boolean = false
+    ): Result<ByteArray> {
+        val payload = JSONObject().apply {
+            put("reportType", reportType)
+            if (!carId.isNullOrEmpty()) put("carId", carId)
+            if (!carName.isNullOrEmpty()) put("carName", carName)
+            if (!year.isNullOrEmpty() && year != "Any Year") put("year", year)
+            if (!month.isNullOrEmpty() && month != "Any Month") put("month", month)
+            if (!type.isNullOrEmpty() && type != "All Types") put("type", type)
+            put("isImperial", isImperial)
+            put("lang", lang)
+            put("includeReceipts", includeReceipts)
+
+            if (reportType == "trips" && summary != null) {
+                val summaryObj = JSONObject().apply {
+                    put("totalDistanceKm", summary.totalDistanceKm)
+                    put("personalDistanceKm", summary.personalDistanceKm)
+                    put("businessDistanceKm", summary.businessDistanceKm)
+                    put("totalCost", summary.totalCost)
+                    put("personalCost", summary.personalCost)
+                    put("businessCost", summary.businessCost)
+                    put("totalDurationHours", summary.totalDurationHours)
+                    put("personalDurationHours", summary.personalDurationHours)
+                    put("businessDurationHours", summary.businessDurationHours)
+                    put("totalTrips", summary.totalTrips)
+                    put("personalTrips", summary.personalTrips)
+                    put("businessTrips", summary.businessTrips)
+                    put("hasProjected", summary.hasProjected)
+                }
+                put("summary", summaryObj)
+
+                val itemsArr = org.json.JSONArray()
+                summary.sessions.forEach { s ->
+                    val sObj = JSONObject().apply {
+                        put("id", s.id)
+                        put("description", s.description)
+                        put("startTime", s.startTime)
+                        put("endTime", s.endTime)
+                        put("distance", s.distance)
+                        put("timeTraveled", s.timeTraveled)
+                        put("cost", s.cost)
+                        put("type", s.type)
+                        put("valueConfirmed", s.valueConfirmed)
+                    }
+                    itemsArr.put(sObj)
+                }
+                put("items", itemsArr)
+            } else if (reportType == "monthly" && summary != null) {
+                val summaryObj = JSONObject().apply {
+                    put("totalDistanceKm", summary.totalDistanceKm)
+                    put("personalDistanceKm", summary.personalDistanceKm)
+                    put("businessDistanceKm", summary.businessDistanceKm)
+                    put("totalCost", summary.totalCost)
+                    put("personalCost", summary.personalCost)
+                    put("businessCost", summary.businessCost)
+                    put("totalDurationHours", summary.totalDurationHours)
+                    put("personalDurationHours", summary.personalDurationHours)
+                    put("businessDurationHours", summary.businessDurationHours)
+                    put("totalTrips", summary.totalTrips)
+                    put("personalTrips", summary.personalTrips)
+                    put("businessTrips", summary.businessTrips)
+                    put("hasProjected", summary.hasProjected)
+
+                    val expArr = org.json.JSONArray()
+                    summary.otherExpenses.forEach { exp ->
+                        val expObj = JSONObject().apply {
+                            put("expenseTypeName", exp.expenseTypeName)
+                            put("total", exp.total)
+                            put("personal", exp.personal)
+                            put("business", exp.business)
+                        }
+                        expArr.put(expObj)
+                    }
+                    put("otherExpenses", expArr)
+                }
+                put("summary", summaryObj)
+
+                if (monthlyItems != null) {
+                    val itemsArr = org.json.JSONArray()
+                    monthlyItems.forEach { m ->
+                        val mObj = JSONObject().apply {
+                            put("monthDisplay", m.displayMonth)
+                            put("carDesc", m.carDescription)
+                            put("type", "")
+                            put("tripCount", m.tripCount)
+                            put("distanceKm", m.totalDistanceKm)
+                            put("durationHours", m.totalDurationHours)
+                            put("cost", m.totalCost)
+                            put("hasProjected", m.hasProjected)
+                        }
+                        itemsArr.put(mObj)
+                    }
+                    put("items", itemsArr)
+                }
+            } else if (reportType == "fuel" && fuelSummary != null) {
+                val summaryObj = JSONObject().apply {
+                    put("totalCost", fuelSummary.totalCost)
+                    put("totalLiters", fuelSummary.totalLiters)
+                    put("count", fuelSummary.refuelCount)
+                    put("avgPricePerLiter", fuelSummary.avgPricePerLiter)
+                    put("avgKmPerLiter", fuelSummary.avgKmPerLiter)
+                    put("avgPricePerKm", fuelSummary.avgPricePerKm)
+                }
+                put("summary", summaryObj)
+
+                val itemsArr = org.json.JSONArray()
+                fuelSummary.fuelLogs.forEach { f ->
+                    val fObj = JSONObject().apply {
+                        put("id", f.id)
+                        put("timestampUtc", f.timestampUtc)
+                        put("carDescription", f.carDescription ?: f.carLicensePlate)
+                        put("liters", f.liters)
+                        put("totalValue", f.totalValue)
+                        put("totalKilometers", f.totalKilometers)
+                        put("kilometerPerLiter", f.kilometerPerLiter)
+                        put("pricePerKilometer", f.pricePerKilometer)
+                        put("hasReceipt", f.hasReceipt == true)
+                    }
+                    itemsArr.put(fObj)
+                }
+                put("items", itemsArr)
+            }
+        }
+
+        val body = payload.toString().toRequestBody(jsonMediaType)
+        val req = Request.Builder()
+            .url("$baseUrl/user/reports/export-pdf")
+            .post(body)
+
+        return executeByteRequest(req)
     }
 
     // --- GPS DATA ---

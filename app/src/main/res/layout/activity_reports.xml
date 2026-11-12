@@ -50,6 +50,15 @@
         </LinearLayout>
 
         <ImageButton
+            android:id="@+id/btnDownloadPdf"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_download"
+            android:contentDescription="@string/reports_btn_download_pdf"
+            app:tint="@color/icon_tint" />
+
+        <ImageButton
             android:id="@+id/btnShare"
             android:layout_width="44dp"
             android:layout_height="44dp"
