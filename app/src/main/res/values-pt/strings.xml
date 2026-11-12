@@ -89,6 +89,12 @@
     <string name="main_label_language">Idioma</string>
     <string name="main_unit_metric">Métrico (km, L, km/L)</string>
     <string name="main_unit_imperial">Imperial (mi, gal, MPG)</string>
+    <string name="main_btn_change_tracking_mode">Alterar Modo de Rastreamento</string>
+    <string name="main_label_tracking_mode">Rastreamento de Localização</string>
+    <string name="main_tracking_session_only">Apenas durante a sessão (Padrão)</string>
+    <string name="main_tracking_all_time">O tempo todo</string>
+    <string name="settings_select_tracking_mode">Selecione o Modo de Rastreamento</string>
+    <string name="settings_tracking_mode_set_toast">Modo de rastreamento atualizado: %1$s</string>
     <string name="main_api_key_checking">Verificando chave da API...</string>
     <string name="main_api_key_configured">Configurada (%1$s)</string>
     <string name="main_api_key_not_set">Não definida (Clique em Atualizar Chave da API)</string>

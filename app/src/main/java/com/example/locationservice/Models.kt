@@ -159,12 +159,14 @@ data class LoginResponse(
     val apiKey: String?,
     val user: AuthUser?,
     val unitSystem: String? = null,
+    val trackingMode: String? = null,
     val isAdmin: Boolean? = null,
     val error: String?
 )
 
 data class UserSettingsData(
-    val unitSystem: String?
+    val unitSystem: String?,
+    val trackingMode: String? = null
 )
 
 data class UserSettingsResponse(

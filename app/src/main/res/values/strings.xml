@@ -88,6 +88,12 @@
     <string name="main_label_language">Language</string>
     <string name="main_unit_metric">Metric (km, L, km/L)</string>
     <string name="main_unit_imperial">Imperial (mi, gal, MPG)</string>
+    <string name="main_btn_change_tracking_mode">Change Location Tracking Mode</string>
+    <string name="main_label_tracking_mode">Location Tracking</string>
+    <string name="main_tracking_session_only">Only during session (Default)</string>
+    <string name="main_tracking_all_time">All the time</string>
+    <string name="settings_select_tracking_mode">Select Location Tracking Mode</string>
+    <string name="settings_tracking_mode_set_toast">Tracking mode updated: %1$s</string>
     <string name="main_api_key_checking">Checking API key...</string>
     <string name="main_api_key_configured">Configured (%1$s)</string>
     <string name="main_api_key_not_set">Not set (Please click Update API Key)</string>

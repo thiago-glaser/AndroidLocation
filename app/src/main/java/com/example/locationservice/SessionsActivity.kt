@@ -348,6 +348,7 @@ class SessionsActivity : AppCompatActivity() {
             )
             val db = LocationDatabase.getDatabase(this@SessionsActivity)
             db.sessionEventDao().insert(event)
+            LocationLoggingService.notifySessionStateChanged(this@SessionsActivity)
             LocationLoggingService.triggerFlush(this@SessionsActivity)
 
             withContext(Dispatchers.Main) {

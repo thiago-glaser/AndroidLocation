@@ -61,6 +61,7 @@ class LocationLoggingService : Service() {
         private const val API_BASE_URL = "https://travel-access.ddns.net/api"
         private const val API_KEY_SETTING = "api_key"
         const val ACTION_FLUSH_QUEUE = "com.example.locationservice.ACTION_FLUSH_QUEUE"
+        const val ACTION_SESSION_STATE_CHANGED = "com.example.locationservice.ACTION_SESSION_STATE_CHANGED"
 
         fun triggerFlush(context: Context) {
             try {
@@ -74,6 +75,21 @@ class LocationLoggingService : Service() {
                 }
             } catch (e: Exception) {
                 AppLogger.e("LocationService", "Failed to trigger queue flush", e)
+            }
+        }
+
+        fun notifySessionStateChanged(context: Context) {
+            try {
+                val intent = Intent(context, LocationLoggingService::class.java).apply {
+                    action = ACTION_SESSION_STATE_CHANGED
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                AppLogger.e("LocationService", "Failed to trigger session state notification", e)
             }
         }
 
@@ -158,6 +174,11 @@ class LocationLoggingService : Service() {
     private var locationManager: LocationManager? = null
     private var nativeLocationListener: LocationListener? = null
     private var lastLocationFix: Location? = null
+    @Volatile
+    private var isCurrentlyInSession = false
+    @Volatile
+    private var currentTrackingMode = "SESSION_ONLY"
+    private var locationTimerJob: Job? = null
     @Volatile
     private var lastHandledFixTimeMs = 0L
     @Volatile
@@ -340,6 +361,72 @@ class LocationLoggingService : Service() {
         }
     }
 
+    private suspend fun getTrackingMode(): String {
+        val saved = db.settingDao().getSetting("tracking_mode")?.value?.uppercase(Locale.US)
+        val mode = if (saved == "ALL_TIME") "ALL_TIME" else "SESSION_ONLY"
+        currentTrackingMode = mode
+        return mode
+    }
+
+    private suspend fun checkIsInSession(): Boolean {
+        val latestEvent = db.sessionEventDao().getLatestEvent()
+        if (latestEvent != null) {
+            val localActive = latestEvent.eventType == "start"
+            isCurrentlyInSession = localActive
+            return localActive
+        }
+        return isCurrentlyInSession
+    }
+
+    private fun startLocationTimer() {
+        if (locationTimerJob?.isActive == true) return
+
+        locationTimerJob = scope.launch {
+            AppLogger.i("LocationService", "Starting 7.5s location evaluation timer (UPDATE_INTERVAL_MS=${UPDATE_INTERVAL_MS}ms)")
+            while (isActive) {
+                delay(UPDATE_INTERVAL_MS)
+
+                val mode = getTrackingMode()
+                val inSession = checkIsInSession()
+
+                if (mode == "SESSION_ONLY") {
+                    if (!inSession) {
+                        // VALIDATE: not in session! Do NOT try to get location!
+                        if (locationCallback != null || nativeLocationListener != null) {
+                            withContext(Dispatchers.Main) {
+                                stopLocationUpdates()
+                            }
+                            AppLogger.d("LocationService", "7.5s Timer: NOT in session (trackingMode=SESSION_ONLY). Paused location providers.")
+                        }
+                        continue
+                    }
+
+                    // In session: validate true -> ensure providers running and request fix
+                    if (locationCallback == null && nativeLocationListener == null) {
+                        AppLogger.i("LocationService", "7.5s Timer: IN ACTIVE SESSION! Starting location providers.")
+                        withContext(Dispatchers.Main) {
+                            startLocationUpdates(forceRestart = false)
+                        }
+                    }
+
+                    // Ask for location fix
+                    requestImmediateFix("timer_in_session")
+                } else {
+                    // ALL_TIME mode: keep working as is!
+                    if (locationCallback == null && nativeLocationListener == null) {
+                        withContext(Dispatchers.Main) {
+                            startLocationUpdates(forceRestart = false)
+                        }
+                    }
+                    val timeSinceLastFix = System.currentTimeMillis() - lastHandledFixTimeMs
+                    if (timeSinceLastFix >= UPDATE_INTERVAL_MS) {
+                        requestImmediateFix("timer_all_time")
+                    }
+                }
+            }
+        }
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         AppLogger.init(this)
         AppLogger.i("LocationService", "onStartCommand: Ensuring foreground running (flags=$flags, startId=$startId, action=${intent?.action})")
@@ -350,22 +437,33 @@ class LocationLoggingService : Service() {
         tryStartForeground()
         acquireWakeLock()
 
-        val now = System.currentTimeMillis()
-        val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
-        val isStalled = timeSinceLastFix >= 60_000L
-
-        if (isStalled) {
-            AppLogger.w("LocationService", "onStartCommand: Stalled or new session (timeSinceLastFix=${if (lastHandledFixTimeMs == 0L) "none" else "${timeSinceLastFix / 1000}s"}). Forcing location restart.")
-            startLocationUpdates(forceRestart = true)
-        } else {
-            startLocationUpdates(forceRestart = false)
-        }
-
-        // Always request an immediate fix on start/watchdog wake-up
-        requestImmediateFix("on_start_command")
-
+        startLocationTimer()
         startPeriodicSending()
         scheduleWatchdogAlarm(this)
+
+        scope.launch {
+            val mode = getTrackingMode()
+            val inSession = checkIsInSession()
+
+            withContext(Dispatchers.Main) {
+                if (mode == "ALL_TIME" || inSession) {
+                    val now = System.currentTimeMillis()
+                    val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
+                    val isStalled = timeSinceLastFix >= 60_000L
+
+                    if (isStalled) {
+                        AppLogger.w("LocationService", "onStartCommand: Stalled or new session (timeSinceLastFix=${if (lastHandledFixTimeMs == 0L) "none" else "${timeSinceLastFix / 1000}s"}). Forcing location restart.")
+                        startLocationUpdates(forceRestart = true)
+                    } else {
+                        startLocationUpdates(forceRestart = false)
+                    }
+                    requestImmediateFix("on_start_command")
+                } else {
+                    AppLogger.d("LocationService", "onStartCommand: Not in session (trackingMode=SESSION_ONLY). Location listeners idle.")
+                    stopLocationUpdates()
+                }
+            }
+        }
 
         if (intent?.action == ACTION_FLUSH_QUEUE) {
             flushQueuedDataInOrder()
@@ -386,24 +484,37 @@ class LocationLoggingService : Service() {
             fetchBluetoothDevices()
             flushQueuedDataInOrder()
 
+            // Also check latest session status from server on startup
+            try {
+                val latestSessionRes = ApiClient(this@LocationLoggingService).getLatestSession()
+                latestSessionRes.onSuccess { session ->
+                    val serverSessionActive = session != null && session.endTime.isNullOrEmpty()
+                    val localEvent = db.sessionEventDao().getLatestEvent()
+                    val localActive = localEvent?.eventType == "start"
+                    isCurrentlyInSession = localActive || (localEvent == null && serverSessionActive)
+                }
+            } catch (_: Exception) {}
+
             val pollInterval = 5000L // check every 5 seconds
 
             while (isActive) {
                 delay(pollInterval)
                 val now = System.currentTimeMillis()
 
-                // Health check: detect stalled location stream
-                val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
-                if (timeSinceLastFix >= 45_000L && (now - lastStaleKickTimeMs >= 30_000L)) {
-                    lastStaleKickTimeMs = now
-                    AppLogger.w("LocationService", "Watchdog tick: no location fix for ${if (lastHandledFixTimeMs == 0L) "initial" else "${timeSinceLastFix / 1000}s"}. Requesting on-demand fix.")
-                    requestImmediateFix("periodic_stale_kick")
-                }
-                if (timeSinceLastFix >= 120_000L && (now - lastRestartTimeMs >= 120_000L)) {
-                    lastRestartTimeMs = now
-                    AppLogger.w("LocationService", "Watchdog tick: location stream stalled for ${timeSinceLastFix / 1000}s! Restarting providers.")
-                    withContext(Dispatchers.Main) {
-                        startLocationUpdates(forceRestart = true)
+                // Health check: detect stalled location stream only when tracking is active
+                if (currentTrackingMode == "ALL_TIME" || isCurrentlyInSession) {
+                    val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
+                    if (timeSinceLastFix >= 45_000L && (now - lastStaleKickTimeMs >= 30_000L)) {
+                        lastStaleKickTimeMs = now
+                        AppLogger.w("LocationService", "Watchdog tick: no location fix for ${if (lastHandledFixTimeMs == 0L) "initial" else "${timeSinceLastFix / 1000}s"}. Requesting on-demand fix.")
+                        requestImmediateFix("periodic_stale_kick")
+                    }
+                    if (timeSinceLastFix >= 120_000L && (now - lastRestartTimeMs >= 120_000L)) {
+                        lastRestartTimeMs = now
+                        AppLogger.w("LocationService", "Watchdog tick: location stream stalled for ${timeSinceLastFix / 1000}s! Restarting providers.")
+                        withContext(Dispatchers.Main) {
+                            startLocationUpdates(forceRestart = true)
+                        }
                     }
                 }
 
@@ -426,6 +537,11 @@ class LocationLoggingService : Service() {
     }
 
     private fun handleLocationFix(location: Location, providerName: String = "") {
+        if (currentTrackingMode == "SESSION_ONLY" && !isCurrentlyInSession) {
+            AppLogger.d("LocationService", "Dropped location fix: device is not in an active session (trackingMode=SESSION_ONLY)")
+            return
+        }
+
         val now = System.currentTimeMillis()
         val speedKmh = computeSpeedKmh(location)
         val altMeters = if (location.hasAltitude() && location.altitude != 0.0) {
@@ -474,6 +590,11 @@ class LocationLoggingService : Service() {
     }
 
     private fun startLocationUpdates(forceRestart: Boolean = false) {
+        if (currentTrackingMode == "SESSION_ONLY" && !isCurrentlyInSession) {
+            AppLogger.d("LocationService", "startLocationUpdates: Skipped because trackingMode=SESSION_ONLY and not in session.")
+            return
+        }
+
         if (!forceRestart && (locationCallback != null || nativeLocationListener != null)) {
             AppLogger.d("LocationService", "Location updates already registered")
             return
@@ -592,6 +713,10 @@ class LocationLoggingService : Service() {
     }
 
     private fun requestImmediateFix(reason: String) {
+        if (currentTrackingMode == "SESSION_ONLY" && !isCurrentlyInSession) {
+            AppLogger.d("LocationService", "requestImmediateFix: Skipped ($reason) because trackingMode=SESSION_ONLY and not in session.")
+            return
+        }
         try {
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener { loc ->
@@ -921,6 +1046,8 @@ class LocationLoggingService : Service() {
 
     override fun onDestroy() {
         AppLogger.w("LocationService", "onDestroy: LocationLoggingService stopped. Rescheduling watchdog resurrection...")
+        locationTimerJob?.cancel()
+        locationTimerJob = null
         stopLocationUpdates()
         releaseWakeLock()
         scope.cancel()

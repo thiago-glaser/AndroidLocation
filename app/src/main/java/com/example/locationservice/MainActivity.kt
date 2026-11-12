@@ -154,6 +154,7 @@ class MainActivity : AppCompatActivity() {
                     timestampUtc = utcNow
                 )
                 db.sessionEventDao().insert(event)
+                LocationLoggingService.notifySessionStateChanged(this@MainActivity)
                 LocationLoggingService.triggerFlush(this@MainActivity)
 
                 withContext(Dispatchers.Main) {
@@ -226,6 +227,7 @@ class MainActivity : AppCompatActivity() {
                 timestampUtc = utcNow
             )
             db.sessionEventDao().insert(event)
+            LocationLoggingService.notifySessionStateChanged(this@MainActivity)
             LocationLoggingService.triggerFlush(this@MainActivity)
 
             withContext(Dispatchers.Main) {
@@ -299,6 +301,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnStart.setOnClickListener { checkAndRequestPermissionsWithDisclosure() }
         binding.btnStop.setOnClickListener { stopLocationService() }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
+        binding.btnChangeTrackingMode.setOnClickListener { showChangeTrackingModeDialog() }
         binding.btnChangeUnits.setOnClickListener { showChangeUnitSystemDialog() }
         binding.btnChangeLanguage.setOnClickListener { showChangeLanguageDialog() }
         binding.btnOpenLogcat.setOnClickListener {
@@ -318,10 +321,12 @@ class MainActivity : AppCompatActivity() {
             val apiKey = db.settingDao().getSetting("api_key")?.value?.takeIf { it.isNotEmpty() } ?: apiClient.ensureApiKey()
             val username = db.settingDao().getSetting("username")?.value
             var unitSys = db.settingDao().getSetting("unit_system")?.value?.uppercase() ?: "METRIC"
+            var trackingMode = db.settingDao().getSetting("tracking_mode")?.value?.uppercase() ?: "SESSION_ONLY"
             if (!apiKey.isNullOrEmpty()) {
                 apiClient.ensureDeviceRegistered()
-                apiClient.getUserSettings().onSuccess { serverUnit ->
-                    unitSys = serverUnit
+                apiClient.getUserSettings().onSuccess { settingsData ->
+                    settingsData.unitSystem?.let { unitSys = it.uppercase() }
+                    settingsData.trackingMode?.let { trackingMode = it.uppercase() }
                 }
             }
             val isAdmin = apiClient.checkIsAdmin()
@@ -338,6 +343,7 @@ class MainActivity : AppCompatActivity() {
             }
             withContext(Dispatchers.Main) {
                 binding.tvUnitSystem.text = if (unitSys == "IMPERIAL") getString(R.string.main_unit_imperial) else getString(R.string.main_unit_metric)
+                binding.tvTrackingMode.text = if (trackingMode == "ALL_TIME") getString(R.string.main_tracking_all_time) else getString(R.string.main_tracking_session_only)
                 binding.tvLanguage.text = langText
                 binding.btnOpenLogcat.visibility = if (isAdmin) View.VISIBLE else View.GONE
             }
@@ -625,6 +631,45 @@ class MainActivity : AppCompatActivity() {
                         .setPositiveButton(R.string.common_ok, null)
                         .show()
                 }
+            }
+        }
+    }
+
+    private fun showChangeTrackingModeDialog() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            val currentMode = apiClient.getTrackingMode()
+            val options = arrayOf(
+                getString(R.string.main_tracking_session_only),
+                getString(R.string.main_tracking_all_time)
+            )
+            val checkedItem = if (currentMode == "ALL_TIME") 1 else 0
+
+            withContext(Dispatchers.Main) {
+                MaterialAlertDialogBuilder(this@MainActivity)
+                    .setTitle(R.string.settings_select_tracking_mode)
+                    .setSingleChoiceItems(options, checkedItem) { dialog, which ->
+                        val selectedMode = if (which == 1) "ALL_TIME" else "SESSION_ONLY"
+                        dialog.dismiss()
+                        lifecycleScope.launch(Dispatchers.IO) {
+                            apiClient.updateTrackingMode(selectedMode)
+                            LocationLoggingService.notifySessionStateChanged(this@MainActivity)
+                            withContext(Dispatchers.Main) {
+                                binding.tvTrackingMode.text = if (selectedMode == "ALL_TIME") {
+                                    getString(R.string.main_tracking_all_time)
+                                } else {
+                                    getString(R.string.main_tracking_session_only)
+                                }
+                                val modeLabel = if (selectedMode == "ALL_TIME") {
+                                    getString(R.string.main_tracking_all_time)
+                                } else {
+                                    getString(R.string.main_tracking_session_only)
+                                }
+                                Toast.makeText(this@MainActivity, getString(R.string.settings_tracking_mode_set_toast, modeLabel), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                    .setNegativeButton(R.string.common_cancel, null)
+                    .show()
             }
         }
     }

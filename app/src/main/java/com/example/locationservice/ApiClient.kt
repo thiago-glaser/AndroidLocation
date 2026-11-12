@@ -169,21 +169,46 @@ class ApiClient(private val context: Context) {
         db.settingDao().getSetting("is_admin")?.value == "true"
     }
 
-    suspend fun getUserSettings(): Result<String> {
+    suspend fun getUserSettings(): Result<UserSettingsData> {
         val req = Request.Builder()
             .url("$baseUrl/user/settings")
             .get()
         return executeRequest(req) { json ->
             val res = gson.fromJson(json, UserSettingsResponse::class.java)
-            if (res.success) {
-                val unit = if (res.settings?.unitSystem?.uppercase(Locale.US) == "IMPERIAL") "IMPERIAL" else "METRIC"
+            if (res.success && res.settings != null) {
+                val unit = if (res.settings.unitSystem?.uppercase(Locale.US) == "IMPERIAL") "IMPERIAL" else "METRIC"
+                val mode = if (res.settings.trackingMode?.uppercase(Locale.US) == "ALL_TIME") "ALL_TIME" else "SESSION_ONLY"
                 kotlinx.coroutines.runBlocking(Dispatchers.IO) {
                     db.settingDao().insert(Setting("unit_system", unit))
+                    db.settingDao().insert(Setting("tracking_mode", mode))
                 }
-                unit
+                res.settings
             } else {
                 throw Exception(res.error ?: "Failed to fetch user settings")
             }
+        }
+    }
+
+    suspend fun getTrackingMode(): String = withContext(Dispatchers.IO) {
+        val saved = db.settingDao().getSetting("tracking_mode")?.value?.uppercase(Locale.US)
+        if (saved == "ALL_TIME") "ALL_TIME" else "SESSION_ONLY"
+    }
+
+    suspend fun updateTrackingMode(trackingMode: String): Result<Boolean> {
+        val normalized = if (trackingMode.uppercase(Locale.US) == "ALL_TIME") "ALL_TIME" else "SESSION_ONLY"
+        withContext(Dispatchers.IO) {
+            db.settingDao().insert(Setting("tracking_mode", normalized))
+        }
+        val payload = JSONObject().apply {
+            put("trackingMode", normalized)
+        }
+        val body = payload.toString().toRequestBody(jsonMediaType)
+        val req = Request.Builder()
+            .url("$baseUrl/user/settings")
+            .put(body)
+        return executeRequest(req) { json ->
+            val res = gson.fromJson(json, UserSettingsResponse::class.java)
+            if (res.success) true else throw Exception(res.error ?: "Failed to update tracking mode")
         }
     }
 
