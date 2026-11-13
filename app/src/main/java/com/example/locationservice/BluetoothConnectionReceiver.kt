@@ -115,9 +115,10 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                             eventType = eventType,
                             timestampUtc = timestampUtc
                         )
+                        val carLabel = matchingDevice.carDescription?.ifBlank { matchingDevice.name } ?: matchingDevice.name
                         AppLogger.i(
                             "BluetoothReceiver",
-                            "Queuing session event for car '${matchingDevice.carDescription.ifBlank { matchingDevice.name }}' ($deviceAddress) (Action: $actionMessage, CarId: ${matchingDevice.carId})"
+                            "Queuing session event for car '$carLabel' ($deviceAddress) (Action: $actionMessage, CarId: ${matchingDevice.carId})"
                         )
                         db.sessionEventDao().insert(sessionEvent)
                         AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
