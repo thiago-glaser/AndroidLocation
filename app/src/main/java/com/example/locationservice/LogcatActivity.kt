@@ -93,7 +93,7 @@ class LogcatActivity : AppCompatActivity() {
 
         binding.btnCopyLogs.setOnClickListener {
             val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-            val clip = ClipData.newPlainText("TravelAccess Logcat", displayedText)
+            val clip = ClipData.newPlainText("Delivery Trips Logcat", displayedText)
             clipboard.setPrimaryClip(clip)
             Toast.makeText(this, getString(R.string.logcat_copied_toast), Toast.LENGTH_SHORT).show()
         }
@@ -101,7 +101,7 @@ class LogcatActivity : AppCompatActivity() {
         binding.btnShareLogs.setOnClickListener {
             val sendIntent = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
-                putExtra(Intent.EXTRA_SUBJECT, "Travel Access Diagnostic Logs")
+                putExtra(Intent.EXTRA_SUBJECT, "Delivery Trips Diagnostic Logs")
                 putExtra(Intent.EXTRA_TEXT, displayedText)
             }
             startActivity(Intent.createChooser(sendIntent, getString(R.string.logcat_btn_share)))

@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Travel Access</string>
+    <string name="app_name">Delivery Trips</string>
 
     <!-- Common -->
     <string name="common_cancel">Cancel</string>
@@ -114,7 +114,7 @@
 
     <!-- Disclosures & Permissions -->
     <string name="dialog_disclosure_title">Location &amp; Trip Logging Notice</string>
-    <string name="dialog_disclosure_message">Travel Access collects location data to enable:
+    <string name="dialog_disclosure_message">Delivery Trips collects location data to enable:
 
 • Automated driving trip logging and route tracking
 • Accurate vehicle mileage calculation for business and personal expense reports
@@ -127,7 +127,7 @@ Your location data is stored securely on your device and sent only to your confi
     <string name="dialog_disclosure_refuse">No Thanks</string>
     <string name="dialog_disclosure_refuse_status">Location permissions required for automated trip recording.</string>
     <string name="dialog_bg_location_title">Background Location Permission</string>
-    <string name="dialog_bg_location_message">To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off, Travel Access requires background location access.
+    <string name="dialog_bg_location_message">To automatically detect trips when connected to vehicle Bluetooth and record complete GPS routes while the screen is off, Delivery Trips requires background location access.
 
 On the next screen, please select "Allow all the time" to ensure continuous trip logging.</string>
     <string name="dialog_battery_title">Battery optimisation</string>

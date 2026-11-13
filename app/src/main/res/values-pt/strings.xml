@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Travel Access</string>
+    <string name="app_name">Delivery Trips</string>
 
     <!-- Common -->
     <string name="common_cancel">Cancelar</string>
@@ -115,7 +115,7 @@
 
     <!-- Disclosures & Permissions -->
     <string name="dialog_disclosure_title">Aviso de Localização e Registro de Viagens</string>
-    <string name="dialog_disclosure_message">O Travel Access coleta dados de localização para permitir:
+    <string name="dialog_disclosure_message">O Delivery Trips coleta dados de localização para permitir:
 
 • Registro automatizado de viagens e rastreamento de rotas ao dirigir
 • Cálculo preciso da quilometragem para relatórios de despesas pessoais e de trabalho
@@ -128,7 +128,7 @@ Seus dados de localização são armazenados com segurança no seu dispositivo e
     <string name="dialog_disclosure_refuse">Não, Obrigado</string>
     <string name="dialog_disclosure_refuse_status">Permissões de localização são necessárias para o registro automático de viagens.</string>
     <string name="dialog_bg_location_title">Permissão de Localização em Segundo Plano</string>
-    <string name="dialog_bg_location_message">Para detectar viagens automaticamente ao conectar ao Bluetooth do veículo e registrar rotas completas de GPS com a tela desligada, o Travel Access precisa de acesso à localização em segundo plano.
+    <string name="dialog_bg_location_message">Para detectar viagens automaticamente ao conectar ao Bluetooth do veículo e registrar rotas completas de GPS com a tela desligada, o Delivery Trips precisa de acesso à localização em segundo plano.
 
 Na próxima tela, selecione "Permitir o tempo todo" para garantir o registro contínuo.</string>
     <string name="dialog_battery_title">Otimização de Bateria</string>

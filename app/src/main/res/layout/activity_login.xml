@@ -27,14 +27,14 @@
                 android:layout_width="64dp"
                 android:layout_height="64dp"
                 android:src="@android:drawable/ic_menu_mylocation"
-                android:contentDescription="TravelAccess Logo"
+                android:contentDescription="Delivery Trips Logo"
                 app:tint="?attr/colorPrimary"
                 android:layout_marginBottom="16dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Travel Access"
+                android:text="@string/app_name"
                 android:textSize="28sp"
                 android:textStyle="bold"
                 android:textColor="@color/text_primary" />

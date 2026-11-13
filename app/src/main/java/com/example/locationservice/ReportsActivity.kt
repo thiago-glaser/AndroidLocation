@@ -895,7 +895,7 @@ class ReportsActivity : AppCompatActivity() {
         val monthName = if (currentTab == 0) binding.spinnerMonthFilter.selectedItem?.toString() ?: "Any Month" else "All Months"
 
         val sb = StringBuilder()
-        sb.appendLine("🚗 TravelAccess Report")
+        sb.appendLine("🚗 Delivery Trips Report")
         sb.appendLine("━━━━━━━━━━━━━━━━━━━━━━")
         sb.appendLine("Vehicle: $carName")
         sb.appendLine("Period: $monthName, $yearName")
@@ -919,7 +919,7 @@ class ReportsActivity : AppCompatActivity() {
 
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "TravelAccess Mileage Report")
+            putExtra(Intent.EXTRA_SUBJECT, "Delivery Trips Mileage Report")
             putExtra(Intent.EXTRA_TEXT, sb.toString())
         }
         startActivity(Intent.createChooser(intent, "Share Report Summary"))

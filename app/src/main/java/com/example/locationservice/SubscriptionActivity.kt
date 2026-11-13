@@ -200,7 +200,7 @@ class SubscriptionActivity : AppCompatActivity(), BillingManager.BillingUpdatesL
                     loadSubscriptionStatus()
 
                     AlertDialog.Builder(this@SubscriptionActivity)
-                        .setTitle("TravelAccess Pro")
+                        .setTitle("Delivery Trips Pro")
                         .setMessage(getString(R.string.subscription_success))
                         .setPositiveButton("OK", null)
                         .show()
