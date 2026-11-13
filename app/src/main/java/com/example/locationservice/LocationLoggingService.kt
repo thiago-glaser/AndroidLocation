@@ -1021,21 +1021,26 @@ class LocationLoggingService : Service() {
             }
 
             val seenStartSeconds = mutableSetOf<String>()
-            val latestSent = try { db.sessionEventDao().getLatestSentEvent() } catch (_: Exception) { null }
-            var sessionIsOpen = latestSent?.eventType == "start"
+            var lastProcessedStartTimeMs = 0L
 
             for (event in events) {
                 if (event.eventType == "start") {
                     val secondKey = event.timestampUtc.take(19)
                     val isDuplicateSecond = !seenStartSeconds.add(secondKey)
-                    if (isDuplicateSecond || sessionIsOpen) {
-                        AppLogger.w("LocationService", "Skipping redundant/duplicate start session event (id=${event.id}, time=${event.timestampUtc}, sessionIsOpen=$sessionIsOpen, duplicateSecond=$isDuplicateSecond)")
+
+                    val eventTimeMs = try {
+                        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+                            timeZone = java.util.TimeZone.getTimeZone("UTC")
+                        }.parse(secondKey)?.time ?: 0L
+                    } catch (_: Exception) { 0L }
+
+                    val isTooClose = lastProcessedStartTimeMs > 0L && Math.abs(eventTimeMs - lastProcessedStartTimeMs) < 5000L
+                    if (isDuplicateSecond || isTooClose) {
+                        AppLogger.w("LocationService", "Skipping rapid duplicate start session event (id=${event.id}, time=${event.timestampUtc})")
                         db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
                         continue
                     }
-                    sessionIsOpen = true
-                } else if (event.eventType == "end") {
-                    sessionIsOpen = false
+                    lastProcessedStartTimeMs = eventTimeMs
                 }
 
                 val endpoint = when (event.eventType) {

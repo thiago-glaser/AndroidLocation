@@ -46,11 +46,11 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
             return
         }
 
-        val deviceName = device.name?.trim() ?: ""
+        val rawName = device.name?.trim() ?: ""
         val deviceAddress = device.address?.trim() ?: ""
 
-        if (deviceName.isEmpty() || deviceName.equals("Unknown Device", ignoreCase = true) || deviceAddress.isEmpty()) {
-            AppLogger.d("BluetoothReceiver", "Ignoring Bluetooth device with unknown name or address: $deviceAddress")
+        if (deviceAddress.isEmpty()) {
+            AppLogger.d("BluetoothReceiver", "Ignoring Bluetooth event: missing device address")
             pendingResult.finish()
             return
         }
@@ -64,8 +64,7 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
             }
         }
 
-        val logMessage = "Device $actionMessage: $deviceName ($deviceAddress)"
-        AppLogger.i("BluetoothReceiver", logMessage)
+        val isUnknownName = rawName.isEmpty() || rawName.equals("Unknown Device", ignoreCase = true)
 
         GlobalScope.launch {
             try {
@@ -79,42 +78,62 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                     val bluetoothDevices = db.bluetoothDeviceDao().getAll()
                     val matchingDevice = bluetoothDevices.find { it.address.equals(deviceAddress, ignoreCase = true) }
 
-                    // Do not allow more than one session start in the same second for the user/device/car
-                    if (eventType == "start") {
-                        val latestStart = db.sessionEventDao().getLatestStartEvent()
-                        val currentSecond = timestampUtc.take(19) // "yyyy-MM-dd'T'HH:mm:ss"
-                        val latestSecond = latestStart?.timestampUtc?.take(19)
-                        if (latestSecond != null && latestSecond == currentSecond) {
-                            AppLogger.w(
-                                "BluetoothReceiver",
-                                "Ignoring duplicate session start in the same second ($currentSecond) for device/car ($deviceAddress)"
-                            )
-                            return@withLock
-                        }
+                    // If not a registered car Bluetooth device and name is unknown, ignore it
+                    if (matchingDevice == null && isUnknownName) {
+                        AppLogger.d("BluetoothReceiver", "Ignoring unknown unconfigured Bluetooth device: $deviceAddress")
+                        return@withLock
                     }
 
-                    val sessionEvent = SessionEvent(
-                        deviceId = LocationLoggingService.getDeviceAndroidId(context),
-                        bluetoothAddress = deviceAddress,
-                        carId = matchingDevice?.carId?.ifBlank { null },
-                        eventType = eventType,
-                        timestampUtc = timestampUtc
-                    )
-                    AppLogger.i("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage, CarId: ${matchingDevice?.carId})")
-                    db.sessionEventDao().insert(sessionEvent)
-                    AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
+                    val effectiveName = matchingDevice?.name?.ifBlank { null }
+                        ?: if (!isUnknownName) rawName else "Device ($deviceAddress)"
+
+                    val logMessage = "Device $actionMessage: $effectiveName ($deviceAddress)"
+                    AppLogger.i("BluetoothReceiver", logMessage)
+
+                    // Only queue trip session events if this device is linked to a car
+                    if (matchingDevice == null || matchingDevice.carId.isBlank()) {
+                        AppLogger.d("BluetoothReceiver", "Bluetooth device $effectiveName ($deviceAddress) is not linked to any car. Skipping trip session event.")
+                    } else {
+                        // Do not allow more than one session start in the same second for the vehicle
+                        if (eventType == "start") {
+                            val latestStart = db.sessionEventDao().getLatestStartEvent()
+                            val currentSecond = timestampUtc.take(19) // "yyyy-MM-dd'T'HH:mm:ss"
+                            val latestSecond = latestStart?.timestampUtc?.take(19)
+                            if (latestSecond != null && latestSecond == currentSecond) {
+                                AppLogger.w(
+                                    "BluetoothReceiver",
+                                    "Ignoring duplicate session start in the same second ($currentSecond) for vehicle ($deviceAddress)"
+                                )
+                                return@withLock
+                            }
+                        }
+
+                        val sessionEvent = SessionEvent(
+                            deviceId = LocationLoggingService.getDeviceAndroidId(context),
+                            bluetoothAddress = deviceAddress,
+                            carId = matchingDevice.carId.ifBlank { null },
+                            eventType = eventType,
+                            timestampUtc = timestampUtc
+                        )
+                        AppLogger.i(
+                            "BluetoothReceiver",
+                            "Queuing session event for car '${matchingDevice.carDescription.ifBlank { matchingDevice.name }}' ($deviceAddress) (Action: $actionMessage, CarId: ${matchingDevice.carId})"
+                        )
+                        db.sessionEventDao().insert(sessionEvent)
+                        AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
+                    }
 
                     // Logic for discovery of new paired devices
                     val queuedDevice = db.queuedBluetoothDeviceDao().findByAddress(deviceAddress)
-                    if (matchingDevice == null && queuedDevice == null && actionMessage == "connected") {
+                    if (matchingDevice == null && queuedDevice == null && actionMessage == "connected" && !isUnknownName) {
                         val newDevice = QueuedBluetoothDevice(
-                            name = deviceName,
+                            name = rawName,
                             address = deviceAddress,
                             description = "",
                             carId = ""
                         )
                         db.queuedBluetoothDeviceDao().insert(newDevice)
-                        AppLogger.i("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $deviceName")
+                        AppLogger.i("BluetoothReceiver", "New paired bluetooth device queued for sending to server: $rawName")
                     }
                 }
 
