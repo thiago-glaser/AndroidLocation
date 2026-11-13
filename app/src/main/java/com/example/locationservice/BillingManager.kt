@@ -86,8 +86,9 @@ class BillingManager(
             .setProductList(productList)
             .build()
 
-        billingClient.queryProductDetailsAsync(params) { billingResult, productDetailsList ->
+        billingClient.queryProductDetailsAsync(params) { billingResult, queryProductDetailsResult ->
             if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                val productDetailsList = queryProductDetailsResult.productDetailsList ?: emptyList()
                 cachedProductDetails.clear()
                 for (details in productDetailsList) {
                     cachedProductDetails[details.productId] = details
