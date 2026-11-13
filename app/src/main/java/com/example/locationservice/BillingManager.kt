@@ -17,8 +17,8 @@ class BillingManager(
 
     companion object {
         private const val TAG = "BillingManager"
-        const val PRODUCT_PRO_MONTHLY = "travelaccess_pro_monthly"
-        const val PRODUCT_PRO_YEARLY = "travelaccess_pro_yearly"
+        const val PRODUCT_PRO_MONTHLY = "deliverytrips_pro_monthly"
+        const val PRODUCT_PRO_YEARLY = "deliverytrips_pro_yearly"
     }
 
     interface BillingUpdatesListener {

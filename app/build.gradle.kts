@@ -18,11 +18,11 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.travelaccess.locationservice"
+        applicationId = "com.deliverytrips.locationservice"
         minSdk = 32
         targetSdk = 36
-        versionCode = 40
-        versionName = "1.0.39"
+        versionCode = 1
+        versionName = "1.0.0"
     }
 
     signingConfigs {

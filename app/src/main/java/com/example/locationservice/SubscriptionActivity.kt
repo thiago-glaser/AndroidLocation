@@ -64,7 +64,7 @@ class SubscriptionActivity : AppCompatActivity(), BillingManager.BillingUpdatesL
         }
 
         binding.btnManage.setOnClickListener {
-            val playUrl = "https://play.google.com/store/account/subscriptions?package=com.travelaccess.locationservice"
+            val playUrl = "https://play.google.com/store/account/subscriptions?package=$packageName"
             try {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(playUrl))
                 startActivity(intent)
