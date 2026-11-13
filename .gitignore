@@ -17,3 +17,6 @@ local.properties
 /keystore.properties
 *.jks
 .vscode/
+*.aab
+play-service-account*.json
+scratch_bridge.js
