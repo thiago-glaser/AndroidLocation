@@ -267,6 +267,10 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ReportsActivity::class.java))
         }
 
+        binding.btnNavSubscription.setOnClickListener {
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+        }
+
         // Main page button to open Settings
         binding.btnToggleSettings.setOnClickListener {
             binding.layoutMain.visibility = View.GONE
@@ -300,6 +304,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupSettingsControls() {
         binding.btnStart.setOnClickListener { checkAndRequestPermissionsWithDisclosure() }
         binding.btnStop.setOnClickListener { stopLocationService() }
+        binding.btnSettingsSubscription.setOnClickListener {
+            startActivity(Intent(this, SubscriptionActivity::class.java))
+        }
         binding.btnUpdateApiKey.setOnClickListener { showUpdateApiKeyDialog() }
         binding.btnChangeTrackingMode.setOnClickListener { showChangeTrackingModeDialog() }
         binding.btnChangeUnits.setOnClickListener { showChangeUnitSystemDialog() }

@@ -1,5 +1,6 @@
 package com.example.locationservice
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.Gravity
@@ -147,7 +148,19 @@ class CarsActivity : AppCompatActivity() {
                         Toast.makeText(this@CarsActivity, getString(R.string.cars_toast_added), Toast.LENGTH_SHORT).show()
                         loadCars()
                     }.onFailure { err ->
-                        Toast.makeText(this@CarsActivity, "Failed: ${err.message}", Toast.LENGTH_LONG).show()
+                        val msg = err.message ?: "Failed to add car"
+                        if (msg.contains("limit", ignoreCase = true) || msg.contains("upgrade", ignoreCase = true) || msg.contains("Pro", ignoreCase = true)) {
+                            MaterialAlertDialogBuilder(this@CarsActivity)
+                                .setTitle("Upgrade to Pro")
+                                .setMessage(getString(R.string.subscription_free_vehicle_limit_reached))
+                                .setPositiveButton(R.string.subscription_title) { _, _ ->
+                                    startActivity(Intent(this@CarsActivity, SubscriptionActivity::class.java))
+                                }
+                                .setNegativeButton(R.string.common_cancel, null)
+                                .show()
+                        } else {
+                            Toast.makeText(this@CarsActivity, "Failed: $msg", Toast.LENGTH_LONG).show()
+                        }
                     }
                 }
             }

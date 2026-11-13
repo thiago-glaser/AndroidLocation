@@ -96,6 +96,47 @@ data class ParseReceiptResponse(
     val error: String? = null
 )
 
+data class SubscriptionPlanItem(
+    val id: String,
+    val name: String,
+    val description: String?,
+    val productId: String?,
+    val price: Double,
+    val currency: String,
+    val billingPeriod: String,
+    val maxCars: Int,
+    val features: List<String> = emptyList()
+)
+
+data class SubscriptionStatus(
+    val isPro: Boolean = false,
+    val tier: String = "free",
+    val planName: String = "Free",
+    val maxCars: Int = 1,
+    val status: String = "ACTIVE",
+    val expiryTime: String? = null,
+    val autoRenewing: Boolean = false
+)
+
+data class SubscriptionPlansResponse(
+    val success: Boolean,
+    val plans: List<SubscriptionPlanItem>? = null,
+    val error: String? = null
+)
+
+data class SubscriptionStatusResponse(
+    val success: Boolean,
+    val subscription: SubscriptionStatus? = null,
+    val error: String? = null
+)
+
+data class VerifySubscriptionResponse(
+    val success: Boolean,
+    val message: String? = null,
+    val subscription: SubscriptionStatus? = null,
+    val error: String? = null
+)
+
 class ApiClient(private val context: Context) {
 
     private val client = OkHttpClient()
@@ -1517,6 +1558,38 @@ class ApiClient(private val context: Context) {
         return executeRequest(req) { body ->
             val json = JSONObject(body)
             json.optInt("deletedCount", 0)
+        }
+    }
+
+    // --- SUBSCRIPTIONS ---
+    suspend fun getSubscriptionPlans(): Result<List<SubscriptionPlanItem>> {
+        val req = Request.Builder().url("$baseUrl/subscription/plans").get()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, SubscriptionPlansResponse::class.java).plans ?: emptyList()
+        }
+    }
+
+    suspend fun getSubscriptionStatus(): Result<SubscriptionStatus> {
+        val req = Request.Builder().url("$baseUrl/subscription/status").get()
+        return executeRequest(req) { body ->
+            gson.fromJson(body, SubscriptionStatusResponse::class.java).subscription ?: SubscriptionStatus()
+        }
+    }
+
+    suspend fun verifyGooglePlaySubscription(purchaseToken: String, productId: String, orderId: String?): Result<SubscriptionStatus> {
+        val json = JSONObject().apply {
+            put("purchaseToken", purchaseToken)
+            put("productId", productId)
+            if (orderId != null) put("orderId", orderId)
+        }
+        val body = json.toString().toRequestBody(jsonMediaType)
+        val req = Request.Builder().url("$baseUrl/subscription/google-play/verify").post(body)
+        return executeRequest(req) { respBody ->
+            val res = gson.fromJson(respBody, VerifySubscriptionResponse::class.java)
+            if (!res.success) {
+                throw Exception(res.error ?: "Failed to verify subscription")
+            }
+            res.subscription ?: SubscriptionStatus(isPro = true)
         }
     }
 }

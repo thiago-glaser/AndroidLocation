@@ -373,4 +373,33 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="fuel_ai_scanning">&#x1F916; Lendo comprovante com IA...</string>
     <string name="fuel_ai_scanned_success">&#x2728; Comprovante lido! Campos preenchidos.</string>
     <string name="fuel_ai_not_detected">Detalhes do comprovante não detectados. Preencha manualmente.</string>
+
+    <!-- Subscription Plan Strings -->
+    <string name="subscription_title">Plano de Assinatura</string>
+    <string name="subscription_subtitle">Faça upgrade para o Pro para veículos ilimitados e recursos de IA</string>
+    <string name="subscription_current_plan">PLANO ATUAL</string>
+    <string name="subscription_tier_free">Plano Gratuito</string>
+    <string name="subscription_tier_pro">Plano Pro</string>
+    <string name="subscription_vehicles_limit">Veículos: %1$d / %2$s</string>
+    <string name="subscription_unlimited">Ilimitado</string>
+    <string name="subscription_valid_until">Válido até: %1$s</string>
+    <string name="subscription_auto_renew">Renovação automática via Google Play</string>
+    <string name="subscription_monthly_title">Pro Mensal</string>
+    <string name="subscription_monthly_price">US$ 4.99 / mês</string>
+    <string name="subscription_monthly_desc">Cobrado mensalmente. Cancele quando quiser.</string>
+    <string name="subscription_yearly_title">Pro Anual</string>
+    <string name="subscription_yearly_price">US$ 49.99 / ano</string>
+    <string name="subscription_yearly_badge">ECONOMIZE 17%</string>
+    <string name="subscription_yearly_desc">Cobrado anualmente. 2 meses grátis.</string>
+    <string name="subscription_feature_unlimited_cars">Veículos ilimitados &amp; rastreamento</string>
+    <string name="subscription_feature_ai_receipts">Scanner de Recibos com IA (Gemini)</string>
+    <string name="subscription_feature_bt_multicar">Auto-detecção Bluetooth multicarros</string>
+    <string name="subscription_feature_reports">Relatórios detalhados em PDF &amp; Excel</string>
+    <string name="subscription_feature_drive_backup">Backup automático no Google Drive</string>
+    <string name="subscription_btn_upgrade">Assinar com Google Play</string>
+    <string name="subscription_btn_manage">Gerenciar no Google Play</string>
+    <string name="subscription_active_badge">Ativo</string>
+    <string name="subscription_success">Obrigado! Sua assinatura Pro já está ativa.</string>
+    <string name="subscription_error">Não foi possível concluir a compra: %1$s</string>
+    <string name="subscription_free_vehicle_limit_reached">O plano gratuito permite apenas 1 veículo. Faça upgrade para o Pro para veículos ilimitados.</string>
 </resources>

@@ -27,6 +27,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
 
+    <!-- Google Play In-App Billing -->
+    <uses-permission android:name="com.android.vending.BILLING" />
+
     <application
         android:name=".LocationApp"
         android:allowBackup="true"
@@ -75,6 +78,9 @@
             android:exported="false" />
         <activity
             android:name=".SessionMapActivity"
+            android:exported="false" />
+        <activity
+            android:name=".SubscriptionActivity"
             android:exported="false" />
         <activity
             android:name=".LogcatActivity"

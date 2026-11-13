@@ -177,6 +177,23 @@
                 app:backgroundTint="#D97706"
                 android:textColor="#FFFFFF"
                 app:elevation="2dp"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnNavSubscription"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:maxWidth="340dp"
+                android:text="@string/subscription_title"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false"
+                android:gravity="start|center_vertical"
+                android:paddingStart="20dp"
+                app:cornerRadius="16dp"
+                app:backgroundTint="#7C3AED"
+                android:textColor="#FFFFFF"
+                app:elevation="2dp"
                 android:layout_marginBottom="20dp" />
 
             <!-- Settings Button -->
@@ -456,6 +473,19 @@
                 android:textAllCaps="false"
                 app:cornerRadius="14dp"
                 app:backgroundTint="#0D9488"
+                android:textColor="#FFFFFF"
+                app:elevation="1dp"
+                android:layout_marginBottom="12dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSettingsSubscription"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="@string/subscription_title"
+                android:textSize="15sp"
+                android:textAllCaps="false"
+                app:cornerRadius="14dp"
+                app:backgroundTint="#7C3AED"
                 android:textColor="#FFFFFF"
                 app:elevation="1dp"
                 android:layout_marginBottom="12dp" />

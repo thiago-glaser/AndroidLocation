@@ -372,4 +372,33 @@ Warning: This action is permanent and cannot be undone.</string>
     <string name="fuel_ai_scanning">&#x1F916; Scanning receipt with AI...</string>
     <string name="fuel_ai_scanned_success">&#x2728; Receipt scanned! Fields auto-populated.</string>
     <string name="fuel_ai_not_detected">Receipt details could not be detected. Please fill manually.</string>
+
+    <!-- Subscription Plan Strings -->
+    <string name="subscription_title">Subscription Plan</string>
+    <string name="subscription_subtitle">Upgrade to Pro for unlimited vehicles and AI features</string>
+    <string name="subscription_current_plan">CURRENT PLAN</string>
+    <string name="subscription_tier_free">Free Plan</string>
+    <string name="subscription_tier_pro">Pro Plan</string>
+    <string name="subscription_vehicles_limit">Vehicles: %1$d / %2$s</string>
+    <string name="subscription_unlimited">Unlimited</string>
+    <string name="subscription_valid_until">Valid until: %1$s</string>
+    <string name="subscription_auto_renew">Auto-renews via Google Play</string>
+    <string name="subscription_monthly_title">Pro Monthly</string>
+    <string name="subscription_monthly_price">$4.99 / month</string>
+    <string name="subscription_monthly_desc">Billed monthly. Cancel anytime.</string>
+    <string name="subscription_yearly_title">Pro Yearly</string>
+    <string name="subscription_yearly_price">$49.99 / year</string>
+    <string name="subscription_yearly_badge">SAVE 17%</string>
+    <string name="subscription_yearly_desc">Billed annually. 2 months free.</string>
+    <string name="subscription_feature_unlimited_cars">Unlimited vehicles &amp; tracking</string>
+    <string name="subscription_feature_ai_receipts">AI Fuel Receipt Scanner &amp; Extraction</string>
+    <string name="subscription_feature_bt_multicar">Multi-car Bluetooth auto-trip detection</string>
+    <string name="subscription_feature_reports">Detailed PDF reports &amp; Excel export</string>
+    <string name="subscription_feature_drive_backup">Cloud Google Drive auto-backup</string>
+    <string name="subscription_btn_upgrade">Subscribe with Google Play</string>
+    <string name="subscription_btn_manage">Manage on Google Play</string>
+    <string name="subscription_active_badge">Active</string>
+    <string name="subscription_success">Thank you! Your Pro subscription is now active.</string>
+    <string name="subscription_error">Unable to complete purchase: %1$s</string>
+    <string name="subscription_free_vehicle_limit_reached">Free plan allows 1 vehicle. Upgrade to Pro for unlimited vehicles.</string>
 </resources>
