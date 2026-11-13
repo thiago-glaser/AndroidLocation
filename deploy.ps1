@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Builds and deploys DeliveryTrips Android App to Google Play via Developer Publishing API.
 
