@@ -10,5 +10,6 @@ data class BluetoothDevice(
     val name: String,
     val description: String,
     val address: String,
-    val carId: String
+    val carId: String,
+    val carDescription: String? = null
 )

@@ -76,6 +76,9 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                         timeZone = java.util.TimeZone.getTimeZone("UTC")
                     }.format(Date())
 
+                    val bluetoothDevices = db.bluetoothDeviceDao().getAll()
+                    val matchingDevice = bluetoothDevices.find { it.address.equals(deviceAddress, ignoreCase = true) }
+
                     // Do not allow more than one session start in the same second for the user/device/car
                     if (eventType == "start") {
                         val latestStart = db.sessionEventDao().getLatestStartEvent()
@@ -93,16 +96,15 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                     val sessionEvent = SessionEvent(
                         deviceId = LocationLoggingService.getDeviceAndroidId(context),
                         bluetoothAddress = deviceAddress,
+                        carId = matchingDevice?.carId?.ifBlank { null },
                         eventType = eventType,
                         timestampUtc = timestampUtc
                     )
-                    AppLogger.i("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage)")
+                    AppLogger.i("BluetoothReceiver", "Queuing session event for address '$deviceAddress' (Action: $actionMessage, CarId: ${matchingDevice?.carId})")
                     db.sessionEventDao().insert(sessionEvent)
                     AppLogger.d("BluetoothReceiver", "Successfully queued session event.")
 
                     // Logic for discovery of new paired devices
-                    val bluetoothDevices = db.bluetoothDeviceDao().getAll()
-                    val matchingDevice = bluetoothDevices.find { it.address.equals(deviceAddress, ignoreCase = true) }
                     val queuedDevice = db.queuedBluetoothDeviceDao().findByAddress(deviceAddress)
                     if (matchingDevice == null && queuedDevice == null && actionMessage == "connected") {
                         val newDevice = QueuedBluetoothDevice(

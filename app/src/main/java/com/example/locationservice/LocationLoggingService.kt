@@ -197,18 +197,55 @@ class LocationLoggingService : Service() {
     private var lastBluetoothFetchTime = 0L
 
     @Volatile
+    private var isForegroundRunning = false
+
+    @Volatile
     private var hasSentInitialBatch = false
 
     @Volatile
     private var lastBatchSentTimeMs = 0L
+
+    private fun ensureForegroundNotification() {
+        val inSession = isCurrentlyInSession
+        val mode = currentTrackingMode
+        if (mode == "ALL_TIME" || inSession) {
+            if (!isForegroundRunning) {
+                AppLogger.i("LocationService", "Starting foreground notification (mode=$mode, inSession=$inSession)")
+                tryStartForeground()
+            }
+        }
+    }
+
+    private fun removeForegroundNotificationIfIdle() {
+        val inSession = isCurrentlyInSession
+        val mode = currentTrackingMode
+        if (mode == "SESSION_ONLY" && !inSession) {
+            if (isForegroundRunning) {
+                AppLogger.i("LocationService", "Removing foreground notification (not sending in SESSION_ONLY mode)")
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        stopForeground(STOP_FOREGROUND_REMOVE)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        stopForeground(true)
+                    }
+                } catch (t: Throwable) {
+                    AppLogger.w("LocationService", "Failed to stopForeground: ${t.message}")
+                }
+                isForegroundRunning = false
+            }
+        }
+    }
 
     private fun tryStartForeground() {
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             try {
                 startForeground(NOTIFICATION_ID, notification)
+                isForegroundRunning = true
                 AppLogger.i("LocationService", "startForeground succeeded (pre-Q)")
             } catch (t: Throwable) {
+                isForegroundRunning = false
                 AppLogger.e("LocationService", "Fatal error in tryStartForeground (pre-Q)", t)
             }
             return
@@ -254,6 +291,7 @@ class LocationLoggingService : Service() {
         for ((label, fgsType) in candidateTypes) {
             try {
                 startForeground(NOTIFICATION_ID, notification, fgsType)
+                isForegroundRunning = true
                 AppLogger.i("LocationService", "startForeground succeeded with type=$label ($fgsType)")
                 return
             } catch (t: Throwable) {
@@ -263,8 +301,10 @@ class LocationLoggingService : Service() {
 
         try {
             startForeground(NOTIFICATION_ID, notification)
+            isForegroundRunning = true
             AppLogger.i("LocationService", "startForeground succeeded with fallback call")
         } catch (t: Throwable) {
+            isForegroundRunning = false
             AppLogger.e("LocationService", "All startForeground attempts failed", t)
             PackageReplacedReceiver.showResumeTrackingNotification(this)
             stopSelf()
@@ -341,7 +381,8 @@ class LocationLoggingService : Service() {
                                     name = jsonObject.optString("NAME", "Unknown Device"),
                                     description = jsonObject.optString("DESCRIPTION", ""),
                                     address = jsonObject.optString("ADDRESS", ""),
-                                    carId = jsonObject.optString("CAR_ID", "")
+                                    carId = jsonObject.optString("CAR_ID", ""),
+                                    carDescription = jsonObject.optString("CAR_DESCRIPTION", "").ifBlank { null }
                                 )
                                 devices.add(device)
                             }
@@ -400,8 +441,11 @@ class LocationLoggingService : Service() {
                             }
                             AppLogger.d("LocationService", "Timer: NOT in session (trackingMode=SESSION_ONLY). Paused location providers.")
                         }
+                        removeForegroundNotificationIfIdle()
                         continue
                     }
+
+                    ensureForegroundNotification()
 
                     // In session: validate true -> ensure providers running
                     if (locationCallback == null && nativeLocationListener == null) {
@@ -417,6 +461,8 @@ class LocationLoggingService : Service() {
                         requestImmediateFix("timer_in_session")
                     }
                 } else {
+                    ensureForegroundNotification()
+
                     // ALL_TIME mode: keep working as is!
                     if (locationCallback == null && nativeLocationListener == null) {
                         withContext(Dispatchers.Main) {
@@ -434,12 +480,11 @@ class LocationLoggingService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         AppLogger.init(this)
-        AppLogger.i("LocationService", "onStartCommand: Ensuring foreground running (flags=$flags, startId=$startId, action=${intent?.action})")
+        AppLogger.i("LocationService", "onStartCommand: flags=$flags, startId=$startId, action=${intent?.action}")
         if (!::fusedLocationClient.isInitialized) {
             fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         }
 
-        tryStartForeground()
         acquireWakeLock()
 
         startLocationTimer()
@@ -452,6 +497,7 @@ class LocationLoggingService : Service() {
 
             withContext(Dispatchers.Main) {
                 if (mode == "ALL_TIME" || inSession) {
+                    ensureForegroundNotification()
                     val now = System.currentTimeMillis()
                     val timeSinceLastFix = if (lastHandledFixTimeMs > 0L) now - lastHandledFixTimeMs else Long.MAX_VALUE
                     val isStalled = timeSinceLastFix >= 60_000L
@@ -466,6 +512,27 @@ class LocationLoggingService : Service() {
                 } else {
                     AppLogger.d("LocationService", "onStartCommand: Not in session (trackingMode=SESSION_ONLY). Location listeners idle.")
                     stopLocationUpdates()
+                    removeForegroundNotificationIfIdle()
+                }
+            }
+        }
+
+        if (intent?.action == ACTION_SESSION_STATE_CHANGED) {
+            scope.launch {
+                val inSession = checkIsInSession()
+                val mode = getTrackingMode()
+                if (mode == "ALL_TIME" || inSession) {
+                    ensureForegroundNotification()
+                    withContext(Dispatchers.Main) {
+                        startLocationUpdates(forceRestart = true)
+                    }
+                    requestImmediateFix("session_state_started")
+                } else {
+                    withContext(Dispatchers.Main) {
+                        stopLocationUpdates()
+                    }
+                    flushQueuedDataInOrder()
+                    removeForegroundNotificationIfIdle()
                 }
             }
         }
@@ -842,6 +909,9 @@ class LocationLoggingService : Service() {
                 AppLogger.e("LocationService", "Error in flushQueuedDataInOrder", e)
             } finally {
                 dataSyncMutex.unlock()
+                if (currentTrackingMode == "SESSION_ONLY" && !isCurrentlyInSession) {
+                    removeForegroundNotificationIfIdle()
+                }
             }
         }
     }
@@ -910,6 +980,39 @@ class LocationLoggingService : Service() {
         }
     }
 
+    private var cachedCars: List<CarItem> = emptyList()
+    private var lastCarsFetchTime = 0L
+
+    private suspend fun getCarName(carId: String): String? {
+        if (carId.isBlank()) return null
+        val now = System.currentTimeMillis()
+        if (cachedCars.isEmpty() || now - lastCarsFetchTime > 30 * 60 * 1000L) {
+            try {
+                val res = ApiClient(this).getCars()
+                res.onSuccess {
+                    cachedCars = it
+                    lastCarsFetchTime = now
+                }
+            } catch (_: Exception) {}
+        }
+        val car = cachedCars.find { it.id.equals(carId, ignoreCase = true) }
+        return car?.description?.ifBlank { null } ?: car?.licensePlate?.ifBlank { null }
+    }
+
+    private fun formatEventTime(utcString: String): String {
+        return try {
+            val parser = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+            val clean = if (utcString.length >= 19) utcString.substring(0, 19) else utcString
+            val date = parser.parse(clean) ?: Date()
+            val timeFormat = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT, Locale.getDefault())
+            timeFormat.format(date)
+        } catch (_: Exception) {
+            utcString
+        }
+    }
+
     private suspend fun drainQueuedSessionEventsSync(apiKey: String): Boolean {
         while (true) {
             val events = db.sessionEventDao().getUnsentBatch(100)
@@ -961,15 +1064,35 @@ class LocationLoggingService : Service() {
                             db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
                             AppLogger.i("LocationService", "Session event ${event.eventType} sent successfully.")
                             if (event.bluetoothAddress.isNotBlank()) {
-                                val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                                val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
-                                    .setSmallIcon(android.R.drawable.ic_dialog_info)
-                                    .setContentTitle(getString(R.string.notif_bt_event_queued))
-                                    .setContentText(getString(R.string.notif_bt_address, event.bluetoothAddress))
-                                    .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-                                    .setAutoCancel(true)
-                                    .build()
-                                notificationManager.notify(event.id.toInt(), notification)
+                                val bluetoothDevices = db.bluetoothDeviceDao().getAll()
+                                val matchingDevice = bluetoothDevices.find { it.address.equals(event.bluetoothAddress, ignoreCase = true) }
+                                val carId = event.carId?.ifBlank { null } ?: matchingDevice?.carId?.ifBlank { null }
+
+                                // Do not show if not linked to car
+                                if (!carId.isNullOrBlank()) {
+                                    val carName = matchingDevice?.carDescription?.ifBlank { null }
+                                        ?: getCarName(carId)
+                                        ?: getString(R.string.common_vehicle)
+                                    val isStart = event.eventType.equals("start", ignoreCase = true)
+                                    val titleRes = if (isStart) R.string.notif_car_trip_started else R.string.notif_car_trip_ended
+                                    val title = getString(titleRes, carName)
+                                    val timeStr = formatEventTime(event.timestampUtc)
+                                    val textRes = if (isStart) R.string.notif_start_session_time else R.string.notif_end_session_time
+                                    val contentText = getString(textRes, timeStr)
+
+                                    val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                                    val notification = NotificationCompat.Builder(this@LocationLoggingService, SESSION_EVENT_CHANNEL_ID)
+                                        .setSmallIcon(android.R.drawable.ic_dialog_info)
+                                        .setContentTitle(title)
+                                        .setContentText(contentText)
+                                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                                        .setAutoCancel(true)
+                                        .build()
+                                    notificationManager.notify(event.id.toInt(), notification)
+                                    AppLogger.i("LocationService", "Shown bluetooth session notification: '$title' - '$contentText'")
+                                } else {
+                                    AppLogger.d("LocationService", "Skipping notification for bluetooth event: address ${event.bluetoothAddress} is not linked to any car.")
+                                }
                             }
                             true
                         } else {
@@ -1025,7 +1148,8 @@ class LocationLoggingService : Service() {
                             name = device.name,
                             address = device.address,
                             description = device.description,
-                            carId = device.carId
+                            carId = device.carId,
+                            carDescription = null
                         )
                         db.bluetoothDeviceDao().insert(newBluetoothDevice)
                         AppLogger.i("LocationService", "Successfully sent and saved new bluetooth device: ${device.name}")

@@ -290,9 +290,13 @@ Warning: This action is permanent and cannot be undone.</string>
 
     <!-- Foreground Notifications -->
     <string name="notif_logger_active">Location Logger Active</string>
-    <string name="notif_collecting_gps">Collecting GPS data every ~8 seconds</string>
+    <string name="notif_collecting_gps">Collecting GPS data every ~15 seconds</string>
     <string name="notif_bt_event_queued">Bluetooth Event Queued</string>
     <string name="notif_bt_address">Address: %1$s</string>
+    <string name="notif_car_trip_started">%1$s • Trip Started</string>
+    <string name="notif_car_trip_ended">%1$s • Trip Ended</string>
+    <string name="notif_start_session_time">Start session at %1$s</string>
+    <string name="notif_end_session_time">End session at %1$s</string>
     <string name="notif_update_resume_title">Location Tracking Paused</string>
     <string name="notif_update_resume_text">Tap here to resume background tracking after app update.</string>
 
