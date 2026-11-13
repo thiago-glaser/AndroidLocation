@@ -556,6 +556,7 @@ class ApiClient(private val context: Context) {
 
             val request = Request.Builder()
                 .url("$baseUrl/auth/register")
+                .header("X-Client-App", "DeliveryTrips-Android")
                 .post(payload.toRequestBody(jsonMediaType))
                 .build()
 
