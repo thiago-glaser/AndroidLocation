@@ -1021,15 +1021,21 @@ class LocationLoggingService : Service() {
             }
 
             val seenStartSeconds = mutableSetOf<String>()
+            val latestSent = try { db.sessionEventDao().getLatestSentEvent() } catch (_: Exception) { null }
+            var sessionIsOpen = latestSent?.eventType == "start"
 
             for (event in events) {
                 if (event.eventType == "start") {
                     val secondKey = event.timestampUtc.take(19)
-                    if (!seenStartSeconds.add(secondKey)) {
-                        AppLogger.w("LocationService", "Skipping duplicate start session event in the same second ($secondKey)")
+                    val isDuplicateSecond = !seenStartSeconds.add(secondKey)
+                    if (isDuplicateSecond || sessionIsOpen) {
+                        AppLogger.w("LocationService", "Skipping redundant/duplicate start session event (id=${event.id}, time=${event.timestampUtc}, sessionIsOpen=$sessionIsOpen, duplicateSecond=$isDuplicateSecond)")
                         db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
                         continue
                     }
+                    sessionIsOpen = true
+                } else if (event.eventType == "end") {
+                    sessionIsOpen = false
                 }
 
                 val endpoint = when (event.eventType) {
@@ -1063,6 +1069,11 @@ class LocationLoggingService : Service() {
                         if (response.isSuccessful) {
                             db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
                             AppLogger.i("LocationService", "Session event ${event.eventType} sent successfully.")
+                            if (event.eventType.equals("start", ignoreCase = true)) {
+                                isCurrentlyInSession = true
+                            } else if (event.eventType.equals("end", ignoreCase = true)) {
+                                isCurrentlyInSession = false
+                            }
                             if (event.bluetoothAddress.isNotBlank()) {
                                 val bluetoothDevices = db.bluetoothDeviceDao().getAll()
                                 val matchingDevice = bluetoothDevices.find { it.address.equals(event.bluetoothAddress, ignoreCase = true) }

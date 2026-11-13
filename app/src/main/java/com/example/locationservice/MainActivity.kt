@@ -37,6 +37,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var db: LocationDatabase
     private lateinit var apiClient: ApiClient
     private var activeSession: SessionItem? = null
+    private var isSessionActionInProgress = false
+    private var cachedCars: List<CarItem>? = null
 
     private val backgroundLocationLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -98,6 +100,17 @@ class MainActivity : AppCompatActivity() {
             notificationManager?.cancel(PackageReplacedReceiver.NOTIFICATION_ID_RESUME)
         } catch (_: Exception) {}
         refreshActiveSessionState()
+        preloadCars()
+    }
+
+    private fun preloadCars() {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                apiClient.getCars().onSuccess {
+                    cachedCars = it
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     private fun refreshActiveSessionState() {
@@ -108,18 +121,46 @@ class MainActivity : AppCompatActivity() {
 
             val result = apiClient.getLatestSession()
             withContext(Dispatchers.Main) {
-                result.onSuccess { latest ->
-                    val isLocallyEnded = latestEvent != null && latestEvent.eventType == "end" && !latestEvent.wasSent
-                    val isLocallyStarted = latestEvent != null && latestEvent.eventType == "start" && !latestEvent.wasSent
+                // If an action (start/end) is in flight locally, preserve the optimistic UI
+                if (isSessionActionInProgress) return@withContext
 
-                    if (isLocallyEnded) {
-                        activeSession = null
-                        binding.tvActiveSessionStatus.visibility = View.GONE
-                        binding.btnStartEndSession.text = getString(R.string.main_btn_start_session)
-                        binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#059669"))
-                    } else if (isLocallyStarted || (latest != null && latest.endTime.isNullOrEmpty())) {
-                        activeSession = latest
-                        val carLabel = latest?.description?.takeIf { it.isNotBlank() } ?: getString(R.string.common_vehicle)
+                val isLocallyEnded = latestEvent != null && latestEvent.eventType == "end" && !latestEvent.wasSent
+                val isLocallyStarted = latestEvent != null && latestEvent.eventType == "start" && !latestEvent.wasSent
+
+                if (isLocallyEnded) {
+                    activeSession = null
+                    binding.tvActiveSessionStatus.visibility = View.GONE
+                    binding.btnStartEndSession.text = getString(R.string.main_btn_start_session)
+                    binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#059669"))
+                } else if (isLocallyStarted) {
+                    val serverActive = result.getOrNull()?.takeIf { it.endTime.isNullOrEmpty() }
+                    if (serverActive != null) {
+                        activeSession = serverActive
+                    } else if (activeSession == null || !activeSession?.endTime.isNullOrEmpty()) {
+                        activeSession = SessionItem(
+                            id = "",
+                            deviceId = latestEvent.deviceId ?: LocationLoggingService.getDeviceAndroidId(this@MainActivity),
+                            carId = latestEvent.carId,
+                            startTime = latestEvent.timestampUtc,
+                            endTime = null,
+                            type = "P",
+                            distance = null,
+                            cost = null,
+                            description = null,
+                            locationStart = null,
+                            locationEnd = null
+                        )
+                    }
+                    val carLabel = activeSession?.description?.takeIf { it.isNotBlank() } ?: getString(R.string.common_vehicle)
+                    binding.tvActiveSessionStatus.text = getString(R.string.main_session_active_label, carLabel)
+                    binding.tvActiveSessionStatus.visibility = View.VISIBLE
+                    binding.btnStartEndSession.text = getString(R.string.main_btn_end_session)
+                    binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#DC2626"))
+                } else {
+                    val serverSession = result.getOrNull()
+                    if (serverSession != null && serverSession.endTime.isNullOrEmpty()) {
+                        activeSession = serverSession
+                        val carLabel = serverSession.description?.takeIf { it.isNotBlank() } ?: getString(R.string.common_vehicle)
                         binding.tvActiveSessionStatus.text = getString(R.string.main_session_active_label, carLabel)
                         binding.tvActiveSessionStatus.visibility = View.VISIBLE
                         binding.btnStartEndSession.text = getString(R.string.main_btn_end_session)
@@ -136,11 +177,31 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleStartEndSessionClick() {
+        if (isSessionActionInProgress) {
+            AppLogger.d("MainActivity", "handleStartEndSessionClick: Ignored because another action is in progress")
+            return
+        }
+
         val currentActive = activeSession
         if (currentActive != null && currentActive.endTime.isNullOrEmpty()) {
-            // End the active session via local queue
-            binding.btnStartEndSession.isEnabled = false
-            lifecycleScope.launch(Dispatchers.IO) {
+            endActiveSession(currentActive)
+        } else {
+            startNewSessionFlow()
+        }
+    }
+
+    private fun endActiveSession(currentActive: SessionItem) {
+        isSessionActionInProgress = true
+        binding.btnStartEndSession.isEnabled = false
+
+        // Immediate Optimistic UI: change to green "Start Session"
+        activeSession = null
+        binding.tvActiveSessionStatus.visibility = View.GONE
+        binding.btnStartEndSession.text = getString(R.string.main_btn_start_session)
+        binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#059669"))
+
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
                 val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
                     timeZone = TimeZone.getTimeZone("UTC")
                 }.format(Date())
@@ -148,7 +209,7 @@ class MainActivity : AppCompatActivity() {
                 val event = SessionEvent(
                     deviceId = currentActive.deviceId?.ifBlank { LocationLoggingService.getDeviceAndroidId(this@MainActivity) }
                         ?: LocationLoggingService.getDeviceAndroidId(this@MainActivity),
-                    sessionId = currentActive.id,
+                    sessionId = currentActive.id.takeIf { it.isNotBlank() },
                     carId = currentActive.carId,
                     eventType = "end",
                     timestampUtc = utcNow
@@ -158,53 +219,73 @@ class MainActivity : AppCompatActivity() {
                 LocationLoggingService.triggerFlush(this@MainActivity)
 
                 withContext(Dispatchers.Main) {
-                    binding.btnStartEndSession.isEnabled = true
                     Toast.makeText(this@MainActivity, getString(R.string.main_session_ended_toast), Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                AppLogger.e("MainActivity", "Failed to end session", e)
+            } finally {
+                withContext(Dispatchers.Main) {
+                    isSessionActionInProgress = false
+                    binding.btnStartEndSession.isEnabled = true
                     refreshActiveSessionState()
                 }
             }
-        } else {
-            // Start a new session: check cars list
-            binding.btnStartEndSession.isEnabled = false
-            lifecycleScope.launch(Dispatchers.IO) {
-                val carsRes = apiClient.getCars()
-                withContext(Dispatchers.Main) {
-                    binding.btnStartEndSession.isEnabled = true
-                    carsRes.onSuccess { cars ->
-                        when {
-                            cars.isEmpty() -> {
-                                Toast.makeText(this@MainActivity, getString(R.string.trips_register_car_first), Toast.LENGTH_LONG).show()
-                                startActivity(Intent(this@MainActivity, CarsActivity::class.java))
-                            }
-                            cars.size == 1 -> {
-                                startManualSessionForCar(cars[0])
-                            }
-                            else -> {
-                                val labels = cars.map { car ->
-                                    val desc = car.description?.takeIf { it.isNotBlank() }
-                                    val plate = car.licensePlate?.takeIf { it.isNotBlank() }
-                                    when {
-                                        desc != null && plate != null -> "$desc ($plate)"
-                                        desc != null -> desc
-                                        plate != null -> plate
-                                        else -> "Car #${car.id}"
-                                    }
-                                }.toTypedArray()
+        }
+    }
 
-                                MaterialAlertDialogBuilder(this@MainActivity)
-                                    .setTitle(R.string.main_select_car_title)
-                                    .setItems(labels) { dialog, which ->
-                                        dialog.dismiss()
-                                        startManualSessionForCar(cars[which])
-                                    }
-                                    .setNegativeButton(R.string.common_cancel, null)
-                                    .show()
-                            }
-                        }
-                    }.onFailure { err ->
-                        Toast.makeText(this@MainActivity, getString(R.string.common_failed, err.message ?: ""), Toast.LENGTH_LONG).show()
-                    }
+    private fun startNewSessionFlow() {
+        val cars = cachedCars
+        if (cars != null) {
+            handleCarsLoadedForStart(cars)
+            return
+        }
+
+        isSessionActionInProgress = true
+        binding.btnStartEndSession.isEnabled = false
+        lifecycleScope.launch(Dispatchers.IO) {
+            val carsRes = apiClient.getCars()
+            withContext(Dispatchers.Main) {
+                isSessionActionInProgress = false
+                binding.btnStartEndSession.isEnabled = true
+                carsRes.onSuccess { list ->
+                    cachedCars = list
+                    handleCarsLoadedForStart(list)
+                }.onFailure { err ->
+                    Toast.makeText(this@MainActivity, getString(R.string.common_failed, err.message ?: ""), Toast.LENGTH_LONG).show()
                 }
+            }
+        }
+    }
+
+    private fun handleCarsLoadedForStart(cars: List<CarItem>) {
+        when {
+            cars.isEmpty() -> {
+                Toast.makeText(this, getString(R.string.trips_register_car_first), Toast.LENGTH_LONG).show()
+                startActivity(Intent(this, CarsActivity::class.java))
+            }
+            cars.size == 1 -> {
+                startManualSessionForCar(cars[0])
+            }
+            else -> {
+                val labels = cars.map { car ->
+                    val desc = car.description?.takeIf { it.isNotBlank() }
+                    val plate = car.licensePlate?.takeIf { it.isNotBlank() }
+                    when {
+                        desc != null && plate != null -> "$desc ($plate)"
+                        desc != null -> desc
+                        plate != null -> plate
+                        else -> "Car #${car.id}"
+                    }
+                }.toTypedArray()
+
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.main_select_car_title)
+                    .setItems(labels) { dialog, which ->
+                        dialog.dismiss()
+                        startManualSessionForCar(cars[which])
+                    }
+                    .setNegativeButton(R.string.common_cancel, null)
+                    .show()
             }
         }
     }
@@ -213,27 +294,57 @@ class MainActivity : AppCompatActivity() {
         if (hasRequiredPermissions()) {
             startLocationService()
         }
+
+        isSessionActionInProgress = true
         binding.btnStartEndSession.isEnabled = false
+
         val carLabel = car.description?.takeIf { it.isNotBlank() } ?: car.licensePlate?.takeIf { it.isNotBlank() } ?: "Car #${car.id}"
+        val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }.format(Date())
+
+        // Immediate Optimistic UI: change to red "End Session"
+        activeSession = SessionItem(
+            id = "",
+            deviceId = LocationLoggingService.getDeviceAndroidId(this@MainActivity),
+            carId = car.id,
+            startTime = utcNow,
+            endTime = null,
+            type = "P",
+            distance = null,
+            cost = null,
+            description = carLabel,
+            locationStart = null,
+            locationEnd = null
+        )
+        binding.tvActiveSessionStatus.text = getString(R.string.main_session_active_label, carLabel)
+        binding.tvActiveSessionStatus.visibility = View.VISIBLE
+        binding.btnStartEndSession.text = getString(R.string.main_btn_end_session)
+        binding.btnStartEndSession.backgroundTintList = android.content.res.ColorStateList.valueOf(Color.parseColor("#DC2626"))
+
         lifecycleScope.launch(Dispatchers.IO) {
-            val utcNow = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.ROOT).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }.format(Date())
+            try {
+                val event = SessionEvent(
+                    deviceId = LocationLoggingService.getDeviceAndroidId(this@MainActivity),
+                    carId = car.id,
+                    eventType = "start",
+                    timestampUtc = utcNow
+                )
+                db.sessionEventDao().insert(event)
+                LocationLoggingService.notifySessionStateChanged(this@MainActivity)
+                LocationLoggingService.triggerFlush(this@MainActivity)
 
-            val event = SessionEvent(
-                deviceId = LocationLoggingService.getDeviceAndroidId(this@MainActivity),
-                carId = car.id,
-                eventType = "start",
-                timestampUtc = utcNow
-            )
-            db.sessionEventDao().insert(event)
-            LocationLoggingService.notifySessionStateChanged(this@MainActivity)
-            LocationLoggingService.triggerFlush(this@MainActivity)
-
-            withContext(Dispatchers.Main) {
-                binding.btnStartEndSession.isEnabled = true
-                Toast.makeText(this@MainActivity, getString(R.string.main_session_started_toast, carLabel), Toast.LENGTH_SHORT).show()
-                refreshActiveSessionState()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, getString(R.string.main_session_started_toast, carLabel), Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                AppLogger.e("MainActivity", "Failed to start session", e)
+            } finally {
+                withContext(Dispatchers.Main) {
+                    isSessionActionInProgress = false
+                    binding.btnStartEndSession.isEnabled = true
+                    refreshActiveSessionState()
+                }
             }
         }
     }

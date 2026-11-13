@@ -22,6 +22,9 @@ interface SessionEventDao {
     @Query("SELECT * FROM session_events ORDER BY id DESC LIMIT 1")
     suspend fun getLatestEvent(): SessionEvent?
 
+    @Query("SELECT * FROM session_events WHERE wasSent = 1 ORDER BY id DESC LIMIT 1")
+    suspend fun getLatestSentEvent(): SessionEvent?
+
     @Query("SELECT * FROM session_events ORDER BY id DESC LIMIT 1")
     fun observeLatestEvent(): Flow<SessionEvent?>
 
