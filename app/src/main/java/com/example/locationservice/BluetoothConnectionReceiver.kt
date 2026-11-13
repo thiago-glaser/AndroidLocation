@@ -91,7 +91,12 @@ class BluetoothConnectionReceiver : BroadcastReceiver() {
                     AppLogger.i("BluetoothReceiver", logMessage)
 
                     // Only queue trip session events if this device is linked to a car
-                    if (matchingDevice == null || matchingDevice.carId.isBlank()) {
+                    val isCarLinked = matchingDevice != null &&
+                        matchingDevice.carId.isNotBlank() &&
+                        !matchingDevice.carId.equals("null", ignoreCase = true) &&
+                        !matchingDevice.carId.equals("undefined", ignoreCase = true)
+
+                    if (!isCarLinked) {
                         AppLogger.d("BluetoothReceiver", "Bluetooth device $effectiveName ($deviceAddress) is not linked to any car. Skipping trip session event.")
                     } else {
                         // Do not allow more than one session start in the same second for the vehicle

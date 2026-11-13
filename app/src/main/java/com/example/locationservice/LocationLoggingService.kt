@@ -377,12 +377,24 @@ class LocationLoggingService : Service() {
                             val devices = mutableListOf<com.example.locationservice.BluetoothDevice>()
                             for (i in 0 until jsonArray.length()) {
                                 val jsonObject = jsonArray.getJSONObject(i)
+                                val rawCarId = jsonObject.optString("CAR_ID", "").trim()
+                                val cleanCarId = if (rawCarId.isEmpty() || rawCarId.equals("null", ignoreCase = true) || rawCarId.equals("undefined", ignoreCase = true)) {
+                                    ""
+                                } else {
+                                    rawCarId
+                                }
+                                val rawCarDesc = jsonObject.optString("CAR_DESCRIPTION", "").trim()
+                                val cleanCarDesc = if (rawCarDesc.isEmpty() || rawCarDesc.equals("null", ignoreCase = true) || rawCarDesc.equals("undefined", ignoreCase = true)) {
+                                    null
+                                } else {
+                                    rawCarDesc
+                                }
                                 val device = com.example.locationservice.BluetoothDevice(
                                     name = jsonObject.optString("NAME", "Unknown Device"),
                                     description = jsonObject.optString("DESCRIPTION", ""),
                                     address = jsonObject.optString("ADDRESS", ""),
-                                    carId = jsonObject.optString("CAR_ID", ""),
-                                    carDescription = jsonObject.optString("CAR_DESCRIPTION", "").ifBlank { null }
+                                    carId = cleanCarId,
+                                    carDescription = cleanCarDesc
                                 )
                                 devices.add(device)
                             }
@@ -1052,8 +1064,9 @@ class LocationLoggingService : Service() {
                     put("device_id", event.deviceId)
                     put("bluetooth_address", event.bluetoothAddress)
                     put("timestamp_utc", event.timestampUtc)
-                    if (!event.carId.isNullOrEmpty()) {
-                        put("car_id", event.carId)
+                    val cleanCarId = event.carId?.trim()
+                    if (!cleanCarId.isNullOrEmpty() && !cleanCarId.equals("null", ignoreCase = true) && !cleanCarId.equals("undefined", ignoreCase = true)) {
+                        put("car_id", cleanCarId)
                     }
                     if (!event.sessionId.isNullOrEmpty()) {
                         put("id", event.sessionId)
@@ -1114,6 +1127,10 @@ class LocationLoggingService : Service() {
                         } else {
                             val errorBody = response.body?.string()
                             AppLogger.w("LocationService", "SERVER ERROR ${response.code} for session event at $url: Body: $errorBody")
+                            if (response.code == 400 || response.code == 404) {
+                                AppLogger.w("LocationService", "Discarding unrecoverable session event (id=${event.id})")
+                                db.sessionEventDao().markAsSent(listOf(event.id), System.currentTimeMillis())
+                            }
                             false
                         }
                     }

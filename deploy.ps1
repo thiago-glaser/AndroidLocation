@@ -17,8 +17,8 @@ param(
     [string]$PackageName = "com.deliverytrips.locationservice",
     [string]$AabPath = "$PSScriptRoot\app\build\outputs\bundle\release\app-release.aab",
     [string]$ReleaseName = "",
-    [string]$NotesEn = "Instant UI feedback for session start/end, click debounce protection, and background sync optimizations.",
-    [string]$NotesPt = "Feedback de interface imediato para início/fim de sessão, proteção contra cliques duplos e otimizações de sincronização.",
+    [string]$NotesEn = "Fix vehicle Bluetooth auto-start trip detection, resolve session event queuing, and auto-close stale sessions.",
+    [string]$NotesPt = "Correção no início automático de viagens via Bluetooth do veículo, resolução da fila de eventos e encerramento automático de sessões antigas.",
     [switch]$SkipBuild,
     [switch]$Draft
 )
@@ -76,7 +76,7 @@ if ($SkipBuild) {
         $gradleCmd = ".\gradlew.bat"
         if (-not (Test-Path $gradleCmd)) { $gradleCmd = "gradlew" }
         
-        & $gradleCmd bundleRelease
+        & $gradleCmd bundleRelease --no-daemon
         if ($LASTEXITCODE -ne 0) {
             Write-Fail "Gradle bundleRelease build failed with exit code $LASTEXITCODE"
             exit 1
