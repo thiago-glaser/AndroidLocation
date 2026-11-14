@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Builds and deploys DeliveryTrips Android App to Google Play via Developer Publishing API.
 
@@ -72,9 +72,13 @@ if ($SkipBuild) {
     # Ensure any stuck gradle daemon or file lock is cleanly handled
     Push-Location $PSScriptRoot
     try {
-        Write-Host "    Running ./gradlew bundleRelease ..." -ForegroundColor DarkGray
         $gradleCmd = ".\gradlew.bat"
         if (-not (Test-Path $gradleCmd)) { $gradleCmd = "gradlew" }
+        & $gradleCmd --stop | Out-Null
+        if (Test-Path "app\build") {
+            Remove-Item -Recurse -Force "app\build" -ErrorAction SilentlyContinue
+        }
+        Write-Host "    Running ./gradlew bundleRelease ..." -ForegroundColor DarkGray
         
         & $gradleCmd bundleRelease --no-daemon
         if ($LASTEXITCODE -ne 0) {
