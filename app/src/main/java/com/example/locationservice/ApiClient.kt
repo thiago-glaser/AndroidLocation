@@ -142,7 +142,7 @@ class ApiClient(private val context: Context) {
     private val client = OkHttpClient()
     private val gson = Gson()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-    private val baseUrl = "https://travel-access.ddns.net/api"
+    private val baseUrl = "https://deliverytrips.com/api"
     private val db = LocationDatabase.getDatabase(context)
 
     suspend fun getUnitSystem(): String {

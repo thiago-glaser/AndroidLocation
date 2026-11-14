@@ -385,10 +385,10 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="subscription_valid_until">Válido até: %1$s</string>
     <string name="subscription_auto_renew">Renovação automática via Google Play</string>
     <string name="subscription_monthly_title">Pro Mensal</string>
-    <string name="subscription_monthly_price">US$ 4.99 / mês</string>
+    <string name="subscription_monthly_price">US$ 1.99 / mês</string>
     <string name="subscription_monthly_desc">Cobrado mensalmente. Cancele quando quiser.</string>
     <string name="subscription_yearly_title">Pro Anual</string>
-    <string name="subscription_yearly_price">US$ 49.99 / ano</string>
+    <string name="subscription_yearly_price">US$ 19.99 / ano</string>
     <string name="subscription_yearly_badge">ECONOMIZE 17%</string>
     <string name="subscription_yearly_desc">Cobrado anualmente. 2 meses grátis.</string>
     <string name="subscription_feature_unlimited_cars">Veículos ilimitados &amp; rastreamento</string>
@@ -396,6 +396,7 @@ Aviso: Esta ação é permanente e não pode ser desfeita.</string>
     <string name="subscription_feature_bt_multicar">Auto-detecção Bluetooth multicarros</string>
     <string name="subscription_feature_reports">Relatórios detalhados em PDF &amp; Excel</string>
     <string name="subscription_feature_drive_backup">Backup automático no Google Drive</string>
+    <string name="subscription_features_subject_to_change">* Recursos sujeitos a alterações</string>
     <string name="subscription_btn_upgrade">Assinar com Google Play</string>
     <string name="subscription_btn_manage">Gerenciar no Google Play</string>
     <string name="subscription_active_badge">Ativo</string>

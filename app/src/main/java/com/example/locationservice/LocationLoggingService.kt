@@ -60,7 +60,7 @@ class LocationLoggingService : Service() {
         private const val SEND_BATCH_INTERVAL_MS = 5 * 60 * 1000L // Fixed 5 minutes interval (independent of session state)
         private const val BLUETOOTH_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000L // 12 hours
         private val SENT_DATA_RETENTION_DAYS = 60L
-        private const val API_BASE_URL = "https://travel-access.ddns.net/api"
+        private const val API_BASE_URL = "https://deliverytrips.com/api"
         private const val API_KEY_SETTING = "api_key"
         const val ACTION_FLUSH_QUEUE = "com.example.locationservice.ACTION_FLUSH_QUEUE"
         const val ACTION_SESSION_STATE_CHANGED = "com.example.locationservice.ACTION_SESSION_STATE_CHANGED"
